@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace PlayableAd
@@ -37,7 +37,7 @@ namespace PlayableAd
                 visual.name = prefab.name;
                 visual.transform.localPosition = Vector3.zero;
                 visual.transform.localRotation = Quaternion.identity;
-                visual.transform.localScale = Vector3.one;
+                // Keep the prefab-authored scale so visual assets can be resized in the Inspector.
             }
             else
             {
