@@ -6,36 +6,36 @@ namespace PlayableAd
     [Serializable]
     public sealed class SpeedLevelFeedbackData
     {
-        [Range(1, PlayerSpeedSettings.RequiredLevelCount)] public int level = 1;
-        public bool isMajorLevel;
-        [Range(0f, 1.5f)] public float coreFlashIntensity = 0.45f;
-        [Range(4, 48)] public int burstParticleCount = 10;
-        [Range(0.5f, 3f)] public float shockwaveScale = 1.15f;
-        [Range(0.2f, 0.35f)] public float shockwaveDuration = 0.25f;
-        [Range(0.8f, 1.8f)] public float levelBadgeScale = 1f;
-        [Range(0.6f, 1f)] public float levelBadgeDuration = 0.75f;
-        [Range(0f, 7f)] public float cameraZoomStrength = 2.2f;
-        [Range(0f, 0.5f)] public float cameraImpulseStrength = 0.08f;
-        [Range(1f, 1.8f)] public float trailBoostMultiplier = 1.18f;
-        [Range(1f, 1.8f)] public float airflowBoostMultiplier = 1.12f;
-        [Range(0.2f, 0.7f)] public float feedbackDuration = 0.34f;
+        [Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Level（等级）")] public int level = 1;
+        [InspectorName("Is Major Level（是否为关键等级）")] public bool isMajorLevel;
+        [Range(0f, 1.5f), InspectorName("Core Flash Intensity（核心闪光强度）")] public float coreFlashIntensity = 0.45f;
+        [Range(4, 48), InspectorName("Burst Particle Count（爆发粒子数量）")] public int burstParticleCount = 10;
+        [Range(0.5f, 3f), InspectorName("Shockwave Scale（冲击波缩放）")] public float shockwaveScale = 1.15f;
+        [Range(0.2f, 0.35f), InspectorName("Shockwave Duration（冲击波时长）")] public float shockwaveDuration = 0.25f;
+        [Range(0.8f, 1.8f), InspectorName("Level Badge Scale（等级徽章缩放）")] public float levelBadgeScale = 1f;
+        [Range(0.6f, 1f), InspectorName("Level Badge Duration（等级徽章时长）")] public float levelBadgeDuration = 0.75f;
+        [Range(0f, 7f), InspectorName("Camera Zoom Strength（镜头缩放强度）")] public float cameraZoomStrength = 2.2f;
+        [Range(0f, 0.5f), InspectorName("Camera Impulse Strength（镜头冲击强度）")] public float cameraImpulseStrength = 0.08f;
+        [Range(1f, 1.8f), InspectorName("Trail Boost Multiplier（拖尾增益倍率）")] public float trailBoostMultiplier = 1.18f;
+        [Range(1f, 1.8f), InspectorName("Airflow Boost Multiplier（气流增益倍率）")] public float airflowBoostMultiplier = 1.12f;
+        [Range(0.2f, 0.7f), InspectorName("Feedback Duration（反馈时长）")] public float feedbackDuration = 0.34f;
     }
 
     [CreateAssetMenu(fileName = "SpeedLevelFeedbackConfig", menuName = "Playable Ad/Speed Level Feedback Config")]
     public sealed class SpeedLevelFeedbackConfig : ScriptableObject
     {
-        [Header("Global")]
-        [Range(0.1f, 0.5f)] public float normalGainFeedbackStrength = 0.2f;
-        [Range(0.5f, 1.5f)] public float levelUpFeedbackStrength = 1f;
-        [Range(1f, 1.8f)] public float multiLevelMaxMultiplier = 1.45f;
-        [Range(0f, 0.2f)] public float levelUpCooldown = 0.04f;
-        [Range(0.15f, 0.4f)] public float uiAnimationDuration = 0.25f;
-        public bool cameraFeedbackEnabled = true;
-        public bool levelBadgeEnabled = true;
-        public bool accessibilityReducedFlash;
-        [Range(0, 2)] public int vfxQualityLevel = 2;
+        [Header("Global（全局设置）")]
+        [Range(0.1f, 0.5f), InspectorName("Normal Gain Feedback Strength（普通增益反馈强度）")] public float normalGainFeedbackStrength = 0.2f;
+        [Range(0.5f, 1.5f), InspectorName("Level Up Feedback Strength（升级反馈强度）")] public float levelUpFeedbackStrength = 1f;
+        [Range(1f, 1.8f), InspectorName("Multi Level Max Multiplier（多级最大倍率）")] public float multiLevelMaxMultiplier = 1.45f;
+        [Range(0f, 0.2f), InspectorName("Level Up Cooldown（升级冷却）")] public float levelUpCooldown = 0.04f;
+        [Range(0.15f, 0.4f), InspectorName("UI Animation Duration（界面动画时长）")] public float uiAnimationDuration = 0.25f;
+        [InspectorName("Camera Feedback Enabled（启用镜头反馈）")] public bool cameraFeedbackEnabled = true;
+        [InspectorName("Level Badge Enabled（启用等级徽章）")] public bool levelBadgeEnabled = true;
+        [InspectorName("Accessibility Reduced Flash（无障碍降低闪光）")] public bool accessibilityReducedFlash;
+        [Range(0, 2), InspectorName("VFX Quality Level（特效质量等级）")] public int vfxQualityLevel = 2;
 
-        [SerializeField] private SpeedLevelFeedbackData[] levels = CreateDefaults();
+        [SerializeField, InspectorName("Levels（等级反馈配置）")] private SpeedLevelFeedbackData[] levels = CreateDefaults();
 
         public SpeedLevelFeedbackData Get(int level)
         {

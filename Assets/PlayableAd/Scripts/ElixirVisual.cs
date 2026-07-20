@@ -6,23 +6,23 @@ namespace PlayableAd
     [Serializable]
     public sealed class ElixirPresentationSettings
     {
-        [Header("Idle Readability")]
-        [Range(0.05f, 0.5f)] public float hoverHeight = 0.18f;
-        [Range(20f, 180f)] public float rotationSpeed = 72f;
-        [Range(0.5f, 5f)] public float breathSpeed = 2.2f;
-        [Range(0f, 2f)] public float emissionIntensity = 0.8f;
-        [Range(0.8f, 2.2f)] public float ringRadius = 1.1f;
+        [Header("Idle Readability（待机可读性）")]
+        [Range(0.05f, 0.5f), InspectorName("Hover Height（悬浮高度）")] public float hoverHeight = 0.18f;
+        [Range(20f, 180f), InspectorName("Rotation Speed（旋转速度）")] public float rotationSpeed = 72f;
+        [Range(0.5f, 5f), InspectorName("Breath Speed（呼吸速度）")] public float breathSpeed = 2.2f;
+        [Range(0f, 2f), InspectorName("Emission Intensity（发光强度）")] public float emissionIntensity = 0.8f;
+        [Range(0.8f, 2.2f), InspectorName("Ring Radius（光环半径）")] public float ringRadius = 1.1f;
 
-        [Header("Pickup Sequence")]
-        [Range(0.6f, 0.9f)] public float totalDuration = 0.8f;
-        [Range(0.06f, 0.16f)] public float collapseDuration = 0.11f;
-        [Range(0.1f, 0.3f)] public float upgradeMoment = 0.18f;
-        [Range(0.05f, 0.15f)] public float slowMotionDuration = 0.09f;
-        [Range(0.35f, 0.9f)] public float slowMotionScale = 0.62f;
-        [Range(0f, 5f)] public float cameraPushIn = 1.8f;
-        [Range(0f, 6f)] public float cameraRebound = 3.2f;
-        [Range(0f, 1f)] public float pickupFlash = 0.32f;
-        [Range(0.2f, 1.5f)] public float energyRingMaxRadius = 1.25f;
+        [Header("Pickup Sequence（拾取流程）")]
+        [Range(0.6f, 0.9f), InspectorName("Total Duration（总时长）")] public float totalDuration = 0.8f;
+        [Range(0.06f, 0.16f), InspectorName("Collapse Duration（收缩时长）")] public float collapseDuration = 0.11f;
+        [Range(0.1f, 0.3f), InspectorName("Upgrade Moment（升级时刻）")] public float upgradeMoment = 0.18f;
+        [Range(0.05f, 0.15f), InspectorName("Slow Motion Duration（慢动作时长）")] public float slowMotionDuration = 0.09f;
+        [Range(0.35f, 0.9f), InspectorName("Slow Motion Scale（慢动作缩放）")] public float slowMotionScale = 0.62f;
+        [Range(0f, 5f), InspectorName("Camera Push In（镜头推进）")] public float cameraPushIn = 1.8f;
+        [Range(0f, 6f), InspectorName("Camera Rebound（镜头回弹）")] public float cameraRebound = 3.2f;
+        [Range(0f, 1f), InspectorName("Pickup Flash（拾取闪光）")] public float pickupFlash = 0.32f;
+        [Range(0.2f, 1.5f), InspectorName("Energy Ring Max Radius（能量环最大半径）")] public float energyRingMaxRadius = 1.25f;
     }
 
     public sealed class ElixirVisual : MonoBehaviour

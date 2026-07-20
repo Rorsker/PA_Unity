@@ -25,32 +25,32 @@ namespace PlayableAd
     {
         public const int RequiredLevelCount = 10;
 
-        [Header("Continuous Speed")]
-        [Min(0f)] public float minimumSpeed = 1f;
-        [Min(0f)] public float maximumSpeed = 10f;
+        [Header("Continuous Speed（连续速度）")]
+        [Min(0f), InspectorName("Minimum Speed（最低速度）")] public float minimumSpeed = 1f;
+        [Min(0f), InspectorName("Maximum Speed（最高速度）")] public float maximumSpeed = 10f;
         [Tooltip("Continuous speed at which each configured level begins.")]
-        public float[] levelStartSpeeds = { 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 9.5f };
+        [InspectorName("Level Start Speeds（各等级起始速度）")] public float[] levelStartSpeeds = { 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 9.5f };
         [Tooltip("World-space forward movement speed for every configured level.")]
-        public float[] forwardSpeeds = { 6f, 7f, 8.5f, 10f, 12f, 14f, 16.5f, 19f, 22f, 26f };
+        [InspectorName("Forward Speeds（各等级前进速度）")] public float[] forwardSpeeds = { 6f, 7f, 8.5f, 10f, 12f, 14f, 16.5f, 19f, 22f, 26f };
 
-        [Header("Forward Speed Response")]
-        [Min(1f)] public float baseAcceleration = 22f;
-        [Min(1f)] public float specialUpgradeAcceleration = 16f;
-        [Min(1f)] public float naturalDeceleration = 14f;
-        [Min(1f)] public float penaltyDeceleration = 32f;
+        [Header("Forward Speed Response（前进速度响应）")]
+        [Min(1f), InspectorName("Base Acceleration（基础加速度）")] public float baseAcceleration = 22f;
+        [Min(1f), InspectorName("Special Upgrade Acceleration（特殊升级加速度）")] public float specialUpgradeAcceleration = 16f;
+        [Min(1f), InspectorName("Natural Deceleration（自然减速度）")] public float naturalDeceleration = 14f;
+        [Min(1f), InspectorName("Penalty Deceleration（惩罚减速度）")] public float penaltyDeceleration = 32f;
 
-        [Header("P0 Rules")]
-        [Range(1, RequiredLevelCount)] public int startingLevel = 1;
-        [Range(1, RequiredLevelCount)] public int tutorialElixirTargetLevel = 4;
+        [Header("P0 Rules（P0 规则）")]
+        [Range(1, RequiredLevelCount), InspectorName("Starting Level（起始等级）")] public int startingLevel = 1;
+        [Range(1, RequiredLevelCount), InspectorName("Tutorial Elixir Target Level（教学药剂目标等级）")] public int tutorialElixirTargetLevel = 4;
         [Tooltip("Legacy compatibility only. Current course keeps this disabled so speed changes only through gameplay events.")]
-        public bool automaticSpeedDecayEnabled = false;
-        [Min(0f)] public float mainRunDecayPerSecond = 0.1f;
-        public bool logSpeedChanges = false;
-        [Min(0f)] public float levelOneSoldierBoost = 0.12f;
-        [Min(0f)] public float normalImpactBoost = 0.18f;
-        [Min(0f)] public float normalImpactSoftCap = 6.5f;
-        [Min(0f)] public float tutorialImpactSoftCap = 4f;
-        [Range(1, RequiredLevelCount)] public int bossVictoryLevel = 10;
+        [InspectorName("Automatic Speed Decay Enabled（启用自动速度衰减）")] public bool automaticSpeedDecayEnabled = false;
+        [Min(0f), InspectorName("Main Run Decay Per Second（主流程每秒衰减）")] public float mainRunDecayPerSecond = 0.1f;
+        [InspectorName("Log Speed Changes（记录速度变化）")] public bool logSpeedChanges = false;
+        [Min(0f), InspectorName("Level One Soldier Boost（一级士兵增益）")] public float levelOneSoldierBoost = 0.12f;
+        [Min(0f), InspectorName("Normal Impact Boost（普通冲击增益）")] public float normalImpactBoost = 0.18f;
+        [Min(0f), InspectorName("Normal Impact Soft Cap（普通冲击软上限）")] public float normalImpactSoftCap = 6.5f;
+        [Min(0f), InspectorName("Tutorial Impact Soft Cap（教学冲击软上限）")] public float tutorialImpactSoftCap = 4f;
+        [Range(1, RequiredLevelCount), InspectorName("Boss Victory Level（Boss 胜利等级）")] public int bossVictoryLevel = 10;
 
         public int LevelCount => levelStartSpeeds != null ? levelStartSpeeds.Length : RequiredLevelCount;
     }
@@ -108,8 +108,8 @@ namespace PlayableAd
 
     public sealed class PlayerSpeedController : MonoBehaviour
     {
-        [SerializeField] private PlayerSpeedSettings settings = new PlayerSpeedSettings();
-        [SerializeField, Range(1f, 10f)] private float currentSpeed = 1f;
+        [SerializeField, InspectorName("Settings（速度设置）")] private PlayerSpeedSettings settings = new PlayerSpeedSettings();
+        [SerializeField, Range(1f, 10f), InspectorName("Current Speed（当前速度）")] private float currentSpeed = 1f;
 
         public event Action<SpeedChangedEvent> SpeedChanged;
         public event Action<SpeedLevelChangeData> SpeedLevelChanged;

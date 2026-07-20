@@ -7,7 +7,7 @@ namespace PlayableAd
     {
         private static readonly int DeathTrigger = Animator.StringToHash("Death");
 
-        [SerializeField] private Animator animator;
+        [SerializeField, InspectorName("Animator（动画控制器）")] private Animator animator;
         private ObstacleController obstacle;
         private bool subscribed;
 

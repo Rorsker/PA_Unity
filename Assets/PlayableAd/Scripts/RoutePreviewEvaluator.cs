@@ -10,10 +10,10 @@ namespace PlayableAd
     [Serializable]
     public struct RoutePreviewStep
     {
-        public RoutePreviewStepType type;
-        [Range(1, PlayerSpeedSettings.RequiredLevelCount)] public int requiredLevel;
-        [Min(0f)] public float boostAmount;
-        [Min(0f)] public float softCap;
+        [InspectorName("Type（类型）")] public RoutePreviewStepType type;
+        [Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Required Level（要求等级）")] public int requiredLevel;
+        [Min(0f), InspectorName("Boost Amount（增益数值）")] public float boostAmount;
+        [Min(0f), InspectorName("Soft Cap（软上限）")] public float softCap;
 
         public static RoutePreviewStep Obstacle(int requiredLevel, float boostAmount, float softCap)
         {
@@ -35,29 +35,29 @@ namespace PlayableAd
     [Serializable]
     public sealed class RoutePreviewSettings
     {
-        [Header("Classification")]
-        [Min(0.01f)] public float gainThreshold = 0.15f;
-        [Min(0.01f)] public float heavyRiskThreshold = 0.9f;
-        [Min(0.01f)] public float recommendMinScoreDifference = 0.22f;
+        [Header("Classification（分类判定）")]
+        [Min(0.01f), InspectorName("Gain Threshold（增益阈值）")] public float gainThreshold = 0.15f;
+        [Min(0.01f), InspectorName("Heavy Risk Threshold（高风险阈值）")] public float heavyRiskThreshold = 0.9f;
+        [Min(0.01f), InspectorName("Recommend Min Score Difference（推荐最低分差）")] public float recommendMinScoreDifference = 0.22f;
 
-        [Header("Choice Window")]
-        [Range(1.3f, 2f)] public float previewTime = 1.6f;
-        [Range(0.1f, 0.3f)] public float fadeInDuration = 0.2f;
-        [Range(0.1f, 0.3f)] public float fadeOutDuration = 0.22f;
-        [Range(6f, 24f)] public float minimumPreviewDistance = 10f;
-        [Range(30f, 80f)] public float maximumPreviewDistance = 52f;
-        [Range(3f, 16f)] public float ribbonLength = 7.5f;
+        [Header("Choice Window（选择窗口）")]
+        [Range(1.3f, 2f), InspectorName("Preview Time（预览时间）")] public float previewTime = 1.6f;
+        [Range(0.1f, 0.3f), InspectorName("Fade In Duration（淡入时长）")] public float fadeInDuration = 0.2f;
+        [Range(0.1f, 0.3f), InspectorName("Fade Out Duration（淡出时长）")] public float fadeOutDuration = 0.22f;
+        [Range(6f, 24f), InspectorName("Minimum Preview Distance（最小预览距离）")] public float minimumPreviewDistance = 10f;
+        [Range(30f, 80f), InspectorName("Maximum Preview Distance（最大预览距离）")] public float maximumPreviewDistance = 52f;
+        [Range(3f, 16f), InspectorName("Ribbon Length（引导带长度）")] public float ribbonLength = 7.5f;
 
-        [Header("Four-state visual language")]
-        public Color specialColor = new Color(1f, 0.68f, 0.08f, 1f);
-        public Color gainColor = new Color(0.04f, 1f, 0.48f, 1f);
-        public Color neutralColor = new Color(0.68f, 0.86f, 1f, 1f);
-        public Color riskColor = new Color(0.46f, 0.018f, 0.025f, 1f);
-        [Range(0.08f, 0.5f)] public float ribbonWidth = 0.12f;
-        [Range(0.15f, 0.3f)] public float normalRibbonAlpha = 0.22f;
-        [Range(0.3f, 0.45f)] public float recommendedRibbonAlpha = 0.34f;
-        [Range(0.35f, 0.75f)] public float entryIconAlpha = 0.58f;
-        [Range(0.2f, 0.8f)] public float iconScale = 0.34f;
+        [Header("Four-state visual language（四状态视觉语言）")]
+        [InspectorName("Special Color（特殊颜色）")] public Color specialColor = new Color(1f, 0.68f, 0.08f, 1f);
+        [InspectorName("Gain Color（增益颜色）")] public Color gainColor = new Color(0.04f, 1f, 0.48f, 1f);
+        [InspectorName("Neutral Color（中性颜色）")] public Color neutralColor = new Color(0.68f, 0.86f, 1f, 1f);
+        [InspectorName("Risk Color（风险颜色）")] public Color riskColor = new Color(0.46f, 0.018f, 0.025f, 1f);
+        [Range(0.08f, 0.5f), InspectorName("Ribbon Width（引导带宽度）")] public float ribbonWidth = 0.12f;
+        [Range(0.15f, 0.3f), InspectorName("Normal Ribbon Alpha（普通引导带透明度）")] public float normalRibbonAlpha = 0.22f;
+        [Range(0.3f, 0.45f), InspectorName("Recommended Ribbon Alpha（推荐引导带透明度）")] public float recommendedRibbonAlpha = 0.34f;
+        [Range(0.35f, 0.75f), InspectorName("Entry Icon Alpha（入口图标透明度）")] public float entryIconAlpha = 0.58f;
+        [Range(0.2f, 0.8f), InspectorName("Icon Scale（图标缩放）")] public float iconScale = 0.34f;
     }
 
     public readonly struct RouteEvaluation

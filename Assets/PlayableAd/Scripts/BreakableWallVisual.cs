@@ -6,21 +6,21 @@ namespace PlayableAd
     [Serializable]
     public sealed class WallBreakSettings
     {
-        [Header("Timing")]
-        [Range(0.15f, 0.25f)] public float anticipationDuration = 0.2f;
-        [Range(0.6f, 1f)] public float totalDuration = 0.82f;
-        [Range(0.08f, 0.15f)] public float slowMotionDuration = 0.11f;
-        [Range(0.2f, 0.65f)] public float slowMotionScale = 0.32f;
-        [Range(0.2f, 0.45f)] public float cameraRecovery = 0.3f;
+        [Header("Timing（时序）")]
+        [Range(0.15f, 0.25f), InspectorName("Anticipation Duration（预备时长）")] public float anticipationDuration = 0.2f;
+        [Range(0.6f, 1f), InspectorName("Total Duration（总时长）")] public float totalDuration = 0.82f;
+        [Range(0.08f, 0.15f), InspectorName("Slow Motion Duration（慢动作时长）")] public float slowMotionDuration = 0.11f;
+        [Range(0.2f, 0.65f), InspectorName("Slow Motion Scale（慢动作缩放）")] public float slowMotionScale = 0.32f;
+        [Range(0.2f, 0.45f), InspectorName("Camera Recovery（镜头恢复）")] public float cameraRecovery = 0.3f;
 
-        [Header("Impact")]
-        [Range(0.25f, 0.8f)] public float cameraShake = 0.48f;
-        [Range(0f, 8f)] public float fovAnticipation = 2.5f;
-        [Range(0f, 10f)] public float fovImpact = 6.5f;
-        [Range(5f, 24f)] public float chunkForwardSpeed = 12f;
-        [Range(2f, 14f)] public float chunkSideSpeed = 6f;
-        [Range(0.6f, 1.2f)] public float chunkLifetime = 0.9f;
-        [Range(8, 24)] public int dustAmount = 16;
+        [Header("Impact（冲击）")]
+        [Range(0.25f, 0.8f), InspectorName("Camera Shake（镜头抖动）")] public float cameraShake = 0.48f;
+        [Range(0f, 8f), InspectorName("FOV Anticipation（预备视场角变化）")] public float fovAnticipation = 2.5f;
+        [Range(0f, 10f), InspectorName("FOV Impact（冲击视场角变化）")] public float fovImpact = 6.5f;
+        [Range(5f, 24f), InspectorName("Chunk Forward Speed（碎块前向速度）")] public float chunkForwardSpeed = 12f;
+        [Range(2f, 14f), InspectorName("Chunk Side Speed（碎块侧向速度）")] public float chunkSideSpeed = 6f;
+        [Range(0.6f, 1.2f), InspectorName("Chunk Lifetime（碎块持续时间）")] public float chunkLifetime = 0.9f;
+        [Range(8, 24), InspectorName("Dust Amount（尘雾数量）")] public int dustAmount = 16;
     }
 
     public sealed class BreakableWallVisual : MonoBehaviour

@@ -50,16 +50,16 @@ namespace PlayableAd
 
     public sealed class ObstacleController : MonoBehaviour
     {
-        [SerializeField, Range(1, PlayerSpeedSettings.RequiredLevelCount)] private int requiredSpeedLevel = 1;
-        [SerializeField] private ObstacleType obstacleType;
-        [SerializeField] private GameObject intactObject;
-        [SerializeField] private GameObject destroyedObject;
-        [SerializeField] private Collider[] obstacleColliders = Array.Empty<Collider>();
-        [SerializeField] private ObstacleFeedbackType feedbackType;
-        [SerializeField] private bool hasResolved;
-        [SerializeField] private Vector3 initialWorldPosition;
-        [SerializeField] private ObstacleResolutionType lastResolution;
-        [SerializeField] private int playerLevelAtResolution;
+        [SerializeField, Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Required Speed Level（要求速度等级）")] private int requiredSpeedLevel = 1;
+        [SerializeField, InspectorName("Obstacle Type（障碍物类型）")] private ObstacleType obstacleType;
+        [SerializeField, InspectorName("Intact Object（完整对象）")] private GameObject intactObject;
+        [SerializeField, InspectorName("Destroyed Object（破坏后对象）")] private GameObject destroyedObject;
+        [SerializeField, InspectorName("Obstacle Colliders（障碍物碰撞体）")] private Collider[] obstacleColliders = Array.Empty<Collider>();
+        [SerializeField, InspectorName("Feedback Type（反馈类型）")] private ObstacleFeedbackType feedbackType;
+        [SerializeField, InspectorName("Has Resolved（已结算）")] private bool hasResolved;
+        [SerializeField, InspectorName("Initial World Position（初始世界坐标）")] private Vector3 initialWorldPosition;
+        [SerializeField, InspectorName("Last Resolution（上次结算结果）")] private ObstacleResolutionType lastResolution;
+        [SerializeField, InspectorName("Player Level At Resolution（结算时玩家等级）")] private int playerLevelAtResolution;
 
         public event Action<ObstacleResolvedEvent> Resolved;
 

@@ -6,31 +6,31 @@ namespace PlayableAd
     [Serializable]
     public sealed class ImpactPresentationSettings
     {
-        [Header("Pools")]
-        [Range(3, 10)] public int impactPoolSize = 6;
-        [Range(12, 40)] public int maxEnergyShards = 24;
-        [Range(4, 18)] public int normalImpactParticles = 9;
+        [Header("Pools（对象池）")]
+        [Range(3, 10), InspectorName("Impact Pool Size（冲击对象池大小）")] public int impactPoolSize = 6;
+        [Range(12, 40), InspectorName("Max Energy Shards（最大能量碎片数）")] public int maxEnergyShards = 24;
+        [Range(4, 18), InspectorName("Normal Impact Particles（普通冲击粒子数）")] public int normalImpactParticles = 9;
 
-        [Header("Normal Hit Hierarchy")]
-        [Range(0.03f, 0.06f)] public float hitStopDuration = 0.045f;
-        [Range(0.2f, 0.8f)] public float hitStopTimeScale = 0.35f;
-        [Range(0.05f, 0.35f)] public float normalFlash = 0.16f;
-        [Range(0.1f, 0.4f)] public float trailPulseRecovery = 0.2f;
-        public bool enableNormalHitStop = false;
-        [Range(0f, 0.18f)] public float normalCameraShake = 0.065f;
-        [Range(0f, 2f)] public float normalFovPunch = 0.8f;
-        [Range(0.08f, 0.4f)] public float normalShakeCooldown = 0.2f;
+        [Header("Normal Hit Hierarchy（普通命中层级）")]
+        [Range(0.03f, 0.06f), InspectorName("Hit Stop Duration（顿帧时长）")] public float hitStopDuration = 0.045f;
+        [Range(0.2f, 0.8f), InspectorName("Hit Stop Time Scale（顿帧时间缩放）")] public float hitStopTimeScale = 0.35f;
+        [Range(0.05f, 0.35f), InspectorName("Normal Flash（普通闪光）")] public float normalFlash = 0.16f;
+        [Range(0.1f, 0.4f), InspectorName("Trail Pulse Recovery（拖尾脉冲恢复）")] public float trailPulseRecovery = 0.2f;
+        [InspectorName("Enable Normal Hit Stop（启用普通命中顿帧）")] public bool enableNormalHitStop = false;
+        [Range(0f, 0.18f), InspectorName("Normal Camera Shake（普通镜头抖动）")] public float normalCameraShake = 0.065f;
+        [Range(0f, 2f), InspectorName("Normal FOV Punch（普通视场角冲击）")] public float normalFovPunch = 0.8f;
+        [Range(0.08f, 0.4f), InspectorName("Normal Shake Cooldown（普通抖动冷却）")] public float normalShakeCooldown = 0.2f;
 
-        [Header("Combo Rhythm")]
-        [Range(0.2f, 1f)] public float comboWindow = 0.65f;
-        [Range(0f, 0.12f)] public float comboPitchStep = 0.045f;
-        [Range(2, 5)] public int comboPitchSteps = 5;
+        [Header("Combo Rhythm（连击节奏）")]
+        [Range(0.2f, 1f), InspectorName("Combo Window（连击窗口）")] public float comboWindow = 0.65f;
+        [Range(0f, 0.12f), InspectorName("Combo Pitch Step（连击音调步进）")] public float comboPitchStep = 0.045f;
+        [Range(2, 5), InspectorName("Combo Pitch Steps（连击音调级数）")] public int comboPitchSteps = 5;
 
-        [Header("Energy Return")]
-        [Range(3, 6)] public int minEnergyShards = 3;
-        [Range(3, 6)] public int maxEnergyShardsPerHit = 6;
-        [Range(0.25f, 0.5f)] public float energyReturnDuration = 0.38f;
-        [Range(0.2f, 1.2f)] public float scatterRadius = 0.62f;
+        [Header("Energy Return（能量回收）")]
+        [Range(3, 6), InspectorName("Min Energy Shards（最少能量碎片）")] public int minEnergyShards = 3;
+        [Range(3, 6), InspectorName("Max Energy Shards Per Hit（每次命中最大能量碎片）")] public int maxEnergyShardsPerHit = 6;
+        [Range(0.25f, 0.5f), InspectorName("Energy Return Duration（能量回收时长）")] public float energyReturnDuration = 0.38f;
+        [Range(0.2f, 1.2f), InspectorName("Scatter Radius（散射半径）")] public float scatterRadius = 0.62f;
     }
 
     public sealed class ImpactEffectPool : MonoBehaviour

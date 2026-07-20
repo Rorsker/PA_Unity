@@ -7,18 +7,18 @@ namespace PlayableAd
     [Serializable]
     public sealed class ObstacleOutlineSettings
     {
-        public bool enabled = true;
-        public Color gainColor = new Color(0.04f, 1f, 0.48f, 0.92f);
-        public Color neutralColor = new Color(0.68f, 0.86f, 1f, 0.84f);
-        public Color dangerColor = new Color(0.46f, 0.018f, 0.025f, 0.86f);
-        [Range(0.015f, 0.12f)] public float baseWidth = 0.045f;
-        [Range(0.1f, 0.2f)] public float transitionDuration = 0.15f;
-        [Range(0.5f, 4f)] public float dangerPulseSpeed = 1.8f;
-        [Range(0f, 0.4f)] public float dangerPulseAmount = 0.18f;
-        [Range(0.2f, 1f)] public float maxSceneBrightness = 0.82f;
-        public bool enhancedOutcomeCues;
-        [Range(0.25f, 0.8f)] public float symbolScale = 0.48f;
-        public Material outlineMaterial;
+        [InspectorName("Enabled（启用轮廓）")] public bool enabled = true;
+        [InspectorName("Gain Color（增益颜色）")] public Color gainColor = new Color(0.04f, 1f, 0.48f, 0.92f);
+        [InspectorName("Neutral Color（中性颜色）")] public Color neutralColor = new Color(0.68f, 0.86f, 1f, 0.84f);
+        [InspectorName("Danger Color（危险颜色）")] public Color dangerColor = new Color(0.46f, 0.018f, 0.025f, 0.86f);
+        [Range(0.015f, 0.12f), InspectorName("Base Width（基础宽度）")] public float baseWidth = 0.045f;
+        [Range(0.1f, 0.2f), InspectorName("Transition Duration（过渡时长）")] public float transitionDuration = 0.15f;
+        [Range(0.5f, 4f), InspectorName("Danger Pulse Speed（危险脉冲速度）")] public float dangerPulseSpeed = 1.8f;
+        [Range(0f, 0.4f), InspectorName("Danger Pulse Amount（危险脉冲幅度）")] public float dangerPulseAmount = 0.18f;
+        [Range(0.2f, 1f), InspectorName("Max Scene Brightness（场景最大亮度）")] public float maxSceneBrightness = 0.82f;
+        [InspectorName("Enhanced Outcome Cues（增强结果提示）")] public bool enhancedOutcomeCues;
+        [Range(0.25f, 0.8f), InspectorName("Symbol Scale（符号缩放）")] public float symbolScale = 0.48f;
+        [InspectorName("Outline Material（轮廓材质）")] public Material outlineMaterial;
     }
 
     public sealed class ObstacleOutline : MonoBehaviour

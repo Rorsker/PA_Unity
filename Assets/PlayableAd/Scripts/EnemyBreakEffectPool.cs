@@ -6,19 +6,19 @@ namespace PlayableAd
     [Serializable]
     public sealed class EnemyBreakPresentationSettings
     {
-        [Header("Pool")]
-        [Range(24, 96)] public int maxActiveFragments = 48;
-        [Range(3, 6)] public int fragmentsPerEnemy = 4;
-        [Range(0.5f, 2.5f)] public float fragmentLifetime = 1.35f;
+        [Header("Pool（对象池）")]
+        [Range(24, 96), InspectorName("Max Active Fragments（最大活动碎片数）")] public int maxActiveFragments = 48;
+        [Range(3, 6), InspectorName("Fragments Per Enemy（每个敌人碎片数）")] public int fragmentsPerEnemy = 4;
+        [Range(0.5f, 2.5f), InspectorName("Fragment Lifetime（碎片持续时间）")] public float fragmentLifetime = 1.35f;
 
-        [Header("Velocity")]
-        [Range(2f, 12f)] public float minFragmentForce = 4.5f;
-        [Range(4f, 18f)] public float maxFragmentForce = 10.5f;
-        [Range(1f, 8f)] public float upwardForce = 4.2f;
-        [Range(0.5f, 7f)] public float lateralSpread = 3.2f;
-        [Range(1f, 12f)] public float minAngularVelocity = 4f;
-        [Range(4f, 24f)] public float maxAngularVelocity = 14f;
-        [Range(0.1f, 1f)] public float lowQualityFragmentMultiplier = 0.55f;
+        [Header("Velocity（速度）")]
+        [Range(2f, 12f), InspectorName("Min Fragment Force（最小碎片力度）")] public float minFragmentForce = 4.5f;
+        [Range(4f, 18f), InspectorName("Max Fragment Force（最大碎片力度）")] public float maxFragmentForce = 10.5f;
+        [Range(1f, 8f), InspectorName("Upward Force（向上力度）")] public float upwardForce = 4.2f;
+        [Range(0.5f, 7f), InspectorName("Lateral Spread（横向散布）")] public float lateralSpread = 3.2f;
+        [Range(1f, 12f), InspectorName("Min Angular Velocity（最小角速度）")] public float minAngularVelocity = 4f;
+        [Range(4f, 24f), InspectorName("Max Angular Velocity（最大角速度）")] public float maxAngularVelocity = 14f;
+        [Range(0.1f, 1f), InspectorName("Low Quality Fragment Multiplier（低画质碎片倍率）")] public float lowQualityFragmentMultiplier = 0.55f;
     }
 
     [DisallowMultipleComponent]

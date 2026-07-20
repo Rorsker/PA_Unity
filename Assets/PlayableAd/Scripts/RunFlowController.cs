@@ -14,7 +14,7 @@ namespace PlayableAd
 
     public sealed class RunFlowController : MonoBehaviour
     {
-        [SerializeField] private RunFlowState currentState = RunFlowState.Intro;
+        [SerializeField, InspectorName("Current State（当前流程状态）")] private RunFlowState currentState = RunFlowState.Intro;
 
         public event Action<RunFlowState, RunFlowState> StateChanged;
 

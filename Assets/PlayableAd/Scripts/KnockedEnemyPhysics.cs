@@ -5,10 +5,10 @@ namespace PlayableAd
     [DisallowMultipleComponent]
     public sealed class KnockedEnemyPhysics : MonoBehaviour
     {
-        [SerializeField, Min(0.5f)] private float activeSeconds = 2.25f;
-        [SerializeField, Min(0f)] private float linearDrag = 0.35f;
-        [SerializeField, Min(0f)] private float angularDrag = 0.8f;
-        [SerializeField, Min(1f)] private float maxLinearSpeed = 10f;
+        [SerializeField, Min(0.5f), InspectorName("Active Seconds（活动时长）")] private float activeSeconds = 2.25f;
+        [SerializeField, Min(0f), InspectorName("Linear Drag（线性阻力）")] private float linearDrag = 0.35f;
+        [SerializeField, Min(0f), InspectorName("Angular Drag（角阻力）")] private float angularDrag = 0.8f;
+        [SerializeField, Min(1f), InspectorName("Max Linear Speed（最大线速度）")] private float maxLinearSpeed = 10f;
 
         private Rigidbody body;
         private Collider physicsCollider;

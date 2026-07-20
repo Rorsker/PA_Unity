@@ -5,17 +5,17 @@ namespace PlayableAd
     [DisallowMultipleComponent]
     public sealed class SoldierBreakEffect : MonoBehaviour
     {
-        [SerializeField, Range(3, 8)] private int fragmentCount = 5;
-        [SerializeField] private Rigidbody[] fragments;
-        [SerializeField] private ParticleSystem[] particles;
-        [SerializeField, Min(0f)] private float forwardForce = 7f;
-        [SerializeField, Min(0f)] private float sideForce = 2.2f;
-        [SerializeField, Min(0f)] private float upwardForce = 3.4f;
-        [SerializeField, Min(0f)] private float torque = 9f;
-        [SerializeField, Min(0f)] private float gravityMultiplier = 1f;
-        [SerializeField, Min(0.1f)] private float fragmentLifetime = 1f;
-        [SerializeField, Min(0.05f)] private float fadeDuration = 0.25f;
-        [SerializeField] private Vector2 fragmentScaleRange = new Vector2(0.88f, 1.08f);
+        [SerializeField, Range(3, 8), InspectorName("Fragment Count（碎片数量）")] private int fragmentCount = 5;
+        [SerializeField, InspectorName("Fragments（碎片刚体）")] private Rigidbody[] fragments;
+        [SerializeField, InspectorName("Particles（粒子系统）")] private ParticleSystem[] particles;
+        [SerializeField, Min(0f), InspectorName("Forward Force（前向力度）")] private float forwardForce = 7f;
+        [SerializeField, Min(0f), InspectorName("Side Force（侧向力度）")] private float sideForce = 2.2f;
+        [SerializeField, Min(0f), InspectorName("Upward Force（向上力度）")] private float upwardForce = 3.4f;
+        [SerializeField, Min(0f), InspectorName("Torque（扭矩）")] private float torque = 9f;
+        [SerializeField, Min(0f), InspectorName("Gravity Multiplier（重力倍率）")] private float gravityMultiplier = 1f;
+        [SerializeField, Min(0.1f), InspectorName("Fragment Lifetime（碎片持续时间）")] private float fragmentLifetime = 1f;
+        [SerializeField, Min(0.05f), InspectorName("Fade Duration（淡出时长）")] private float fadeDuration = 0.25f;
+        [SerializeField, InspectorName("Fragment Scale Range（碎片缩放范围）")] private Vector2 fragmentScaleRange = new Vector2(0.88f, 1.08f);
 
         private Vector3[] localPositions;
         private Quaternion[] localRotations;

@@ -5,9 +5,9 @@ namespace PlayableAd
 {
     public sealed class ElixirPickup : MonoBehaviour
     {
-        [SerializeField, Range(1, PlayerSpeedSettings.RequiredLevelCount)] private int targetSpeedLevel = 4;
-        [SerializeField] private Collider[] pickupColliders = Array.Empty<Collider>();
-        [SerializeField] private bool hasCollected;
+        [SerializeField, Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Target Speed Level（目标速度等级）")] private int targetSpeedLevel = 4;
+        [SerializeField, InspectorName("Pickup Colliders（拾取碰撞体）")] private Collider[] pickupColliders = Array.Empty<Collider>();
+        [SerializeField, InspectorName("Has Collected（已拾取）")] private bool hasCollected;
 
         private PlayerSpeedController speedController;
 

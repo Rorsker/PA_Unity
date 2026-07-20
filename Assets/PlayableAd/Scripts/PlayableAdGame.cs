@@ -21,48 +21,48 @@ namespace PlayableAd
         [Serializable]
         public sealed class SoldierFormationSettings
         {
-            public string sectionName = "Momentum";
-            [Min(0f)] public float startOffsetFromTutorial = 12f;
-            [Range(6, 20)] public int soldierCount = 10;
-            public SoldierFormationPattern pattern = SoldierFormationPattern.StaggeredLine;
-            [Range(1, 10)] public int expectedEntryLevel = 4;
-            [Range(0.12f, 0.35f)] public float targetHitInterval = 0.25f;
-            [Range(0.7f, 2f)] public float minimumForwardSpacing = 0.9f;
-            [Range(0f, 2.4f)] public float lateralSpread = 0.65f;
-            public bool climax;
+            [InspectorName("Section Name（区段名称）")] public string sectionName = "Momentum";
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 12f;
+            [Range(6, 20), InspectorName("Soldier Count（士兵数量）")] public int soldierCount = 10;
+            [InspectorName("Pattern（编队模式）")] public SoldierFormationPattern pattern = SoldierFormationPattern.StaggeredLine;
+            [Range(1, 10), InspectorName("Expected Entry Level（预期进入等级）")] public int expectedEntryLevel = 4;
+            [Range(0.12f, 0.35f), InspectorName("Target Hit Interval（目标命中间隔）")] public float targetHitInterval = 0.25f;
+            [Range(0.7f, 2f), InspectorName("Minimum Forward Spacing（最小前向间距）")] public float minimumForwardSpacing = 0.9f;
+            [Range(0f, 2.4f), InspectorName("Lateral Spread（横向散布）")] public float lateralSpread = 0.65f;
+            [InspectorName("Climax（高潮段）")] public bool climax;
         }
 
         [Serializable]
         public sealed class Tuning
         {
-            [Header("Experience")]
+            [Header("Experience（体验时长）")]
             [Tooltip("Approximate duration target for the complete playable loop, including the Boss climax.")]
-            [Min(30f)] public float targetDuration = 60f;
-            [Min(1f)] public float tutorialDuration = 7f;
-            [Header("Opening Tutorial")]
-            [Range(1f, 2f)] public float openingElixirTime = 2f;
-            [Range(3, 5)] public int tutorialSoldierCount = 5;
-            [Range(2f, 3.2f)] public float tutorialSoldierSpacing = 3f;
-            [Range(2f, 5f)] public float tutorialFirstSoldierGap = 4f;
-            [Range(3f, 12f)] public float tutorialWallGap = 10f;
+            [Min(30f), InspectorName("Target Duration（目标总时长）")] public float targetDuration = 60f;
+            [Min(1f), InspectorName("Tutorial Duration（教学时长）")] public float tutorialDuration = 7f;
+            [Header("Opening Tutorial（开场教学）")]
+            [Range(1f, 2f), InspectorName("Opening Elixir Time（开场药剂时间）")] public float openingElixirTime = 2f;
+            [Range(3, 5), InspectorName("Tutorial Soldier Count（教学士兵数量）")] public int tutorialSoldierCount = 5;
+            [Range(2f, 3.2f), InspectorName("Tutorial Soldier Spacing（教学士兵间距）")] public float tutorialSoldierSpacing = 3f;
+            [Range(2f, 5f), InspectorName("Tutorial First Soldier Gap（首个教学士兵间隔）")] public float tutorialFirstSoldierGap = 4f;
+            [Range(3f, 12f), InspectorName("Tutorial Wall Gap（教学墙体间隔）")] public float tutorialWallGap = 10f;
 
-            [Header("Course")]
+            [Header("Course（路线）")]
             [Tooltip("Course length tuned for roughly 80-95 seconds including the tutorial and Boss sequence.")]
-            [Min(20f)] public float bossDistance = 1300f;
-            [Header("Data-driven Main Run")]
-            [Range(12f, 48f)] public float choiceRowSpacing = 22f;
-            [Range(20f, 70f)] public float firstChoiceOffsetFromTutorial = 42f;
+            [Min(20f), InspectorName("Boss Distance（Boss 距离）")] public float bossDistance = 1300f;
+            [Header("Data-driven Main Run（数据驱动主流程）")]
+            [Range(12f, 48f), InspectorName("Choice Row Spacing（选择行间距）")] public float choiceRowSpacing = 22f;
+            [Range(20f, 70f), InspectorName("First Choice Offset From Tutorial（首次选择距教学偏移）")] public float firstChoiceOffsetFromTutorial = 42f;
             [Tooltip("Safe-lane recovery spacing. Keeps the normal route out of the level-one dead zone without granting high-tier progression.")]
-            [Range(120f, 300f)] public float maintenanceRewardSpacing = 220f;
-            [Range(3, 6)] public int maintenanceRewardLevel = 4;
-            [Range(60f, 300f)] public float specialRewardSpacing = 270f;
-            [Min(20f)] public float bossApproachPadding = 35f;
-            public int proceduralSeed = 41723;
-            [Header("Controlled reward-lane formations")]
-            [Range(1.6f, 2.6f)] public float rewardLaneOffset = 2.15f;
-            public int[] choiceTierPool = { 1, 3, 4, 5, 6, 7, 8, 9 };
-            public int[] specialRewardLevels = { 7, 8, 9, 10 };
-            public SoldierFormationSettings[] soldierSections =
+            [Range(120f, 300f), InspectorName("Maintenance Reward Spacing（维护奖励间距）")] public float maintenanceRewardSpacing = 220f;
+            [Range(3, 6), InspectorName("Maintenance Reward Level（维护奖励等级）")] public int maintenanceRewardLevel = 4;
+            [Range(60f, 300f), InspectorName("Special Reward Spacing（特殊奖励间距）")] public float specialRewardSpacing = 270f;
+            [Min(20f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 35f;
+            [InspectorName("Procedural Seed（程序化随机种子）")] public int proceduralSeed = 41723;
+            [Header("Controlled reward-lane formations（受控奖励路线编队）")]
+            [Range(1.6f, 2.6f), InspectorName("Reward Lane Offset（奖励路线偏移）")] public float rewardLaneOffset = 2.15f;
+            [InspectorName("Choice Tier Pool（选择等级池）")] public int[] choiceTierPool = { 1, 3, 4, 5, 6, 7, 8, 9 };
+            [InspectorName("Special Reward Levels（特殊奖励等级）")] public int[] specialRewardLevels = { 7, 8, 9, 10 };
+            [InspectorName("Soldier Sections（士兵区段）")] public SoldierFormationSettings[] soldierSections =
             {
                 new SoldierFormationSettings { sectionName = "MomentumBuild", startOffsetFromTutorial = 12f, soldierCount = 8, pattern = SoldierFormationPattern.StaggeredLine, expectedEntryLevel = 4, targetHitInterval = 0.3f, lateralSpread = 0.42f },
                 new SoldierFormationSettings { sectionName = "FirstCombo", startOffsetFromTutorial = 170f, soldierCount = 10, pattern = SoldierFormationPattern.StaggeredLine, expectedEntryLevel = 4, targetHitInterval = 0.24f, lateralSpread = 0.58f },
@@ -71,110 +71,110 @@ namespace PlayableAd
                 new SoldierFormationSettings { sectionName = "PhalanxClimax", startOffsetFromTutorial = 850f, soldierCount = 16, pattern = SoldierFormationPattern.CompactGrid, expectedEntryLevel = 6, targetHitInterval = 0.17f, lateralSpread = 1.1f, climax = true },
                 new SoldierFormationSettings { sectionName = "BossSprint", startOffsetFromTutorial = 1080f, soldierCount = 18, pattern = SoldierFormationPattern.CenterFunnel, expectedEntryLevel = 8, targetHitInterval = 0.14f, lateralSpread = 1.45f, climax = true }
             };
-            [Header("Mobile encounter budget")]
-            [Range(24, 64)] public int maxActiveEnemies = 48;
-            [Range(40f, 140f)] public float spawnAheadDistance = 90f;
-            [Range(8f, 30f)] public float recycleDistance = 18f;
-            [Range(1.2f, 1.6f)] public float targetPreviewTime = 1.35f;
-            [Range(8f, 24f)] public float minimumTargetPreviewDistance = 12f;
-            [Range(30f, 100f)] public float maximumTargetPreviewDistance = 54f;
-            [Header("Continuous enemy visibility staging")]
-            [Range(4f, 6f)] public float enemyPreloadTime = 5f;
-            [Range(2f, 4f)] public float enemyVisiblePreviewTime = 3.2f;
-            [Range(0.8f, 2f)] public float enemyActiveTime = 1.35f;
-            [Range(24f, 60f)] public float minimumEnemyPreloadDistance = 32f;
-            [Range(80f, 160f)] public float maximumEnemyPreloadDistance = 140f;
-            [Range(14f, 40f)] public float minimumEnemyVisibleDistance = 20f;
-            [Range(60f, 120f)] public float maximumEnemyVisibleDistance = 100f;
-            [Range(8f, 24f)] public float minimumEnemyActiveDistance = 10f;
-            [Range(30f, 70f)] public float maximumEnemyActiveDistance = 52f;
-            [Range(48, 96)] public int maxPreloadedEnemies = 80;
-            [Range(24, 64)] public int maxDistantVisibleEnemies = 48;
-            [Header("Fallback Route")]
-            [Range(4f, 10f)] public float fallbackBoostMagnetDistance = 7f;
-            [Range(6f, 20f)] public float fallbackBoostMagnetSpeed = 12f;
-            [Min(1f)] public float laneHalfWidth = 3.2f;
-            [Min(0.1f)] public float lateralSensitivity = 0.012f;
-            [Min(1f)] public float lateralSpeed = 9f;
+            [Header("Mobile encounter budget（移动端遭遇预算）")]
+            [Range(24, 64), InspectorName("Max Active Enemies（最大活动敌人数）")] public int maxActiveEnemies = 48;
+            [Range(40f, 140f), InspectorName("Spawn Ahead Distance（前方生成距离）")] public float spawnAheadDistance = 90f;
+            [Range(8f, 30f), InspectorName("Recycle Distance（回收距离）")] public float recycleDistance = 18f;
+            [Range(1.2f, 1.6f), InspectorName("Target Preview Time（目标预览时间）")] public float targetPreviewTime = 1.35f;
+            [Range(8f, 24f), InspectorName("Minimum Target Preview Distance（最小目标预览距离）")] public float minimumTargetPreviewDistance = 12f;
+            [Range(30f, 100f), InspectorName("Maximum Target Preview Distance（最大目标预览距离）")] public float maximumTargetPreviewDistance = 54f;
+            [Header("Continuous enemy visibility staging（连续敌人可见性分级）")]
+            [Range(4f, 6f), InspectorName("Enemy Preload Time（敌人预加载时间）")] public float enemyPreloadTime = 5f;
+            [Range(2f, 4f), InspectorName("Enemy Visible Preview Time（敌人可见预览时间）")] public float enemyVisiblePreviewTime = 3.2f;
+            [Range(0.8f, 2f), InspectorName("Enemy Active Time（敌人活动时间）")] public float enemyActiveTime = 1.35f;
+            [Range(24f, 60f), InspectorName("Minimum Enemy Preload Distance（最小敌人预加载距离）")] public float minimumEnemyPreloadDistance = 32f;
+            [Range(80f, 160f), InspectorName("Maximum Enemy Preload Distance（最大敌人预加载距离）")] public float maximumEnemyPreloadDistance = 140f;
+            [Range(14f, 40f), InspectorName("Minimum Enemy Visible Distance（最小敌人可见距离）")] public float minimumEnemyVisibleDistance = 20f;
+            [Range(60f, 120f), InspectorName("Maximum Enemy Visible Distance（最大敌人可见距离）")] public float maximumEnemyVisibleDistance = 100f;
+            [Range(8f, 24f), InspectorName("Minimum Enemy Active Distance（最小敌人活动距离）")] public float minimumEnemyActiveDistance = 10f;
+            [Range(30f, 70f), InspectorName("Maximum Enemy Active Distance（最大敌人活动距离）")] public float maximumEnemyActiveDistance = 52f;
+            [Range(48, 96), InspectorName("Max Preloaded Enemies（最大预加载敌人数）")] public int maxPreloadedEnemies = 80;
+            [Range(24, 64), InspectorName("Max Distant Visible Enemies（最大远处可见敌人数）")] public int maxDistantVisibleEnemies = 48;
+            [Header("Fallback Route（备用路线）")]
+            [Range(4f, 10f), InspectorName("Fallback Boost Magnet Distance（备用增益吸附距离）")] public float fallbackBoostMagnetDistance = 7f;
+            [Range(6f, 20f), InspectorName("Fallback Boost Magnet Speed（备用增益吸附速度）")] public float fallbackBoostMagnetSpeed = 12f;
+            [Min(1f), InspectorName("Lane Half Width（路线半宽）")] public float laneHalfWidth = 3.2f;
+            [Min(0.1f), InspectorName("Lateral Sensitivity（横向灵敏度）")] public float lateralSensitivity = 0.012f;
+            [Min(1f), InspectorName("Lateral Speed（横向速度）")] public float lateralSpeed = 9f;
             [Tooltip("World-space lane travel produced by a full-screen horizontal drag.")]
-            [Range(2f, 12f)] public float normalizedDragRange = 6.4f;
-            [Range(0f, 0.05f)] public float dragDeadZone = 0.005f;
-            public bool invertDragInput;
-            public bool blockInputOverUi = true;
+            [Range(2f, 12f), InspectorName("Normalized Drag Range（归一化拖拽范围）")] public float normalizedDragRange = 6.4f;
+            [Range(0f, 0.05f), InspectorName("Drag Dead Zone（拖拽死区）")] public float dragDeadZone = 0.005f;
+            [InspectorName("Invert Drag Input（反转拖拽输入）")] public bool invertDragInput;
+            [InspectorName("Block Input Over UI（阻止界面区域输入）")] public bool blockInputOverUi = true;
 
-            [Header("Impact")]
-            [Range(0.03f, 0.06f)] public float hitStopSeconds = 0.045f;
-            [Range(0f, 1f)] public float cameraShake = 0.24f;
-            [Range(0f, 8f)] public float fovPunch = 3.5f;
-            [Range(0f, 1f)] public float flashAlpha = 0.52f;
-            [Range(0.5f, 6f)] public float targetLaunchSeconds = 2.25f;
-            [Range(2f, 30f)] public float targetLaunchForce = 14f;
-            [Range(0f, 6f)] public float targetLaunchSideSpeed = 2.6f;
-            [Range(0f, 8f)] public float targetLaunchUpSpeed = 3.8f;
-            [Range(0.1f, 1f)] public float targetLaunchForwardScale = 0.42f;
+            [Header("Impact（冲击）")]
+            [Range(0.03f, 0.06f), InspectorName("Hit Stop Seconds（顿帧秒数）")] public float hitStopSeconds = 0.045f;
+            [Range(0f, 1f), InspectorName("Camera Shake（镜头抖动）")] public float cameraShake = 0.24f;
+            [Range(0f, 8f), InspectorName("FOV Punch（视场角冲击）")] public float fovPunch = 3.5f;
+            [Range(0f, 1f), InspectorName("Flash Alpha（闪光透明度）")] public float flashAlpha = 0.52f;
+            [Range(0.5f, 6f), InspectorName("Target Launch Seconds（目标飞出时长）")] public float targetLaunchSeconds = 2.25f;
+            [Range(2f, 30f), InspectorName("Target Launch Force（目标飞出力度）")] public float targetLaunchForce = 14f;
+            [Range(0f, 6f), InspectorName("Target Launch Side Speed（目标飞出侧向速度）")] public float targetLaunchSideSpeed = 2.6f;
+            [Range(0f, 8f), InspectorName("Target Launch Up Speed（目标飞出向上速度）")] public float targetLaunchUpSpeed = 3.8f;
+            [Range(0.1f, 1f), InspectorName("Target Launch Forward Scale（目标飞出前向倍率）")] public float targetLaunchForwardScale = 0.42f;
         }
 
         [Serializable]
         public sealed class EnvironmentTuning
         {
-            [Header("Fixed 2.5D Camera")]
-            public bool cameraFollowsPlayer = true;
-            public bool cameraFollowsPlayerLaterally = false;
-            [Range(45f, 70f)] public float baseFieldOfView = 50f;
-            [Range(3f, 12f)] public float cameraHeight = 4.5f;
-            [Range(5f, 20f)] public float cameraBackDistance = 7.2f;
-            [Range(0f, 18f)] public float cameraLookAhead = 3f;
-            [Range(4f, 14f)] public float cameraFollowSharpness = 9f;
-            [Range(0f, 6f)] public float highSpeedPullback = 1f;
-            [Range(0f, 10f)] public float highSpeedLookAheadBonus = 1.5f;
-            [Range(8f, 16f)] public float environmentReferenceSpacing = 12f;
+            [Header("Fixed 2.5D Camera（固定 2.5D 镜头）")]
+            [InspectorName("Camera Follows Player（镜头跟随玩家）")] public bool cameraFollowsPlayer = true;
+            [InspectorName("Camera Follows Player Laterally（镜头横向跟随玩家）")] public bool cameraFollowsPlayerLaterally = false;
+            [Range(45f, 70f), InspectorName("Base Field Of View（基础视场角）")] public float baseFieldOfView = 50f;
+            [Range(3f, 12f), InspectorName("Camera Height（镜头高度）")] public float cameraHeight = 4.5f;
+            [Range(5f, 20f), InspectorName("Camera Back Distance（镜头后置距离）")] public float cameraBackDistance = 7.2f;
+            [Range(0f, 18f), InspectorName("Camera Look Ahead（镜头前视距离）")] public float cameraLookAhead = 3f;
+            [Range(4f, 14f), InspectorName("Camera Follow Sharpness（镜头跟随锐度）")] public float cameraFollowSharpness = 9f;
+            [Range(0f, 6f), InspectorName("High Speed Pullback（高速后拉）")] public float highSpeedPullback = 1f;
+            [Range(0f, 10f), InspectorName("High Speed Look Ahead Bonus（高速前视加成）")] public float highSpeedLookAheadBonus = 1.5f;
+            [Range(8f, 16f), InspectorName("Environment Reference Spacing（环境参考间距）")] public float environmentReferenceSpacing = 12f;
 
-            [Header("Road Collision Boundaries")]
-            [Min(0.1f)] public float roadBoundaryThickness = 0.35f;
-            [Min(2f)] public float roadBoundaryHeight = 5.5f;
+            [Header("Road Collision Boundaries（道路碰撞边界）")]
+            [Min(0.1f), InspectorName("Road Boundary Thickness（道路边界厚度）")] public float roadBoundaryThickness = 0.35f;
+            [Min(2f), InspectorName("Road Boundary Height（道路边界高度）")] public float roadBoundaryHeight = 5.5f;
 
-            [Header("Medieval Stone Palette")]
-            public Color skyFogColor = new Color(0.24f, 0.32f, 0.39f);
-            public Color roadColor = new Color(0.30f, 0.33f, 0.34f);
-            public Color routeMarkColor = new Color(0.53f, 0.54f, 0.50f);
-            public Color wallColor = new Color(0.31f, 0.29f, 0.28f);
-            public Color castleColor = new Color(0.25f, 0.28f, 0.31f);
-            public Color timberColor = new Color(0.25f, 0.19f, 0.15f);
+            [Header("Medieval Stone Palette（中世纪石材色板）")]
+            [InspectorName("Sky Fog Color（天空雾色）")] public Color skyFogColor = new Color(0.24f, 0.32f, 0.39f);
+            [InspectorName("Road Color（道路颜色）")] public Color roadColor = new Color(0.30f, 0.33f, 0.34f);
+            [InspectorName("Route Mark Color（路线标记颜色）")] public Color routeMarkColor = new Color(0.53f, 0.54f, 0.50f);
+            [InspectorName("Wall Color（墙体颜色）")] public Color wallColor = new Color(0.31f, 0.29f, 0.28f);
+            [InspectorName("Castle Color（城堡颜色）")] public Color castleColor = new Color(0.25f, 0.28f, 0.31f);
+            [InspectorName("Timber Color（木材颜色）")] public Color timberColor = new Color(0.25f, 0.19f, 0.15f);
 
-            [Header("Lighting And Depth")]
-            public Vector3 lightEuler = new Vector3(46f, -32f, 0f);
-            [Range(0.3f, 2f)] public float lightIntensity = 1.25f;
-            public Color lightColor = new Color(1f, 0.88f, 0.75f);
-            public Color ambientColor = new Color(0.52f, 0.55f, 0.58f);
-            [Range(0f, 1f)] public float shadowStrength = 0.58f;
-            [Range(15f, 100f)] public float shadowDistance = 48f;
-            [Range(10f, 100f)] public float fogStart = 42f;
-            [Range(50f, 220f)] public float fogEnd = 125f;
+            [Header("Lighting And Depth（光照与景深）")]
+            [InspectorName("Light Euler（光源欧拉角）")] public Vector3 lightEuler = new Vector3(46f, -32f, 0f);
+            [Range(0.3f, 2f), InspectorName("Light Intensity（光照强度）")] public float lightIntensity = 1.25f;
+            [InspectorName("Light Color（光源颜色）")] public Color lightColor = new Color(1f, 0.88f, 0.75f);
+            [InspectorName("Ambient Color（环境颜色）")] public Color ambientColor = new Color(0.52f, 0.55f, 0.58f);
+            [Range(0f, 1f), InspectorName("Shadow Strength（阴影强度）")] public float shadowStrength = 0.58f;
+            [Range(15f, 100f), InspectorName("Shadow Distance（阴影距离）")] public float shadowDistance = 48f;
+            [Range(10f, 100f), InspectorName("Fog Start（雾效起始距离）")] public float fogStart = 42f;
+            [Range(50f, 220f), InspectorName("Fog End（雾效结束距离）")] public float fogEnd = 125f;
         }
 
         [Serializable]
         public sealed class PortraitCameraFraming
         {
-            [Range(0.45f, 0.8f)] public float referenceAspectRatio = 9f / 16f;
-            [Range(45f, 75f)] public float fieldOfView = 50f;
-            [Range(3f, 12f)] public float cameraHeight = 4.4f;
-            [Range(5f, 20f)] public float cameraBackDistance = 7f;
-            [Range(0f, 18f)] public float cameraLookAhead = 2.8f;
-            [Range(0f, 8f)] public float maxSpeedFovBonus = 4f;
-            [Range(0.15f, 0.35f)] public float playerViewportPosition = 0.24f;
-            [Range(0.6f, 0.85f)] public float vanishingPointViewportPosition = 0.72f;
-            [Min(1f)] public float nearRoadWidth = 8.5f;
-            [Min(0.5f)] public float farRoadWidth = 1.5f;
-            [Min(20f)] public float visibleDepthRange = 60f;
-            [Range(0.4f, 0.7f)] public float minSupportedAspect = 0.45f;
-            [Range(0.6f, 0.9f)] public float maxSupportedAspect = 0.8f;
+            [Range(0.45f, 0.8f), InspectorName("Reference Aspect Ratio（参考宽高比）")] public float referenceAspectRatio = 9f / 16f;
+            [Range(45f, 75f), InspectorName("Field Of View（视场角）")] public float fieldOfView = 50f;
+            [Range(3f, 12f), InspectorName("Camera Height（镜头高度）")] public float cameraHeight = 4.4f;
+            [Range(5f, 20f), InspectorName("Camera Back Distance（镜头后置距离）")] public float cameraBackDistance = 7f;
+            [Range(0f, 18f), InspectorName("Camera Look Ahead（镜头前视距离）")] public float cameraLookAhead = 2.8f;
+            [Range(0f, 8f), InspectorName("Max Speed FOV Bonus（最高速视场角加成）")] public float maxSpeedFovBonus = 4f;
+            [Range(0.15f, 0.35f), InspectorName("Player Viewport Position（玩家视口位置）")] public float playerViewportPosition = 0.24f;
+            [Range(0.6f, 0.85f), InspectorName("Vanishing Point Viewport Position（消失点视口位置）")] public float vanishingPointViewportPosition = 0.72f;
+            [Min(1f), InspectorName("Near Road Width（近处道路宽度）")] public float nearRoadWidth = 8.5f;
+            [Min(0.5f), InspectorName("Far Road Width（远处道路宽度）")] public float farRoadWidth = 1.5f;
+            [Min(20f), InspectorName("Visible Depth Range（可见深度范围）")] public float visibleDepthRange = 60f;
+            [Range(0.4f, 0.7f), InspectorName("Min Supported Aspect（最小支持宽高比）")] public float minSupportedAspect = 0.45f;
+            [Range(0.6f, 0.9f), InspectorName("Max Supported Aspect（最大支持宽高比）")] public float maxSupportedAspect = 0.8f;
         }
 
         [Serializable]
         public sealed class TargetShapeSettings
         {
             [Tooltip("Placeholder silhouette dimensions for all configured target levels.")]
-            public Vector3[] tierShapes =
+            [InspectorName("Tier Shapes（等级目标外形）")] public Vector3[] tierShapes =
             {
                 new Vector3(0.82f, 1.55f, 0.78f), new Vector3(1.05f, 1.35f, 0.76f),
                 new Vector3(1.18f, 1.5f, 0.8f), new Vector3(1.28f, 1.7f, 0.82f),
@@ -217,72 +217,72 @@ namespace PlayableAd
             public float previousDistance;
         }
 
-        [Header("All gameplay values are configurable")]
-        [SerializeField] private Tuning tuning = new Tuning();
+        [Header("All gameplay values are configurable（所有玩法数值均可配置）")]
+        [SerializeField, InspectorName("Tuning（玩法调校）")] private Tuning tuning = new Tuning();
 
-        [Header("Authoritative player speed")]
-        [SerializeField] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
+        [Header("Authoritative player speed（权威玩家速度）")]
+        [SerializeField, InspectorName("Player Speed（玩家速度设置）")] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
 
-        [Header("Flow entry for future intro camera sequence")]
-        [SerializeField] private bool autoBeginGameplay = true;
+        [Header("Flow entry for future intro camera sequence（未来开场镜头流程入口）")]
+        [SerializeField, InspectorName("Auto Begin Gameplay（自动开始玩法）")] private bool autoBeginGameplay = true;
 
-        [Header("Visual environment only - does not affect gameplay")]
-        [SerializeField] private EnvironmentTuning environment = new EnvironmentTuning();
+        [Header("Visual environment only - does not affect gameplay（仅视觉环境，不影响玩法）")]
+        [SerializeField, InspectorName("Environment（环境设置）")] private EnvironmentTuning environment = new EnvironmentTuning();
 
-        [Header("Portrait camera framing - 9:16 reference")]
-        [SerializeField] private PortraitCameraFraming portraitCamera = new PortraitCameraFraming();
+        [Header("Portrait camera framing - 9:16 reference（竖屏镜头构图 - 9:16 参考）")]
+        [SerializeField, InspectorName("Portrait Camera（竖屏镜头设置）")] private PortraitCameraFraming portraitCamera = new PortraitCameraFraming();
 
-        [Header("Placeholder target silhouettes - replace visuals without changing rules")]
-        [SerializeField] private TargetShapeSettings targetShapes = new TargetShapeSettings();
+        [Header("Placeholder target silhouettes - replace visuals without changing rules（目标占位外形，不改变规则）")]
+        [SerializeField, InspectorName("Target Shapes（目标外形）")] private TargetShapeSettings targetShapes = new TargetShapeSettings();
 
-        [Header("Unified speed visual profile - does not affect gameplay values")]
-        [SerializeField] private SpeedVisualProfile speedVisualProfile;
-        [SerializeField] private VisualPerformanceSettings visualPerformance = new VisualPerformanceSettings();
+        [Header("Unified speed visual profile - does not affect gameplay values（统一速度视觉配置，不影响玩法数值）")]
+        [SerializeField, InspectorName("Speed Visual Profile（速度视觉配置）")] private SpeedVisualProfile speedVisualProfile;
+        [SerializeField, InspectorName("Visual Performance（视觉性能设置）")] private VisualPerformanceSettings visualPerformance = new VisualPerformanceSettings();
 
-        [Header("Elixir presentation")]
-        [SerializeField] private ElixirPresentationSettings elixirPresentation = new ElixirPresentationSettings();
+        [Header("Elixir presentation（药剂表现）")]
+        [SerializeField, InspectorName("Elixir Presentation（药剂表现设置）")] private ElixirPresentationSettings elixirPresentation = new ElixirPresentationSettings();
 
-        [Header("Normal impact presentation")]
-        [SerializeField] private ImpactPresentationSettings impactPresentation = new ImpactPresentationSettings();
+        [Header("Normal impact presentation（普通冲击表现）")]
+        [SerializeField, InspectorName("Impact Presentation（冲击表现设置）")] private ImpactPresentationSettings impactPresentation = new ImpactPresentationSettings();
 
-        [Header("Pooled enemy break presentation")]
-        [SerializeField] private EnemyBreakPresentationSettings enemyBreakPresentation = new EnemyBreakPresentationSettings();
+        [Header("Pooled enemy break presentation（敌人破碎对象池表现）")]
+        [SerializeField, InspectorName("Enemy Break Presentation（敌人破碎表现设置）")] private EnemyBreakPresentationSettings enemyBreakPresentation = new EnemyBreakPresentationSettings();
 
-        [Header("Tutorial wall presentation")]
-        [SerializeField] private WallBreakSettings wallBreakPresentation = new WallBreakSettings();
+        [Header("Tutorial wall presentation（教学墙体表现）")]
+        [SerializeField, InspectorName("Wall Break Presentation（墙体破碎表现设置）")] private WallBreakSettings wallBreakPresentation = new WallBreakSettings();
 
-        [Header("Obstacle risk outline")]
-        [SerializeField] private ObstacleOutlineSettings outlinePresentation = new ObstacleOutlineSettings();
+        [Header("Obstacle risk outline（障碍风险轮廓）")]
+        [SerializeField, InspectorName("Outline Presentation（轮廓表现设置）")] private ObstacleOutlineSettings outlinePresentation = new ObstacleOutlineSettings();
 
-        [Header("Route-level outcome preview")]
-        [SerializeField] private RoutePreviewSettings routePreviewPresentation = new RoutePreviewSettings();
+        [Header("Route-level outcome preview（路线结果预览）")]
+        [SerializeField, InspectorName("Route Preview Presentation（路线预览表现设置）")] private RoutePreviewSettings routePreviewPresentation = new RoutePreviewSettings();
 
-        [Header("Authoritative level-up feedback")]
-        [SerializeField] private SpeedLevelFeedbackConfig speedLevelFeedbackConfig;
+        [Header("Authoritative level-up feedback（权威升级反馈）")]
+        [SerializeField, InspectorName("Speed Level Feedback Config（速度等级反馈配置）")] private SpeedLevelFeedbackConfig speedLevelFeedbackConfig;
 
-        [Header("Boss five-phase presentation")]
-        [SerializeField] private BossClashSettings bossClashPresentation = new BossClashSettings();
+        [Header("Boss five-phase presentation（Boss 五阶段表现）")]
+        [SerializeField, InspectorName("Boss Clash Presentation（Boss 对抗表现设置）")] private BossClashSettings bossClashPresentation = new BossClashSettings();
 
-        [Header("Audio clips and mobile haptics")]
-        [SerializeField] private AudioFeedbackSettings audioPresentation = new AudioFeedbackSettings();
+        [Header("Audio clips and mobile haptics（音频片段与移动触觉）")]
+        [SerializeField, InspectorName("Audio Presentation（音频表现设置）")] private AudioFeedbackSettings audioPresentation = new AudioFeedbackSettings();
 
-        [Header("Replace visuals here - gameplay colliders stay on parent objects")]
-        [SerializeField] private GameObject playerVisualPrefab;
-        [SerializeField] private RuntimeAnimatorController playerAnimator;
-        [SerializeField] private GameObject tier1SoldierPrefab;
-        [SerializeField] private GameObject tier4SoldierPrefab;
-        [SerializeField] private GameObject tier1SoldierBreakPrefab;
-        [SerializeField] private GameObject tier4SoldierBreakPrefab;
-        [SerializeField, Min(0.1f)] private float tier1TargetHeight = 1.6f;
-        [SerializeField, Min(0.1f)] private float tier4TargetHeight = 2.2f;
-        [SerializeField] private GameObject bossVisualPrefab;
-        [SerializeField] private RuntimeAnimatorController bossAnimator;
-        [SerializeField] private GameObject princessVisualPrefab;
-        [SerializeField] private RuntimeAnimatorController princessAnimator;
+        [Header("Replace visuals here - gameplay colliders stay on parent objects（在此替换视觉，玩法碰撞体保留在父对象）")]
+        [SerializeField, InspectorName("Player Visual Prefab（玩家视觉预制体）")] private GameObject playerVisualPrefab;
+        [SerializeField, InspectorName("Player Animator（玩家动画控制器）")] private RuntimeAnimatorController playerAnimator;
+        [SerializeField, InspectorName("Tier 1 Soldier Prefab（等级 1 士兵预制体）")] private GameObject tier1SoldierPrefab;
+        [SerializeField, InspectorName("Tier 4 Soldier Prefab（等级 4 士兵预制体）")] private GameObject tier4SoldierPrefab;
+        [SerializeField, InspectorName("Tier 1 Soldier Break Prefab（等级 1 士兵破碎预制体）")] private GameObject tier1SoldierBreakPrefab;
+        [SerializeField, InspectorName("Tier 4 Soldier Break Prefab（等级 4 士兵破碎预制体）")] private GameObject tier4SoldierBreakPrefab;
+        [SerializeField, Min(0.1f), InspectorName("Tier 1 Target Height（等级 1 目标高度）")] private float tier1TargetHeight = 1.6f;
+        [SerializeField, Min(0.1f), InspectorName("Tier 4 Target Height（等级 4 目标高度）")] private float tier4TargetHeight = 2.2f;
+        [SerializeField, InspectorName("Boss Visual Prefab（Boss 视觉预制体）")] private GameObject bossVisualPrefab;
+        [SerializeField, InspectorName("Boss Animator（Boss 动画控制器）")] private RuntimeAnimatorController bossAnimator;
+        [SerializeField, InspectorName("Princess Visual Prefab（公主视觉预制体）")] private GameObject princessVisualPrefab;
+        [SerializeField, InspectorName("Princess Animator（公主动画控制器）")] private RuntimeAnimatorController princessAnimator;
 
-        [Header("Development-only speed diagnostics")]
-        [SerializeField] private bool showSpeedDebugOverlay;
-        [SerializeField, Min(20f)] private float debugTestSegmentLength = 100f;
+        [Header("Development-only speed diagnostics（仅开发用速度诊断）")]
+        [SerializeField, InspectorName("Show Speed Debug Overlay（显示速度调试覆盖层）")] private bool showSpeedDebugOverlay;
+        [SerializeField, Min(20f), InspectorName("Debug Test Segment Length（调试测试区段长度）")] private float debugTestSegmentLength = 100f;
 
         private readonly List<Encounter> encounters = new List<Encounter>();
         private readonly List<RouteChoiceZoneData> routeChoiceZones = new List<RouteChoiceZoneData>();

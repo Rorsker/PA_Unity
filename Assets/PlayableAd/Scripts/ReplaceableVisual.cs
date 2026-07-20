@@ -5,8 +5,8 @@ namespace PlayableAd
 {
     public sealed class ReplaceableVisual : MonoBehaviour
     {
-        [SerializeField] private Transform visualRoot;
-        [SerializeField] private Animator animator;
+        [SerializeField, InspectorName("Visual Root（视觉根节点）")] private Transform visualRoot;
+        [SerializeField, InspectorName("Animator（动画控制器）")] private Animator animator;
 
         public Transform VisualRoot => visualRoot;
         public Animator Animator => animator;

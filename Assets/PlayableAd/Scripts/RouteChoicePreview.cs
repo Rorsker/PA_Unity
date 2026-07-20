@@ -7,9 +7,9 @@ namespace PlayableAd
     [Serializable]
     public sealed class RouteLanePreviewData
     {
-        public string routeId;
-        public int laneIndex;
-        public float laneX;
+        [InspectorName("Route ID（路线 ID）")] public string routeId;
+        [InspectorName("Lane Index（路线索引）")] public int laneIndex;
+        [InspectorName("Lane X（路线横向坐标）")] public float laneX;
         public readonly List<RoutePreviewStep> steps = new List<RoutePreviewStep>(4);
     }
 

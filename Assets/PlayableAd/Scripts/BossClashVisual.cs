@@ -16,26 +16,26 @@ namespace PlayableAd
     [Serializable]
     public sealed class BossClashSettings
     {
-        [Header("Five Phase Timing")]
-        [Range(0.4f, 0.6f)] public float approachDuration = 0.5f;
-        [Range(0.15f, 0.25f)] public float contactDuration = 0.2f;
-        [Range(1f, 1.5f)] public float struggleDuration = 1.25f;
-        [Range(0.3f, 0.5f)] public float staggerDuration = 0.4f;
-        [Range(0.3f, 0.5f)] public float finishDuration = 0.4f;
+        [Header("Five Phase Timing（五阶段时序）")]
+        [Range(0.4f, 0.6f), InspectorName("Approach Duration（接近阶段时长）")] public float approachDuration = 0.5f;
+        [Range(0.15f, 0.25f), InspectorName("Contact Duration（接触阶段时长）")] public float contactDuration = 0.2f;
+        [Range(1f, 1.5f), InspectorName("Struggle Duration（对抗阶段时长）")] public float struggleDuration = 1.25f;
+        [Range(0.3f, 0.5f), InspectorName("Stagger Duration（踉跄阶段时长）")] public float staggerDuration = 0.4f;
+        [Range(0.3f, 0.5f), InspectorName("Finish Duration（终结阶段时长）")] public float finishDuration = 0.4f;
 
-        [Header("Camera Hierarchy")]
-        [Range(0.1f, 0.55f)] public float contactShake = 0.3f;
-        [Range(0.01f, 0.14f)] public float struggleShake = 0.065f;
-        [Range(0.35f, 0.9f)] public float finishShake = 0.62f;
-        [Range(0f, 8f)] public float contactFovPunch = 3f;
-        [Range(0f, 12f)] public float finishFovPunch = 8f;
+        [Header("Camera Hierarchy（镜头反馈层级）")]
+        [Range(0.1f, 0.55f), InspectorName("Contact Shake（接触抖动）")] public float contactShake = 0.3f;
+        [Range(0.01f, 0.14f), InspectorName("Struggle Shake（对抗抖动）")] public float struggleShake = 0.065f;
+        [Range(0.35f, 0.9f), InspectorName("Finish Shake（终结抖动）")] public float finishShake = 0.62f;
+        [Range(0f, 8f), InspectorName("Contact FOV Punch（接触视场角冲击）")] public float contactFovPunch = 3f;
+        [Range(0f, 12f), InspectorName("Finish FOV Punch（终结视场角冲击）")] public float finishFovPunch = 8f;
 
-        [Header("Clash Readability")]
-        public Color playerEnergy = new Color(1f, 0.36f, 0.04f, 0.9f);
-        public Color bossEnergy = new Color(0.38f, 0.03f, 0.24f, 0.86f);
-        [Range(0.15f, 0.55f)] public float beamWidth = 0.28f;
-        [Range(0.3f, 1f)] public float centerBrightness = 0.78f;
-        [Range(1f, 5f)] public float pressureTravel = 2.8f;
+        [Header("Clash Readability（对抗可读性）")]
+        [InspectorName("Player Energy（玩家能量颜色）")] public Color playerEnergy = new Color(1f, 0.36f, 0.04f, 0.9f);
+        [InspectorName("Boss Energy（Boss 能量颜色）")] public Color bossEnergy = new Color(0.38f, 0.03f, 0.24f, 0.86f);
+        [Range(0.15f, 0.55f), InspectorName("Beam Width（光束宽度）")] public float beamWidth = 0.28f;
+        [Range(0.3f, 1f), InspectorName("Center Brightness（中心亮度）")] public float centerBrightness = 0.78f;
+        [Range(1f, 5f), InspectorName("Pressure Travel（压力推进距离）")] public float pressureTravel = 2.8f;
     }
 
     public sealed class BossClashVisual : MonoBehaviour

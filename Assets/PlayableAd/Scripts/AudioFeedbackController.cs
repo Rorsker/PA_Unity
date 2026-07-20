@@ -10,72 +10,72 @@ namespace PlayableAd
     [Serializable]
     public sealed class AudioFeedbackSettings
     {
-        [Header("Global")]
-        public bool audioEnabled = true;
-        public bool hapticsEnabled = true;
-        public bool useProceduralPlaceholders = true;
-        [Range(0f, 1f)] public float masterVolume = 0.85f;
-        public AudioMixerGroup sfxMixerGroup;
-        [Range(0f, 1f)] public float collisionSpatialBlend = 0.78f;
-        [Min(0.1f)] public float collisionMinDistance = 2f;
-        [Min(1f)] public float collisionMaxDistance = 24f;
+        [Header("Global（全局设置）")]
+        [InspectorName("Audio Enabled（启用音频）")] public bool audioEnabled = true;
+        [InspectorName("Haptics Enabled（启用触觉反馈）")] public bool hapticsEnabled = true;
+        [InspectorName("Use Procedural Placeholders（使用程序化占位音频）")] public bool useProceduralPlaceholders = true;
+        [Range(0f, 1f), InspectorName("Master Volume（主音量）")] public float masterVolume = 0.85f;
+        [InspectorName("SFX Mixer Group（音效混音组）")] public AudioMixerGroup sfxMixerGroup;
+        [Range(0f, 1f), InspectorName("Collision Spatial Blend（碰撞空间混合）")] public float collisionSpatialBlend = 0.78f;
+        [Min(0.1f), InspectorName("Collision Min Distance（碰撞最小距离）")] public float collisionMinDistance = 2f;
+        [Min(1f), InspectorName("Collision Max Distance（碰撞最大距离）")] public float collisionMaxDistance = 24f;
 
-        [Header("Movement Loops")]
-        public AudioClip footstepsLoop;
-        public AudioClip runningWindLoop;
-        public AudioClip speedEnergyLoop;
+        [Header("Movement Loops（移动循环音效）")]
+        [InspectorName("Footsteps Loop（脚步循环）")] public AudioClip footstepsLoop;
+        [InspectorName("Running Wind Loop（奔跑风声循环）")] public AudioClip runningWindLoop;
+        [InspectorName("Speed Energy Loop（速度能量循环）")] public AudioClip speedEnergyLoop;
 
-        [Header("Elixir And Tier Feedback")]
-        public AudioClip elixirPickup;
-        public AudioClip elixirAbsorb;
-        public AudioClip tierUpgrade;
-        public AudioClip tierUpgradeMajor;
-        public AudioClip tierUpgradeMax;
-        public AudioClip tierDrop;
-        public AudioClip impactPenalty;
+        [Header("Elixir And Tier Feedback（药剂与等级反馈）")]
+        [InspectorName("Elixir Pickup（药剂拾取）")] public AudioClip elixirPickup;
+        [InspectorName("Elixir Absorb（药剂吸收）")] public AudioClip elixirAbsorb;
+        [InspectorName("Tier Upgrade（等级升级）")] public AudioClip tierUpgrade;
+        [InspectorName("Tier Upgrade Major（关键等级升级）")] public AudioClip tierUpgradeMajor;
+        [InspectorName("Tier Upgrade Max（最高等级升级）")] public AudioClip tierUpgradeMax;
+        [InspectorName("Tier Drop（等级下降）")] public AudioClip tierDrop;
+        [InspectorName("Impact Penalty（冲击惩罚）")] public AudioClip impactPenalty;
 
-        [Header("Collision Outcome Events")]
-        public AudioClip speedGainImpact;
-        public AudioClip neutralImpact;
-        public AudioClip speedLossImpact;
-        public AudioClip dangerPreview;
+        [Header("Collision Outcome Events（碰撞结果事件）")]
+        [InspectorName("Speed Gain Impact（速度增加冲击）")] public AudioClip speedGainImpact;
+        [InspectorName("Neutral Impact（中性冲击）")] public AudioClip neutralImpact;
+        [InspectorName("Speed Loss Impact（速度降低冲击）")] public AudioClip speedLossImpact;
+        [InspectorName("Danger Preview（危险预览）")] public AudioClip dangerPreview;
 
-        [Header("Soldier Hit Layers")]
-        public AudioClip[] soldierImpactVariants = Array.Empty<AudioClip>();
-        public AudioClip impactTransient;
-        public AudioClip armorContact;
-        public AudioClip bodyWeight;
-        public AudioClip armorBreak;
-        public AudioClip highSpeedWhoosh;
-        public AudioClip soldierFlyAway;
-        public AudioClip energyReturn;
+        [Header("Soldier Hit Layers（士兵命中音层）")]
+        [InspectorName("Soldier Impact Variants（士兵冲击变体）")] public AudioClip[] soldierImpactVariants = Array.Empty<AudioClip>();
+        [InspectorName("Impact Transient（冲击瞬态）")] public AudioClip impactTransient;
+        [InspectorName("Armor Contact（装甲接触）")] public AudioClip armorContact;
+        [InspectorName("Body Weight（身体重量感）")] public AudioClip bodyWeight;
+        [InspectorName("Armor Break（装甲破碎）")] public AudioClip armorBreak;
+        [InspectorName("High Speed Whoosh（高速呼啸）")] public AudioClip highSpeedWhoosh;
+        [InspectorName("Soldier Fly Away（士兵飞离）")] public AudioClip soldierFlyAway;
+        [InspectorName("Energy Return（能量回收）")] public AudioClip energyReturn;
 
-        [Header("Wall Break Layers")]
-        public AudioClip wallLowImpact;
-        public AudioClip wallStoneDebris;
-        public AudioClip wallDust;
-        public AudioClip wallImpactTail;
+        [Header("Wall Break Layers（墙体破碎音层）")]
+        [InspectorName("Wall Low Impact（墙体低强度冲击）")] public AudioClip wallLowImpact;
+        [InspectorName("Wall Stone Debris（墙石碎屑）")] public AudioClip wallStoneDebris;
+        [InspectorName("Wall Dust（墙尘）")] public AudioClip wallDust;
+        [InspectorName("Wall Impact Tail（墙体冲击尾音）")] public AudioClip wallImpactTail;
 
-        [Header("Boss Layers")]
-        public AudioClip bossContact;
-        public AudioClip bossStruggleLoop;
-        public AudioClip bossFinishImpact;
-        public AudioClip cageBreak;
+        [Header("Boss Layers（Boss 音层）")]
+        [InspectorName("Boss Contact（Boss 接触）")] public AudioClip bossContact;
+        [InspectorName("Boss Struggle Loop（Boss 对抗循环）")] public AudioClip bossStruggleLoop;
+        [InspectorName("Boss Finish Impact（Boss 终结冲击）")] public AudioClip bossFinishImpact;
+        [InspectorName("Cage Break（牢笼破碎）")] public AudioClip cageBreak;
 
-        [Header("Mix Hierarchy")]
-        [Range(0f, 1f)] public float movementVolume = 0.22f;
-        [Range(0f, 1f)] public float normalImpactVolume = 0.5f;
-        [Range(0f, 1f)] public float upgradeVolume = 0.68f;
-        [Range(0f, 1f)] public float wallVolume = 0.82f;
-        [Range(0f, 1f)] public float bossVolume = 1f;
-        [Range(0f, 0.6f)] public float priorityDuckAmount = 0.32f;
+        [Header("Mix Hierarchy（混音层级）")]
+        [Range(0f, 1f), InspectorName("Movement Volume（移动音量）")] public float movementVolume = 0.22f;
+        [Range(0f, 1f), InspectorName("Normal Impact Volume（普通冲击音量）")] public float normalImpactVolume = 0.5f;
+        [Range(0f, 1f), InspectorName("Upgrade Volume（升级音量）")] public float upgradeVolume = 0.68f;
+        [Range(0f, 1f), InspectorName("Wall Volume（墙体音量）")] public float wallVolume = 0.82f;
+        [Range(0f, 1f), InspectorName("Boss Volume（Boss 音量）")] public float bossVolume = 1f;
+        [Range(0f, 0.6f), InspectorName("Priority Duck Amount（高优先级压低量）")] public float priorityDuckAmount = 0.32f;
 
-        [Header("Voice Limits")]
-        [Range(2, 8)] public int actionVoiceCount = 5;
-        [Range(0.03f, 0.2f)] public float normalImpactMinInterval = 0.055f;
-        [Range(0.04f, 0.3f)] public float energyReturnMinInterval = 0.08f;
-        [Range(0.25f, 1.5f)] public float dangerPreviewGlobalCooldown = 0.65f;
-        [Range(2f, 24f)] public float movementSmoothing = 12f;
+        [Header("Voice Limits（并发音源限制）")]
+        [Range(2, 8), InspectorName("Action Voice Count（动作音源数量）")] public int actionVoiceCount = 5;
+        [Range(0.03f, 0.2f), InspectorName("Normal Impact Min Interval（普通冲击最小间隔）")] public float normalImpactMinInterval = 0.055f;
+        [Range(0.04f, 0.3f), InspectorName("Energy Return Min Interval（能量回收最小间隔）")] public float energyReturnMinInterval = 0.08f;
+        [Range(0.25f, 1.5f), InspectorName("Danger Preview Global Cooldown（危险预览全局冷却）")] public float dangerPreviewGlobalCooldown = 0.65f;
+        [Range(2f, 24f), InspectorName("Movement Smoothing（移动平滑度）")] public float movementSmoothing = 12f;
     }
 
     public sealed class AudioFeedbackController : MonoBehaviour
