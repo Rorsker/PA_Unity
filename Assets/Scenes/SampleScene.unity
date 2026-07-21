@@ -351,8 +351,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tuning:
-    targetDuration: 56
-    tutorialDuration: 4
     openingElixirTime: 1.230769
     tutorialSoldierCount: 5
     tutorialSoldierSpacing: 1.846154
@@ -367,7 +365,7 @@ MonoBehaviour:
       enterDuration: 0.2
       exitDuration: 0.15
     forwardSpeedLossEnabled: 1
-    forwardSpeedLossPerSecond: 0.158
+    forwardSpeedLossPerSecond: 0.2
     minimumSpeedAfterLoss: 1
     bossSpeedProtectionDistance: 150
     bossDistance: 800
@@ -377,12 +375,7 @@ MonoBehaviour:
     bossApproachPadding: 21.53846
     proceduralSeed: 41723
     specialRewardLevels: 0700000008000000090000000a000000
-    maxActiveEnemies: 48
-    spawnAheadDistance: 90
     recycleDistance: 18
-    targetPreviewTime: 1.35
-    minimumTargetPreviewDistance: 12
-    maximumTargetPreviewDistance: 54
     enemyPreloadTime: 5
     enemyVisiblePreviewTime: 3.2
     enemyActiveTime: 1.35
@@ -398,19 +391,11 @@ MonoBehaviour:
     fallbackBoostMagnetSpeed: 12
     laneHalfWidth: 3.2
     dragFollowRatio: 1
+    dragFollowSharpness: 45
     lateralSpeed: 9
     dragDeadZone: 0.005
     invertDragInput: 0
     blockInputOverUi: 1
-    hitStopSeconds: 0.045
-    cameraShake: 0.24
-    fovPunch: 3.5
-    flashAlpha: 0.52
-    targetLaunchSeconds: 2.25
-    targetLaunchForce: 14
-    targetLaunchSideSpeed: 2.6
-    targetLaunchUpSpeed: 3.8
-    targetLaunchForwardScale: 0.42
   prefab:
     soldierSections:
     - sectionName: 1
@@ -664,13 +649,9 @@ MonoBehaviour:
     penaltyDeceleration: 32
     startingLevel: 1
     tutorialElixirTargetLevel: 4
-    automaticSpeedDecayEnabled: 0
-    mainRunDecayPerSecond: 0.1
     logSpeedChanges: 0
-    levelOneSoldierBoost: 0.12
-    normalImpactBoost: 0.18
-    normalImpactSoftCap: 10
-    tutorialImpactSoftCap: 10
+    levelOneSoldierBoost: 0.06
+    normalImpactBoost: 0.9
     bossVictoryLevel: 10
   autoBeginGameplay: 1
   environment:
@@ -701,19 +682,11 @@ MonoBehaviour:
     fogStart: 42
     fogEnd: 125
   portraitCamera:
-    referenceAspectRatio: 0.5625
     fieldOfView: 52
     cameraHeight: 5
     cameraBackDistance: 9.95
     cameraLookAhead: 18
     maxSpeedFovBonus: 4
-    playerViewportPosition: 0.24
-    vanishingPointViewportPosition: 0.72
-    nearRoadWidth: 8.5
-    farRoadWidth: 1.5
-    visibleDepthRange: 60
-    minSupportedAspect: 0.45
-    maxSupportedAspect: 0.8
   targetShapes:
     tierShapes:
     - {x: 0.82, y: 1.55, z: 0.78}
@@ -745,6 +718,7 @@ MonoBehaviour:
     upgradeMoment: 0.18
     slowMotionDuration: 0.09
     slowMotionScale: 0.62
+    cameraShake: 0.11
     cameraPushIn: 1.8
     cameraRebound: 3.2
     pickupFlash: 0.32
@@ -756,7 +730,6 @@ MonoBehaviour:
     hitStopDuration: 0.045
     hitStopTimeScale: 0.35
     normalFlash: 0.16
-    trailPulseRecovery: 0.2
     enableNormalHitStop: 0
     normalCameraShake: 0.065
     normalFovPunch: 0.8
@@ -776,7 +749,7 @@ MonoBehaviour:
     maxFragmentForce: 10.5
     forwardSpeedMultiplier: 1.25
     highSpeedMultiplierBonus: 0.85
-    lateralRangePerSpeedLevel: 0.7
+    lateralRangePerSpeedLevel: 0.5
     upwardForce: 4.2
     minAngularVelocity: 4
     maxAngularVelocity: 14
@@ -786,7 +759,6 @@ MonoBehaviour:
     totalDuration: 0.82
     slowMotionDuration: 0.11
     slowMotionScale: 0.32
-    cameraRecovery: 0.3
     cameraShake: 0.48
     fovAnticipation: 2.5
     fovImpact: 6.5

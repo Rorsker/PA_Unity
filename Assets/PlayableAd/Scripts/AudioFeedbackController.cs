@@ -192,18 +192,6 @@ namespace PlayableAd
             PlayVoice(settings.elixirAbsorb, settings.upgradeVolume * 0.46f, 1.06f, 2);
         }
 
-        public void PlayTierUpgrade(int targetLevel)
-        {
-            float progress = Mathf.InverseLerp(1f, PlayerSpeedSettings.RequiredLevelCount, targetLevel);
-            float speedResponse = Mathf.SmoothStep(0f, 1f, progress);
-            float volume = settings.upgradeVolume * Mathf.Lerp(0.9f, 1.18f, speedResponse);
-            float pitch = Mathf.Lerp(0.94f, 1.26f, speedResponse);
-            LastUpgradeVolume = Mathf.Clamp01(volume * settings.masterVolume);
-            LastUpgradePitch = Mathf.Clamp(pitch, 0.5f, 2f);
-            PlayVoice(settings.tierUpgrade, volume, pitch, 4);
-            TriggerHaptic(HapticStrength.Medium);
-        }
-
         public void PlaySpeedLevelUp(int targetLevel, bool major, bool maximum)
         {
             float progress = Mathf.InverseLerp(1f, PlayerSpeedSettings.RequiredLevelCount, targetLevel);
@@ -257,6 +245,13 @@ namespace PlayableAd
                     LastCollisionLayerCount++;
             }
 
+            if (LastCollisionLayerCount < 4 && comboIndex == 0 && speed >= 0.25f)
+            {
+                if (PlayVoiceAt(settings.soldierFlyAway, baseVolume * Mathf.Lerp(0.16f, 0.28f, speed),
+                        1.04f, 1, worldPosition))
+                    LastCollisionLayerCount++;
+            }
+
             if (LastCollisionLayerCount < 4 && speed >= 0.68f && (comboIndex & 1) != 0)
             {
                 if (PlayVoiceAt(settings.highSpeedWhoosh, baseVolume * Mathf.InverseLerp(0.68f, 1f, speed) * 0.35f, pitch * 1.04f, 1, worldPosition))
@@ -294,24 +289,6 @@ namespace PlayableAd
                 PlayVoice(settings.impactPenalty, settings.normalImpactVolume * 0.62f, 0.86f, 3);
                 TriggerHaptic(HapticStrength.Medium);
             }
-        }
-
-        public void PlaySoldierImpact(int comboIndex, float pitchStep)
-        {
-            if (Time.unscaledTime - lastSoldierImpactTime < settings.normalImpactMinInterval) return;
-            lastSoldierImpactTime = Time.unscaledTime;
-
-            float pitch = 1f + Mathf.Clamp(comboIndex, 0, 4) * pitchStep + UnityEngine.Random.Range(-0.018f, 0.018f);
-            AudioClip impact = null;
-            if (settings.soldierImpactVariants != null && settings.soldierImpactVariants.Length > 0)
-                impact = settings.soldierImpactVariants[comboIndex % settings.soldierImpactVariants.Length];
-            float comboVolume = settings.normalImpactVolume * Mathf.Lerp(1f, 0.82f, Mathf.Clamp01(comboIndex / 4f));
-            PlayVoice(impact, comboVolume, pitch, 2);
-            if ((comboIndex & 1) == 0)
-                PlayVoice(settings.armorContact, comboVolume * 0.34f, pitch * 0.96f, 1);
-            if (comboIndex == 0)
-                PlayVoice(settings.soldierFlyAway, comboVolume * 0.24f, pitch * 1.05f, 1);
-            TriggerHaptic(HapticStrength.Light);
         }
 
         public void PlayEnergyReturn()
@@ -390,7 +367,7 @@ namespace PlayableAd
             source.clip = clip;
             source.volume = loop ? 0f : 1f;
             source.priority = loop ? 160 : 128;
-            if (!loop && settings != null) source.outputAudioMixerGroup = settings.sfxMixerGroup;
+            if (settings != null) source.outputAudioMixerGroup = settings.sfxMixerGroup;
             return source;
         }
 

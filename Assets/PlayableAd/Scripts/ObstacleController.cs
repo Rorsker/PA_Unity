@@ -9,12 +9,6 @@ namespace PlayableAd
         StoneWall
     }
 
-    public enum ObstacleFeedbackType
-    {
-        NormalImpact,
-        HeavyBreak
-    }
-
     public enum ObstacleResolutionType
     {
         Boosted,
@@ -52,48 +46,29 @@ namespace PlayableAd
     {
         [SerializeField, Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Required Speed Level（要求速度等级）")] private int requiredSpeedLevel = 1;
         [SerializeField, InspectorName("Obstacle Type（障碍物类型）")] private ObstacleType obstacleType;
-        [SerializeField, InspectorName("Intact Object（完整对象）")] private GameObject intactObject;
-        [SerializeField, InspectorName("Destroyed Object（破坏后对象）")] private GameObject destroyedObject;
         [SerializeField, InspectorName("Obstacle Colliders（障碍物碰撞体）")] private Collider[] obstacleColliders = Array.Empty<Collider>();
-        [SerializeField, InspectorName("Feedback Type（反馈类型）")] private ObstacleFeedbackType feedbackType;
         [SerializeField, InspectorName("Has Resolved（已结算）")] private bool hasResolved;
-        [SerializeField, InspectorName("Initial World Position（初始世界坐标）")] private Vector3 initialWorldPosition;
-        [SerializeField, InspectorName("Last Resolution（上次结算结果）")] private ObstacleResolutionType lastResolution;
-        [SerializeField, InspectorName("Player Level At Resolution（结算时玩家等级）")] private int playerLevelAtResolution;
 
         public event Action<ObstacleResolvedEvent> Resolved;
 
         public int RequiredSpeedLevel => requiredSpeedLevel;
         public ObstacleType Type => obstacleType;
-        public ObstacleFeedbackType FeedbackType => feedbackType;
         public bool HasResolved => hasResolved;
-        public Vector3 InitialWorldPosition => initialWorldPosition;
-        public ObstacleResolutionType LastResolution => lastResolution;
-        public int PlayerLevelAtResolution => playerLevelAtResolution;
 
         public static CollisionOutcome EvaluateCollisionOutcome(int playerLevel, int requiredLevel)
         {
             return playerLevel >= requiredLevel ? CollisionOutcome.SpeedGain : CollisionOutcome.SpeedLoss;
         }
 
-        public void Initialize(int requiredLevel, ObstacleType type, GameObject intact, GameObject destroyed,
-            Collider[] colliders, ObstacleFeedbackType feedback)
+        public void Initialize(int requiredLevel, ObstacleType type, Collider[] colliders)
         {
             requiredSpeedLevel = Mathf.Clamp(requiredLevel, 1, PlayerSpeedSettings.RequiredLevelCount);
             obstacleType = type;
-            intactObject = intact;
-            destroyedObject = destroyed;
             obstacleColliders = colliders ?? Array.Empty<Collider>();
-            feedbackType = feedback;
             hasResolved = false;
-            initialWorldPosition = transform.position;
-            lastResolution = ObstacleResolutionType.Equal;
-            playerLevelAtResolution = 0;
-            if (destroyedObject != null && destroyedObject != intactObject)
-                destroyedObject.SetActive(false);
         }
 
-        public ObstacleResolutionType Resolve(PlayerSpeedController speedController, float boostAmount, float boostSoftCap)
+        public ObstacleResolutionType Resolve(PlayerSpeedController speedController, float boostAmount)
         {
             if (hasResolved || speedController == null)
                 return ObstacleResolutionType.Equal;
@@ -103,13 +78,12 @@ namespace PlayableAd
             DisableColliders();
 
             int playerLevel = speedController.GetCurrentLevel();
-            playerLevelAtResolution = playerLevel;
             CollisionOutcome outcome = EvaluateCollisionOutcome(playerLevel, requiredSpeedLevel);
             ObstacleResolutionType resolution;
             if (outcome == CollisionOutcome.SpeedGain)
             {
                 resolution = ObstacleResolutionType.Boosted;
-                speedController.AddSpeed(boostAmount, boostSoftCap, SpeedChangeReason.LowLevelCollisionReward, this);
+                speedController.AddSpeed(boostAmount, SpeedChangeReason.LowLevelCollisionReward, this);
             }
             else if (outcome == CollisionOutcome.Neutral)
             {
@@ -119,14 +93,6 @@ namespace PlayableAd
             {
                 resolution = ObstacleResolutionType.Dropped;
                 speedController.DropOneLevel(SpeedChangeReason.HighLevelCollisionPenalty, this);
-            }
-
-            lastResolution = resolution;
-
-            if (destroyedObject != null && destroyedObject != intactObject)
-            {
-                destroyedObject.SetActive(true);
-                if (intactObject != null) intactObject.SetActive(false);
             }
 
             Resolved?.Invoke(new ObstacleResolvedEvent(this, resolution, outcome, playerLevel, requiredSpeedLevel));

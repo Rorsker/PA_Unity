@@ -31,7 +31,8 @@ namespace PlayableAd
             public GameObject root;
             public Transform transform;
             public Renderer renderer;
-            public Rigidbody body;
+            public Vector3 velocity;
+            public Vector3 angularVelocity;
             public float remaining;
             public uint launchSequence;
             public bool active;
@@ -66,13 +67,6 @@ namespace PlayableAd
             sharedMaterial = RuntimeStyle.CreateMaterial(Color.white, 0.45f, 0.28f);
             propertyBlock = new MaterialPropertyBlock();
             BuildPool();
-        }
-
-        public void PlayBreak(Vector3 position, Vector3 sourceDimensions, Color color,
-            float normalizedActualSpeed, float impactForwardSpeed)
-        {
-            int inferredSpeedLevel = Mathf.Clamp(Mathf.RoundToInt(normalizedActualSpeed * 9f) + 1, 1, 10);
-            PlayBreak(position, sourceDimensions, color, normalizedActualSpeed, impactForwardSpeed, inferredSpeedLevel);
         }
 
         public void PlayBreak(Vector3 position, Vector3 sourceDimensions, Color color,
@@ -113,15 +107,12 @@ namespace PlayableAd
                 propertyBlock.SetColor(ColorId, Color.Lerp(color, i == 1 ? Color.white : new Color(0.18f, 0.2f, 0.24f), i == 1 ? 0.35f : 0.2f));
                 fragment.renderer.SetPropertyBlock(propertyBlock);
 
-                fragment.body.isKinematic = false;
-                fragment.body.useGravity = true;
                 float lateralMomentum = UnityEngine.Random.Range(-lateralRange, lateralRange);
-                fragment.body.velocity = new Vector3(
+                fragment.velocity = new Vector3(
                     lateralMomentum,
                     settings.upwardForce * UnityEngine.Random.Range(0.8f, 1.18f),
                     boostedForwardForce * UnityEngine.Random.Range(1f, 1.08f));
-                fragment.body.angularVelocity = UnityEngine.Random.onUnitSphere * angularForce;
-                fragment.body.WakeUp();
+                fragment.angularVelocity = UnityEngine.Random.onUnitSphere * angularForce * Mathf.Rad2Deg;
                 fragment.remaining = settings.fragmentLifetime * UnityEngine.Random.Range(0.88f, 1.08f);
                 fragment.launchSequence = ++launchSequence;
                 fragment.active = true;
@@ -130,12 +121,16 @@ namespace PlayableAd
 
         private void Update()
         {
-            // Match Rigidbody simulation and freeze the presentation while gameplay is paused.
-            float dt = Time.deltaTime;
+            float dt = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
             for (int i = 0; i < fragments.Length; i++)
             {
                 Fragment fragment = fragments[i];
                 if (!fragment.active) continue;
+                fragment.velocity += Physics.gravity * dt;
+                fragment.transform.position += fragment.velocity * dt;
+                fragment.transform.Rotate(fragment.angularVelocity * dt, Space.Self);
                 fragment.remaining -= dt;
                 if (fragment.remaining <= 0f || fragment.transform.position.y < -2f)
                     Recycle(fragment);
@@ -155,16 +150,8 @@ namespace PlayableAd
                 if (collider != null) collider.enabled = false;
                 Renderer renderer = root.GetComponent<Renderer>();
                 renderer.sharedMaterial = sharedMaterial;
-                Rigidbody body = root.AddComponent<Rigidbody>();
-                body.isKinematic = true;
-                body.useGravity = false;
-                body.interpolation = RigidbodyInterpolation.Interpolate;
-                body.collisionDetectionMode = CollisionDetectionMode.Discrete;
-                body.drag = 0.22f;
-                body.angularDrag = 0.32f;
-                body.maxAngularVelocity = settings.maxAngularVelocity;
                 root.SetActive(false);
-                fragments[i] = new Fragment { root = root, transform = root.transform, renderer = renderer, body = body };
+                fragments[i] = new Fragment { root = root, transform = root.transform, renderer = renderer };
             }
         }
 
@@ -191,19 +178,11 @@ namespace PlayableAd
         {
             fragment.active = false;
             fragment.remaining = 0f;
-            fragment.body.velocity = Vector3.zero;
-            fragment.body.angularVelocity = Vector3.zero;
-            fragment.body.useGravity = false;
-            fragment.body.isKinematic = true;
+            fragment.velocity = Vector3.zero;
+            fragment.angularVelocity = Vector3.zero;
             fragment.transform.localScale = Vector3.one;
             fragment.root.SetActive(false);
         }
 
-        private void OnDestroy()
-        {
-            if (sharedMaterial == null) return;
-            if (Application.isPlaying) Destroy(sharedMaterial);
-            else DestroyImmediate(sharedMaterial);
-        }
     }
 }

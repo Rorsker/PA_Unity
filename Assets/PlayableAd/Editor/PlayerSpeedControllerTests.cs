@@ -10,10 +10,14 @@ namespace PlayableAdEditor.Tests
         private GameObject root;
         private PlayerSpeedController speed;
         private PlayerSpeedSettings settings;
+        private float originalTimeScale;
+        private float originalFixedDeltaTime;
 
         [SetUp]
         public void SetUp()
         {
+            originalTimeScale = Time.timeScale;
+            originalFixedDeltaTime = Time.fixedDeltaTime;
             root = new GameObject("SpeedTestRoot");
             speed = root.AddComponent<PlayerSpeedController>();
             settings = new PlayerSpeedSettings();
@@ -24,8 +28,8 @@ namespace PlayableAdEditor.Tests
         public void TearDown()
         {
             Object.DestroyImmediate(root);
-            Time.timeScale = 1f;
-            Time.fixedDeltaTime = 0.02f;
+            Time.timeScale = originalTimeScale;
+            Time.fixedDeltaTime = originalFixedDeltaTime;
         }
 
         [Test]
@@ -74,75 +78,7 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
-        public void AutomaticMainRunDecayIsDisabledByDefault()
-        {
-            speed.SetSpeed(3f);
-            int events = 0;
-            speed.SpeedChanged += _ => events++;
-
-            for (int i = 0; i < 1800; i++)
-                speed.ApplyMainRunDecay(1f / 60f);
-
-            Assert.That(speed.AutomaticSpeedDecayEnabled, Is.False);
-            Assert.That(speed.CurrentSpeed, Is.EqualTo(3f).Within(0.000001f));
-            Assert.That(events, Is.Zero);
-        }
-
-        [Test]
-        public void LegacyDecayRequiresExplicitOptIn()
-        {
-            settings.automaticSpeedDecayEnabled = true;
-            speed.SetSpeed(3f);
-
-            speed.ApplyMainRunDecay(0.5f);
-
-            Assert.That(speed.CurrentSpeed, Is.EqualTo(2.95f).Within(0.0001f));
-        }
-
-        [TestCase(1f)]
-        [TestCase(4f)]
-        [TestCase(6.4f)]
-        [TestCase(7f)]
-        [TestCase(10f)]
-        public void EmptyRoadThirtySecondsKeepsAllAuthoritativeSpeedValuesStable(float value)
-        {
-            speed.SetSpeed(value, SpeedChangeReason.DebugCommand);
-            PlayerForwardMotionController motion = root.AddComponent<PlayerForwardMotionController>();
-            motion.Initialize(speed, settings);
-            float initialSpeed = speed.CurrentSpeed;
-            int initialLevel = speed.GetCurrentLevel();
-            float initialTarget = motion.TargetForwardSpeed;
-            SpeedChangeReason initialReason = speed.LastSpeedChangeReason;
-            int events = 0;
-            speed.SpeedChanged += _ => events++;
-
-            for (int i = 0; i < 1800; i++)
-            {
-                speed.ApplyMainRunDecay(1f / 60f);
-                motion.Tick(1f / 60f, true);
-            }
-
-            Assert.That(speed.CurrentSpeed, Is.EqualTo(initialSpeed).Within(0.000001f));
-            Assert.That(speed.GetCurrentLevel(), Is.EqualTo(initialLevel));
-            Assert.That(motion.TargetForwardSpeed, Is.EqualTo(initialTarget).Within(0.000001f));
-            Assert.That(motion.CurrentForwardSpeed, Is.EqualTo(initialTarget).Within(0.000001f));
-            Assert.That(speed.LastSpeedChangeReason, Is.EqualTo(initialReason));
-            Assert.That(events, Is.Zero);
-        }
-
-        [Test]
-        public void HighestLevelHasAStableConfiguredBandBelowMaximum()
-        {
-            speed.SetSpeed(10f, SpeedChangeReason.DebugCommand);
-
-            speed.ApplyMainRunDecay(1f / 60f);
-
-            Assert.That(speed.GetCurrentLevel(), Is.EqualTo(10));
-            Assert.That(speed.CurrentSpeed, Is.EqualTo(10f));
-        }
-
-        [Test]
-        public void AddSpeedIgnoresLegacySoftCapAndPublishesFeedbackEvent()
+        public void AddSpeedPublishesFeedbackEvent()
         {
             speed.SetSpeed(3.5f);
             int eventCount = 0;
@@ -153,7 +89,7 @@ namespace PlayableAdEditor.Tests
                 last = change;
             };
 
-            speed.AddSpeed(0.2f, 3.5f);
+            speed.AddSpeed(0.2f);
 
             Assert.That(speed.CurrentSpeed, Is.EqualTo(3.7f));
             Assert.That(eventCount, Is.EqualTo(1));
@@ -169,8 +105,7 @@ namespace PlayableAdEditor.Tests
             SpeedChangedEvent last = default;
             speed.SpeedChanged += change => { eventCount++; last = change; };
 
-            speed.AddSpeed(settings.levelOneSoldierBoost, settings.normalImpactSoftCap,
-                SpeedChangeReason.LowLevelCollisionReward, root);
+            speed.AddSpeed(settings.levelOneSoldierBoost, SpeedChangeReason.LowLevelCollisionReward, root);
 
             Assert.That(speed.CurrentSpeed, Is.EqualTo(10f));
             Assert.That(speed.GetCurrentLevel(), Is.EqualTo(10));
@@ -198,13 +133,13 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
-        public void LevelOneSoldierBoostCanRisePastLegacySoftCap()
+        public void LevelOneSoldierBoostCanRiseWithoutIntermediateCap()
         {
             speed.SetSpeed(6.45f);
 
-            speed.AddSpeed(settings.levelOneSoldierBoost, settings.normalImpactSoftCap);
+            speed.AddSpeed(settings.levelOneSoldierBoost);
             float firstBoost = speed.CurrentSpeed;
-            speed.AddSpeed(settings.levelOneSoldierBoost, settings.normalImpactSoftCap);
+            speed.AddSpeed(settings.levelOneSoldierBoost);
 
             Assert.That(settings.levelOneSoldierBoost, Is.EqualTo(0.12f).Within(0.0001f));
             Assert.That(firstBoost, Is.EqualTo(6.57f).Within(0.0001f));
@@ -217,8 +152,7 @@ namespace PlayableAdEditor.Tests
             speed.SetLevel(4, SpeedChangeReason.PotionPickup);
             float before = speed.CurrentSpeed;
 
-            speed.AddSpeed(settings.levelOneSoldierBoost, settings.normalImpactSoftCap,
-                SpeedChangeReason.LowLevelCollisionReward, root);
+            speed.AddSpeed(settings.levelOneSoldierBoost, SpeedChangeReason.LowLevelCollisionReward, root);
 
             Assert.That(before, Is.LessThan(settings.maximumSpeed));
             Assert.That(speed.CurrentSpeed, Is.EqualTo(before + 0.12f).Within(0.0001f));
@@ -230,14 +164,14 @@ namespace PlayableAdEditor.Tests
         {
             BoxCollider collider = root.AddComponent<BoxCollider>();
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(1, ObstacleType.Soldier, root, root, new Collider[] { collider }, ObstacleFeedbackType.NormalImpact);
+            obstacle.Initialize(1, ObstacleType.Soldier, new Collider[] { collider });
             speed.SetLevel(3, SpeedChangeReason.Debug);
             int eventCount = 0;
             obstacle.Resolved += _ => eventCount++;
 
-            ObstacleResolutionType first = obstacle.Resolve(speed, 0.2f, 3.5f);
+            ObstacleResolutionType first = obstacle.Resolve(speed, 0.2f);
             float afterFirst = speed.CurrentSpeed;
-            obstacle.Resolve(speed, 0.2f, 3.5f);
+            obstacle.Resolve(speed, 0.2f);
 
             Assert.That(first, Is.EqualTo(ObstacleResolutionType.Boosted));
             Assert.That(afterFirst, Is.EqualTo(3.2f).Within(0.0001f));
@@ -248,35 +182,14 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
-        public void KnockedEnemyUsesSeparatePhysicsColliderAfterGameplayResolution()
-        {
-            BoxCollider gameplayCollider = root.AddComponent<BoxCollider>();
-            ObstacleController obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(1, ObstacleType.Soldier, root, root, new Collider[] { gameplayCollider }, ObstacleFeedbackType.NormalImpact);
-            KnockedEnemyPhysics knockedPhysics = root.AddComponent<KnockedEnemyPhysics>();
-            knockedPhysics.Initialize(2.25f);
-            Collider[] colliders = root.GetComponents<Collider>();
-            Collider knockbackCollider = colliders[1];
-            speed.SetLevel(3, SpeedChangeReason.Debug);
-
-            obstacle.Resolve(speed, 0.2f, 3.5f);
-            knockedPhysics.Launch(new Vector3(2.6f, 3.8f, 5.88f), Vector3.one);
-
-            Assert.That(gameplayCollider.enabled, Is.False);
-            Assert.That(knockbackCollider.enabled, Is.True);
-            Assert.That(root.GetComponent<Rigidbody>().isKinematic, Is.False);
-            Assert.That(knockedPhysics.IsLaunched, Is.True);
-        }
-
-        [Test]
         public void HigherRequirementStillBreaksAndDropsExactlyOneLevel()
         {
             BoxCollider collider = root.AddComponent<BoxCollider>();
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(3, ObstacleType.StoneWall, root, root, new Collider[] { collider }, ObstacleFeedbackType.HeavyBreak);
+            obstacle.Initialize(3, ObstacleType.StoneWall, new Collider[] { collider });
             speed.SetSpeed(2.4f);
 
-            ObstacleResolutionType resolution = obstacle.Resolve(speed, 0.2f, 3.5f);
+            ObstacleResolutionType resolution = obstacle.Resolve(speed, 0.2f);
 
             Assert.That(resolution, Is.EqualTo(ObstacleResolutionType.Dropped));
             Assert.That(speed.CurrentSpeed, Is.EqualTo(1f));
@@ -289,10 +202,10 @@ namespace PlayableAdEditor.Tests
         {
             BoxCollider collider = root.AddComponent<BoxCollider>();
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(3, ObstacleType.StoneWall, root, root, new Collider[] { collider }, ObstacleFeedbackType.HeavyBreak);
+            obstacle.Initialize(3, ObstacleType.StoneWall, new Collider[] { collider });
             speed.SetLevel(3, SpeedChangeReason.Debug);
 
-            ObstacleResolutionType resolution = obstacle.Resolve(speed, 0.2f, 3.5f);
+            ObstacleResolutionType resolution = obstacle.Resolve(speed, 0.2f);
 
             Assert.That(resolution, Is.EqualTo(ObstacleResolutionType.Boosted));
             Assert.That(speed.CurrentSpeed, Is.EqualTo(3.2f).Within(0.0001f));
@@ -524,34 +437,9 @@ namespace PlayableAdEditor.Tests
         [TestCase(4, 1, CollisionOutcome.SpeedGain)]
         [TestCase(4, 4, CollisionOutcome.SpeedGain)]
         [TestCase(4, 5, CollisionOutcome.SpeedLoss)]
-        public void CollisionOutcomeUsesOneThreeStateBoundary(int playerLevel, int requiredLevel, CollisionOutcome expected)
+        public void CollisionOutcomeUsesRequiredLevelBoundary(int playerLevel, int requiredLevel, CollisionOutcome expected)
         {
             Assert.That(ObstacleController.EvaluateCollisionOutcome(playerLevel, requiredLevel), Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void ControlledRewardLanesAreSeededBalancedAndNeverTripleCenter()
-        {
-            int[] first = new int[6];
-            int[] repeated = new int[6];
-            int left = 0;
-            int center = 0;
-            int right = 0;
-            for (int i = 0; i < first.Length; i++)
-            {
-                first[i] = PlayableAdGame.GetControlledRewardLane(i, 41723);
-                repeated[i] = PlayableAdGame.GetControlledRewardLane(i, 41723);
-                if (first[i] < 0) left++;
-                else if (first[i] > 0) right++;
-                else center++;
-            }
-
-            CollectionAssert.AreEqual(first, repeated);
-            Assert.That(left, Is.EqualTo(2));
-            Assert.That(center, Is.EqualTo(2));
-            Assert.That(right, Is.EqualTo(2));
-            for (int i = 2; i < first.Length; i++)
-                Assert.That(first[i - 2] == 0 && first[i - 1] == 0 && first[i] == 0, Is.False);
         }
 
         [Test]
@@ -567,7 +455,7 @@ namespace PlayableAdEditor.Tests
             };
             pool.Initialize(presentation, new VisualPerformanceSettings());
 
-            pool.PlayBreak(Vector3.zero, Vector3.one, Color.green, 1f, 1f);
+            pool.PlayBreak(Vector3.zero, Vector3.one, Color.green, 1f, 1f, 10);
 
             Assert.That(pool.Capacity, Is.EqualTo(24));
             Assert.That(pool.ActiveFragmentCount, Is.EqualTo(4));
@@ -576,16 +464,16 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
-        public void ObstacleResolutionPublishesTheSameOutcomeUsedByPreview()
+        public void ObstacleResolutionPublishesItsEvaluatedOutcome()
         {
             BoxCollider collider = root.AddComponent<BoxCollider>();
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(5, ObstacleType.Soldier, root, root, new Collider[] { collider }, ObstacleFeedbackType.NormalImpact);
+            obstacle.Initialize(5, ObstacleType.Soldier, new Collider[] { collider });
             speed.SetLevel(4, SpeedChangeReason.DebugCommand);
             CollisionOutcome published = CollisionOutcome.Neutral;
             obstacle.Resolved += resolved => published = resolved.Outcome;
 
-            ObstacleResolutionType resolution = obstacle.Resolve(speed, settings.normalImpactBoost, settings.normalImpactSoftCap);
+            ObstacleResolutionType resolution = obstacle.Resolve(speed, settings.normalImpactBoost);
 
             Assert.That(published, Is.EqualTo(CollisionOutcome.SpeedLoss));
             Assert.That(resolution, Is.EqualTo(ObstacleResolutionType.Dropped));
@@ -606,7 +494,6 @@ namespace PlayableAdEditor.Tests
             Assert.That(last.NewLevel, Is.EqualTo(4));
             Assert.That(last.LevelsChanged, Is.EqualTo(3));
             Assert.That(last.IsLevelUp, Is.True);
-            Assert.That(last.IsMajorLevel, Is.True);
         }
 
         [Test]
@@ -619,52 +506,6 @@ namespace PlayableAdEditor.Tests
             speed.SetSpeed(4.32f, SpeedChangeReason.LowLevelCollisionReward);
 
             Assert.That(eventCount, Is.Zero);
-        }
-
-        [Test]
-        public void RoutePreviewSimulatesOrderedGainWithoutLegacySoftCap()
-        {
-            var steps = new System.Collections.Generic.List<RoutePreviewStep>();
-            for (int i = 0; i < 30; i++)
-                steps.Add(RoutePreviewStep.Obstacle(1, settings.levelOneSoldierBoost, settings.normalImpactSoftCap));
-            float realSpeed = speed.CurrentSpeed;
-
-            RouteEvaluation result = RoutePreviewEvaluator.Evaluate(4f, steps, settings, new RoutePreviewSettings());
-
-            Assert.That(result.State, Is.EqualTo(RouteState.StrongGain));
-            Assert.That(result.ExpectedEndSpeed, Is.EqualTo(7.6f).Within(0.0001f));
-            Assert.That(result.GainTargetCount, Is.EqualTo(30));
-            Assert.That(speed.CurrentSpeed, Is.EqualTo(realSpeed));
-        }
-
-        [Test]
-        public void RoutePreviewDistinguishesGainRiskAndSpecialBoost()
-        {
-            RoutePreviewSettings preview = new RoutePreviewSettings();
-            var gain = new[] { RoutePreviewStep.Obstacle(4, settings.normalImpactBoost, settings.normalImpactSoftCap) };
-            var risk = new[] { RoutePreviewStep.Obstacle(5, settings.normalImpactBoost, settings.normalImpactSoftCap) };
-            var special = new[] { RoutePreviewStep.SetLevelReward(7) };
-
-            Assert.That(RoutePreviewEvaluator.Evaluate(4f, gain, settings, preview).State, Is.EqualTo(RouteState.Gain));
-            Assert.That(RoutePreviewEvaluator.Evaluate(4f, risk, settings, preview).State, Is.EqualTo(RouteState.HeavyRisk));
-            Assert.That(RoutePreviewEvaluator.Evaluate(4f, special, settings, preview).State, Is.EqualTo(RouteState.SpecialBoost));
-        }
-
-        [Test]
-        public void PositiveRouteWithIntermediateDropKeepsRiskBadgeData()
-        {
-            var steps = new System.Collections.Generic.List<RoutePreviewStep>
-            {
-                RoutePreviewStep.Obstacle(5, settings.normalImpactBoost, settings.normalImpactSoftCap)
-            };
-            for (int i = 0; i < 24; i++)
-                steps.Add(RoutePreviewStep.Obstacle(1, settings.levelOneSoldierBoost, settings.normalImpactSoftCap));
-
-            RouteEvaluation result = RoutePreviewEvaluator.Evaluate(4f, steps, settings, new RoutePreviewSettings());
-
-            Assert.That(result.ExpectedSpeedDelta, Is.GreaterThan(0.15f));
-            Assert.That(result.HasForcedSpeedLoss, Is.True);
-            Assert.That(result.State, Is.EqualTo(RouteState.StrongGain));
         }
 
         [Test]
@@ -723,16 +564,5 @@ namespace PlayableAdEditor.Tests
             }
         }
 
-        [Test]
-        public void RoutePreviewDefaultsRemainShortThinAndLowAlpha()
-        {
-            RoutePreviewSettings route = new RoutePreviewSettings();
-
-            Assert.That(route.ribbonLength, Is.InRange(3f, 8f));
-            Assert.That(route.ribbonWidth, Is.LessThanOrEqualTo(0.15f));
-            Assert.That(route.normalRibbonAlpha, Is.InRange(0.15f, 0.3f));
-            Assert.That(route.recommendedRibbonAlpha, Is.InRange(0.3f, 0.45f));
-            Assert.That(route.recommendedRibbonAlpha, Is.GreaterThan(route.normalRibbonAlpha));
-        }
     }
 }

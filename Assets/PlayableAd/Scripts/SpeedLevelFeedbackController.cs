@@ -14,9 +14,6 @@ namespace PlayableAd
         private Action<float, float, float> cameraFeedback;
         private ulong lastSettlementId;
 
-        public int LevelUpFeedbackCount { get; private set; }
-        public SpeedLevelChangeData LastLevelChange { get; private set; }
-
         public void Initialize(PlayerSpeedController controller, SpeedLevelFeedbackConfig feedbackConfig,
             SpeedVisualProfile profile, SpeedVisualFeedback visuals, SpeedBarView bar,
             AudioFeedbackController audio, Action<float, float, float> cameraCallback)
@@ -35,8 +32,6 @@ namespace PlayableAd
         {
             if (!change.IsLevelUp || change.SettlementId == lastSettlementId) return;
             lastSettlementId = change.SettlementId;
-            LastLevelChange = change;
-            LevelUpFeedbackCount++;
             SpeedLevelFeedbackData level = config.Get(change.NewLevel);
             float multiLevel = Mathf.Min(config.multiLevelMaxMultiplier, 1f + (change.LevelsChanged - 1) * 0.16f);
             float strength = config.levelUpFeedbackStrength * multiLevel;

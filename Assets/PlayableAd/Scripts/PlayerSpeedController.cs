@@ -42,13 +42,9 @@ namespace PlayableAd
         [Header("P0 Rules（P0 规则）")]
         [Range(1, RequiredLevelCount), InspectorName("Starting Level（起始等级）")] public int startingLevel = 1;
         [Range(1, RequiredLevelCount), InspectorName("Tutorial Elixir Target Level（教学药剂目标等级）")] public int tutorialElixirTargetLevel = 4;
-        [HideInInspector] public bool automaticSpeedDecayEnabled = false;
-        [HideInInspector] public float mainRunDecayPerSecond = 0.1f;
         [InspectorName("Log Speed Changes（记录速度变化）")] public bool logSpeedChanges = false;
         [Min(0f), InspectorName("Level One Soldier Boost（一级士兵增益）")] public float levelOneSoldierBoost = 0.12f;
         [Min(0f), InspectorName("Normal Impact Boost（普通冲击增益）")] public float normalImpactBoost = 0.18f;
-        [HideInInspector] public float normalImpactSoftCap = 10f;
-        [HideInInspector] public float tutorialImpactSoftCap = 10f;
         [Range(1, RequiredLevelCount), InspectorName("Boss Victory Level（Boss 胜利等级）")] public int bossVictoryLevel = 10;
 
         public int LevelCount => levelStartSpeeds != null ? levelStartSpeeds.Length : RequiredLevelCount;
@@ -84,11 +80,9 @@ namespace PlayableAd
         public readonly int LevelsChanged;
         public readonly SpeedChangeReason Reason;
         public readonly UnityEngine.Object Source;
-        public readonly bool IsMajorLevel;
-        public readonly Vector3 WorldPosition;
 
         public SpeedLevelChangeData(ulong settlementId, float oldSpeed, float newSpeed, int oldLevel, int newLevel,
-            SpeedChangeReason reason, UnityEngine.Object source, Vector3 worldPosition)
+            SpeedChangeReason reason, UnityEngine.Object source)
         {
             SettlementId = settlementId;
             OldSpeed = oldSpeed;
@@ -98,8 +92,6 @@ namespace PlayableAd
             LevelsChanged = Mathf.Abs(newLevel - oldLevel);
             Reason = reason;
             Source = source;
-            IsMajorLevel = newLevel == 4 || newLevel == 7 || newLevel == 9 || newLevel == 10;
-            WorldPosition = worldPosition;
         }
 
         public bool IsLevelUp => NewLevel > OldLevel;
@@ -120,7 +112,6 @@ namespace PlayableAd
         public SpeedChangeReason LastSpeedChangeReason { get; private set; } = SpeedChangeReason.InitialSetup;
         public float LastSpeedChangeTime { get; private set; }
         public UnityEngine.Object LastSpeedChangeSource { get; private set; }
-        public bool AutomaticSpeedDecayEnabled => settings != null && settings.automaticSpeedDecayEnabled;
         public ulong SettlementSequence { get; private set; }
 
         public void Initialize(PlayerSpeedSettings speedSettings)
@@ -171,20 +162,18 @@ namespace PlayableAd
             SetSpeedInternal(GetLevelStartSpeed(level), reason, source, forceNotification);
         }
 
-        public void AddSpeed(float amount, float softCap)
+        public void AddSpeed(float amount)
         {
-            AddSpeed(amount, softCap, SpeedChangeReason.NormalImpact);
+            AddSpeed(amount, SpeedChangeReason.NormalImpact);
         }
 
-        public void AddSpeed(float amount, float softCap, SpeedChangeReason reason)
+        public void AddSpeed(float amount, SpeedChangeReason reason)
         {
-            AddSpeed(amount, softCap, reason, null);
+            AddSpeed(amount, reason, null);
         }
 
-        public void AddSpeed(float amount, float softCap, SpeedChangeReason reason, UnityEngine.Object source)
+        public void AddSpeed(float amount, SpeedChangeReason reason, UnityEngine.Object source)
         {
-            // softCap is retained in the signature for serialized and API compatibility.
-            // Positive speed changes now use only the authoritative global maximum.
             float target = Mathf.Min(currentSpeed + Mathf.Max(0f, amount), settings.maximumSpeed);
             SetSpeedInternal(target, reason, source, true);
         }
@@ -246,12 +235,6 @@ namespace PlayableAd
             return Mathf.Lerp(settings.forwardSpeeds[level - 1], settings.forwardSpeeds[level], progress);
         }
 
-        public void ApplyMainRunDecay(float deltaTime)
-        {
-            if (!AutomaticSpeedDecayEnabled || deltaTime <= 0f || settings.mainRunDecayPerSecond <= 0f) return;
-            ApplyContinuousSpeedLoss(deltaTime, settings.mainRunDecayPerSecond, settings.minimumSpeed, this);
-        }
-
         public void ApplyContinuousSpeedLoss(float deltaTime, float lossPerSecond, float minimumRetainedSpeed,
             UnityEngine.Object source)
         {
@@ -295,7 +278,7 @@ namespace PlayableAd
             {
                 SettlementSequence++;
                 SpeedLevelChanged?.Invoke(new SpeedLevelChangeData(SettlementSequence, oldValue, currentSpeed,
-                    oldLevel, newLevel, reason, source, transform.position));
+                    oldLevel, newLevel, reason, source));
             }
         }
 

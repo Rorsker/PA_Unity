@@ -71,18 +71,23 @@ namespace PlayableAd
             }
         }
 
-        public void Trigger(string triggerName)
-        {
-            if (animator != null && !string.IsNullOrEmpty(triggerName))
-            {
-                animator.SetTrigger(triggerName);
-            }
-        }
     }
 
     internal static class RuntimeStyle
     {
         private static readonly Dictionary<int, Material> SharedMaterials = new Dictionary<int, Material>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetSharedMaterials()
+        {
+            foreach (Material material in SharedMaterials.Values)
+            {
+                if (material == null) continue;
+                if (Application.isPlaying) Object.Destroy(material);
+                else Object.DestroyImmediate(material);
+            }
+            SharedMaterials.Clear();
+        }
 
         public static Material CreateMaterial(Color color, float metallic = 0f, float smoothness = 0.45f)
         {

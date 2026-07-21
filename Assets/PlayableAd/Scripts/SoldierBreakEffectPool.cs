@@ -13,9 +13,6 @@ namespace PlayableAd
         private bool warnedTier1;
         private bool warnedTier4;
 
-        public int Tier1Capacity => tier1Effects != null ? tier1Effects.Length : 0;
-        public int Tier4Capacity => tier4Effects != null ? tier4Effects.Length : 0;
-
         public void Initialize(GameObject tier1Prefab, GameObject tier4Prefab, int tier1Capacity = 8, int tier4Capacity = 4)
         {
             tier1Effects = BuildPool(tier1Prefab, Mathf.Max(1, tier1Capacity), "Tier1Break");
@@ -51,6 +48,13 @@ namespace PlayableAd
         private SoldierBreakEffect[] BuildPool(GameObject prefab, int capacity, string prefix)
         {
             if (prefab == null) return new SoldierBreakEffect[0];
+            SoldierBreakEffect prefabEffect = prefab.GetComponent<SoldierBreakEffect>();
+            if (prefabEffect == null || !prefabEffect.IsConfigured)
+            {
+                Debug.LogError(prefab.name
+                    + " must have a configured SoldierBreakEffect component on its root.", prefab);
+                return new SoldierBreakEffect[0];
+            }
             SoldierBreakEffect[] pool = new SoldierBreakEffect[capacity];
             for (int i = 0; i < capacity; i++)
             {

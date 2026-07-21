@@ -19,7 +19,6 @@ namespace PlayableAd
         [Header("Layered high-speed feedback（分层高速反馈）")]
         [Min(0f), InspectorName("Airflow Emission（气流发射量）")] public float airflowEmission;
         [Min(0f), InspectorName("Airflow Speed（气流速度）")] public float airflowSpeed;
-        [Min(0f), InspectorName("Airflow Length（气流长度）")] public float airflowLength;
         [Range(0f, 1f), InspectorName("Airflow Alpha（气流透明度）")] public float airflowAlpha;
         [Range(0f, 1f), InspectorName("Ground Flow Intensity（地面流动强度）")] public float groundFlowIntensity;
         [Min(0f), InspectorName("Afterimage Rate（残影频率）")] public float afterimageRate;
@@ -28,7 +27,6 @@ namespace PlayableAd
         [Range(0f, 1f), InspectorName("Wind Volume（风声音量）")] public float windVolume;
         [Range(0.8f, 1.3f), InspectorName("Wind Pitch（风声音调）")] public float windPitch = 1f;
         [Range(0.8f, 1.5f), InspectorName("Impact Feedback Multiplier（冲击反馈倍率）")] public float impactFeedbackMultiplier = 1f;
-        [Range(0f, 1f), InspectorName("Environment Response Strength（环境响应强度）")] public float environmentResponseStrength;
 
         [Header("Camera And Pose（镜头与姿态）")]
         [Range(0f, 24f), InspectorName("FOV Bonus（视场角加成）")] public float fovBonus;
@@ -126,7 +124,6 @@ namespace PlayableAd
             float highSpeed = Mathf.Clamp01((lines - 0.18f) / 0.77f);
             tier.airflowEmission = highSpeed * Mathf.Lerp(5f, 34f, highSpeed);
             tier.airflowSpeed = Mathf.Lerp(2f, 11f, highSpeed);
-            tier.airflowLength = Mathf.Lerp(0.25f, 2.8f, highSpeed);
             tier.airflowAlpha = highSpeed * 0.72f;
             tier.groundFlowIntensity = highSpeed;
             tier.afterimageRate = Mathf.Max(0f, (highSpeed - 0.48f) * 13f);
@@ -135,7 +132,6 @@ namespace PlayableAd
             tier.windVolume = Mathf.SmoothStep(0f, 0.72f, highSpeed);
             tier.windPitch = Mathf.Lerp(0.94f, 1.16f, highSpeed);
             tier.impactFeedbackMultiplier = Mathf.Lerp(0.9f, 1.3f, highSpeed);
-            tier.environmentResponseStrength = highSpeed;
             return tier;
         }
     }

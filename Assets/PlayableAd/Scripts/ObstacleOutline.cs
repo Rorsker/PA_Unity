@@ -45,6 +45,21 @@ namespace PlayableAd
         public bool IsSafe { get; private set; }
         public CollisionOutcome CurrentOutcome { get; private set; } = CollisionOutcome.Neutral;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetSharedMaterials()
+        {
+            DestroySharedMaterial(ref fallbackSharedMaterial);
+            DestroySharedMaterial(ref statusRingSharedMaterial);
+        }
+
+        private static void DestroySharedMaterial(ref Material material)
+        {
+            if (material == null) return;
+            if (Application.isPlaying) Destroy(material);
+            else DestroyImmediate(material);
+            material = null;
+        }
+
         public void Initialize(ObstacleOutlineSettings outlineSettings, PlayerSpeedController controller,
             ObstacleController targetObstacle, Renderer[] visualSources = null)
         {
@@ -125,41 +140,6 @@ namespace PlayableAd
                 statusRing.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius / scaleX, 0f,
                     Mathf.Sin(angle) * radius / scaleZ));
             }
-        }
-
-        private Renderer[] BuildVisualOutlines(Renderer[] sources, Material material)
-        {
-            Renderer[] results = new Renderer[sources.Length];
-            for (int i = 0; i < sources.Length; i++)
-            {
-                Renderer source = sources[i];
-                GameObject outline = new GameObject("RiskOutline_" + source.name);
-                outline.transform.SetParent(source.transform, false);
-                Renderer result;
-                SkinnedMeshRenderer skinnedSource = source as SkinnedMeshRenderer;
-                if (skinnedSource != null)
-                {
-                    SkinnedMeshRenderer skinnedOutline = outline.AddComponent<SkinnedMeshRenderer>();
-                    skinnedOutline.sharedMesh = skinnedSource.sharedMesh;
-                    skinnedOutline.bones = skinnedSource.bones;
-                    skinnedOutline.rootBone = skinnedSource.rootBone;
-                    skinnedOutline.localBounds = skinnedSource.localBounds;
-                    skinnedOutline.updateWhenOffscreen = false;
-                    result = skinnedOutline;
-                }
-                else
-                {
-                    MeshFilter sourceFilter = source.GetComponent<MeshFilter>();
-                    MeshFilter targetFilter = outline.AddComponent<MeshFilter>();
-                    targetFilter.sharedMesh = sourceFilter != null ? sourceFilter.sharedMesh : null;
-                    result = outline.AddComponent<MeshRenderer>();
-                }
-                result.sharedMaterial = material;
-                result.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                result.receiveShadows = false;
-                results[i] = result;
-            }
-            return results;
         }
 
         public void SetPreviewActive(bool active)

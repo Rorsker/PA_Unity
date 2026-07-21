@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PlayableAd
@@ -49,6 +50,7 @@ namespace PlayableAd
         private LineRenderer[] rings;
         private LineRenderer[] bossTracks;
         private LineRenderer[] cracks;
+        private readonly List<Material> ownedMaterials = new List<Material>(4);
         private BossClashPhase phase;
         private bool playerWins;
 
@@ -125,8 +127,8 @@ namespace PlayableAd
 
         private void BuildEnergyBeams()
         {
-            Material playerMaterial = new Material(Shader.Find("Sprites/Default")) { name = "SharedBossPlayerEnergy" };
-            Material bossMaterial = new Material(Shader.Find("Sprites/Default")) { name = "SharedBossDarkEnergy" };
+            Material playerMaterial = CreateOwnedMaterial("SharedBossPlayerEnergy");
+            Material bossMaterial = CreateOwnedMaterial("SharedBossDarkEnergy");
             playerBeam = CreateLine("PlayerClashEnergy", playerMaterial, settings.playerEnergy, true);
             bossBeam = CreateLine("BossClashEnergy", bossMaterial, settings.bossEnergy, true);
         }
@@ -135,7 +137,7 @@ namespace PlayableAd
         {
             centerRoot = new GameObject("ClashCenter").transform;
             centerRoot.SetParent(transform, false);
-            Material material = new Material(Shader.Find("Sprites/Default")) { name = "SharedClashRing" };
+            Material material = CreateOwnedMaterial("SharedClashRing");
             rings = new LineRenderer[3];
             for (int ringIndex = 0; ringIndex < rings.Length; ringIndex++)
             {
@@ -156,7 +158,7 @@ namespace PlayableAd
 
         private void BuildGroundMarks()
         {
-            Material material = new Material(Shader.Find("Sprites/Default")) { name = "SharedBossGroundMarks" };
+            Material material = CreateOwnedMaterial("SharedBossGroundMarks");
             bossTracks = new LineRenderer[2];
             for (int i = 0; i < 2; i++)
             {
@@ -204,6 +206,25 @@ namespace PlayableAd
             line.endColor = new Color(color.r, color.g, color.b, 0f);
             line.numCapVertices = 0;
             return line;
+        }
+
+        private Material CreateOwnedMaterial(string materialName)
+        {
+            Material material = new Material(Shader.Find("Sprites/Default")) { name = materialName };
+            ownedMaterials.Add(material);
+            return material;
+        }
+
+        private void OnDestroy()
+        {
+            for (int i = 0; i < ownedMaterials.Count; i++)
+            {
+                Material material = ownedMaterials[i];
+                if (material == null) continue;
+                if (Application.isPlaying) Destroy(material);
+                else DestroyImmediate(material);
+            }
+            ownedMaterials.Clear();
         }
     }
 }

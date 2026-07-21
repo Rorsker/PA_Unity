@@ -17,11 +17,10 @@ namespace PlayableAd
         private float restoreFixedDeltaTime = 0.02f;
         private bool ownsTimeScale;
 
-        public bool IsActive => requests.Count > 0;
-
         public void RequestSlowMotion(float scale, float duration)
         {
             if (duration <= 0f) return;
+            if (BulletTimeManager.Instance != null && BulletTimeManager.Instance.IsBulletTime()) return;
             if (!ownsTimeScale)
             {
                 restoreTimeScale = Time.timeScale;

@@ -6,8 +6,8 @@ namespace PlayableAd
     public sealed class SoldierBreakEffect : MonoBehaviour
     {
         [SerializeField, Range(3, 8), InspectorName("Fragment Count（碎片数量）")] private int fragmentCount = 5;
-        [SerializeField, InspectorName("Fragments（碎片刚体）")] private Rigidbody[] fragments;
-        [SerializeField, InspectorName("Particles（粒子系统）")] private ParticleSystem[] particles;
+        [SerializeField, InspectorName("Fragments（碎片刚体）")] private Rigidbody[] fragments = new Rigidbody[0];
+        [SerializeField, InspectorName("Particles（粒子系统）")] private ParticleSystem[] particles = new ParticleSystem[0];
         [SerializeField, Min(0f), InspectorName("Forward Force（前向力度）")] private float forwardForce = 7f;
         [SerializeField, Min(0f), InspectorName("Speed Forward Bonus（速度前向加成）")] private float speedForwardBonus = 7f;
         [SerializeField, Min(1f), InspectorName("Forward Speed Multiplier（前向速度倍率）")] private float forwardSpeedMultiplier = 1.25f;
@@ -31,11 +31,23 @@ namespace PlayableAd
         private uint sequence;
 
         public bool IsPlaying => playing;
+        public bool IsConfigured
+        {
+            get
+            {
+                if (fragments == null) return false;
+                for (int i = 0; i < fragments.Length; i++)
+                    if (fragments[i] != null) return true;
+                return false;
+            }
+        }
         public uint Sequence => sequence;
 
         private void Awake()
         {
-            int count = fragments != null ? fragments.Length : 0;
+            if (fragments == null) fragments = new Rigidbody[0];
+            if (particles == null) particles = new ParticleSystem[0];
+            int count = fragments.Length;
             localPositions = new Vector3[count];
             localRotations = new Quaternion[count];
             localScales = new Vector3[count];
@@ -43,6 +55,7 @@ namespace PlayableAd
             angularVelocities = new Vector3[count];
             for (int i = 0; i < count; i++)
             {
+                if (fragments[i] == null) continue;
                 Transform fragment = fragments[i].transform;
                 localPositions[i] = fragment.localPosition;
                 localRotations[i] = fragment.localRotation;
@@ -72,6 +85,7 @@ namespace PlayableAd
             for (int i = 0; i < fragments.Length; i++)
             {
                 Rigidbody body = fragments[i];
+                if (body == null) continue;
                 body.gameObject.SetActive(i < count);
                 if (i >= count) continue;
                 Transform fragment = body.transform;
@@ -90,6 +104,9 @@ namespace PlayableAd
 
             for (int i = 0; i < particles.Length; i++)
             {
+                if (particles[i] == null) continue;
+                ParticleSystem.MainModule main = particles[i].main;
+                main.simulationSpeed = GetWorldTimeScale();
                 particles[i].Clear(true);
                 particles[i].Play(true);
             }
@@ -98,6 +115,7 @@ namespace PlayableAd
         private void Update()
         {
             if (!playing) return;
+            UpdateParticleTimeScale();
             float worldDeltaTime = BulletTimeManager.Instance != null
                 ? BulletTimeManager.Instance.GetWorldDeltaTime()
                 : Time.deltaTime;
@@ -111,6 +129,7 @@ namespace PlayableAd
             int count = Mathf.Min(fragmentCount, fragments.Length);
             for (int i = 0; i < count; i++)
             {
+                if (fragments[i] == null) continue;
                 if (!fragments[i].gameObject.activeSelf) continue;
                 velocities[i] += Physics.gravity * gravityMultiplier * worldDeltaTime;
                 fragments[i].transform.position += velocities[i] * worldDeltaTime;
@@ -130,6 +149,22 @@ namespace PlayableAd
             }
         }
 
+        private void UpdateParticleTimeScale()
+        {
+            float worldScale = GetWorldTimeScale();
+            for (int i = 0; i < particles.Length; i++)
+            {
+                if (particles[i] == null) continue;
+                ParticleSystem.MainModule main = particles[i].main;
+                main.simulationSpeed = worldScale;
+            }
+        }
+
+        private static float GetWorldTimeScale()
+        {
+            return BulletTimeManager.Instance != null ? BulletTimeManager.Instance.WorldTimeScale : 1f;
+        }
+
         public void StopAndHide()
         {
             playing = false;
@@ -137,6 +172,7 @@ namespace PlayableAd
             for (int i = 0; i < fragments.Length; i++)
             {
                 Rigidbody body = fragments[i];
+                if (body == null) continue;
                 body.useGravity = false;
                 body.isKinematic = true;
                 body.detectCollisions = false;
@@ -146,7 +182,13 @@ namespace PlayableAd
                 body.transform.localRotation = localRotations[i];
                 body.transform.localScale = localScales[i];
             }
-            for (int i = 0; i < particles.Length; i++) particles[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            for (int i = 0; i < particles.Length; i++)
+            {
+                if (particles[i] == null) continue;
+                ParticleSystem.MainModule main = particles[i].main;
+                main.simulationSpeed = 1f;
+                particles[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
             gameObject.SetActive(false);
         }
     }

@@ -38,12 +38,13 @@ namespace PlayableAd.Editor
                 return;
             }
 
-            // PropertyField draws HeaderAttribute decorators for leaf fields. Foldouts are
-            // rendered manually here, so only generic properties need a manual header.
-            FieldInfo field = FindField(property.serializedObject.targetObject.GetType(), property.propertyPath);
-            HeaderAttribute header = field != null ? field.GetCustomAttribute<HeaderAttribute>() : null;
-            if (header != null)
-                EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+            if (property.isArray && (property.name == "soldierSections" || property.name == "additionalStoneWalls"))
+            {
+                DrawModuleArray(property);
+                return;
+            }
+
+            DrawHeader(property);
 
             Rect foldoutRect = EditorGUILayout.GetControlRect();
             property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, GetLabel(property), true);
@@ -62,17 +63,138 @@ namespace PlayableAd.Editor
             EditorGUI.indentLevel--;
         }
 
+        private static void DrawModuleArray(SerializedProperty property)
+        {
+            DrawHeader(property);
+            Rect foldoutRect = EditorGUILayout.GetControlRect();
+            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, GetLabel(property), true);
+            if (!property.isExpanded) return;
+
+            EditorGUI.indentLevel++;
+            for (int i = 0; i < property.arraySize; i++)
+                DrawProperty(property.GetArrayElementAtIndex(i));
+
+            using (new EditorGUI.DisabledScope(property.serializedObject.isEditingMultipleObjects))
+            {
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Add（新增）")) AddModuleElement(property);
+                using (new EditorGUI.DisabledScope(property.arraySize == 0))
+                {
+                    if (GUILayout.Button("Remove Last（删除末项）"))
+                        property.DeleteArrayElementAtIndex(property.arraySize - 1);
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            EditorGUI.indentLevel--;
+        }
+
+        private static void AddModuleElement(SerializedProperty property)
+        {
+            int index = property.arraySize;
+            float previousOffset = GetMaximumStartOffset(property);
+            property.arraySize++;
+            SerializedProperty element = property.GetArrayElementAtIndex(index);
+
+            if (property.name == "soldierSections")
+            {
+                element.FindPropertyRelative("sectionName").stringValue = (index + 1).ToString();
+                element.FindPropertyRelative("startOffsetFromTutorial").floatValue = previousOffset + 30f;
+                element.FindPropertyRelative("soldierCount").intValue = 5;
+                element.FindPropertyRelative("placementMode").enumValueIndex = 0;
+                element.FindPropertyRelative("minimumForwardSpacing").floatValue = 0.8f;
+                element.FindPropertyRelative("horizontalCoverage").floatValue = 1f;
+                element.FindPropertyRelative("forwardRandomness").floatValue = 0.8f;
+                return;
+            }
+
+            element.FindPropertyRelative("sectionName").stringValue = "StoneWall" + (index + 1);
+            float nextOffset = previousOffset + 100f;
+            float maximumOffset = GetMaximumStoneWallOffset(property.serializedObject);
+            if (nextOffset > maximumOffset)
+            {
+                nextOffset = maximumOffset;
+                if (previousOffset >= maximumOffset)
+                    Debug.LogWarning("No free course distance remains before the Boss for another stone wall.",
+                        property.serializedObject.targetObject);
+            }
+            element.FindPropertyRelative("startOffsetFromTutorial").floatValue = nextOffset;
+            element.FindPropertyRelative("blockingMode").enumValueIndex = 0;
+            SerializedProperty bulletTime = element.FindPropertyRelative("bulletTime");
+            bulletTime.FindPropertyRelative("enabled").boolValue = false;
+            bulletTime.FindPropertyRelative("triggerDistance").floatValue = 3f;
+            bulletTime.FindPropertyRelative("duration").floatValue = 0.55f;
+            bulletTime.FindPropertyRelative("worldTimeScale").floatValue = 0.25f;
+            bulletTime.FindPropertyRelative("enterDuration").floatValue = 0.2f;
+            bulletTime.FindPropertyRelative("exitDuration").floatValue = 0.15f;
+        }
+
+        private static float GetMaximumStartOffset(SerializedProperty array)
+        {
+            float maximum = 0f;
+            for (int i = 0; i < array.arraySize; i++)
+            {
+                SerializedProperty offset = array.GetArrayElementAtIndex(i)
+                    .FindPropertyRelative("startOffsetFromTutorial");
+                if (offset != null) maximum = Mathf.Max(maximum, offset.floatValue);
+            }
+            return maximum;
+        }
+
+        private static float GetMaximumStoneWallOffset(SerializedObject serializedObject)
+        {
+            SerializedProperty forwardSpeeds = serializedObject.FindProperty("playerSpeed.forwardSpeeds");
+            float openingForwardSpeed = forwardSpeeds != null && forwardSpeeds.isArray && forwardSpeeds.arraySize > 0
+                ? forwardSpeeds.GetArrayElementAtIndex(0).floatValue
+                : 6f;
+            float openingElixirZ = GetFloat(serializedObject, "tuning.openingElixirTime", 1.23f)
+                * openingForwardSpeed;
+            int soldierCount = Mathf.Clamp(GetInt(serializedObject, "tuning.tutorialSoldierCount", 5), 3, 5);
+            float tutorialEndZ = openingElixirZ
+                + GetFloat(serializedObject, "tuning.tutorialFirstSoldierGap", 2.46f)
+                + (soldierCount - 1) * GetFloat(serializedObject, "tuning.tutorialSoldierSpacing", 1.85f)
+                + GetFloat(serializedObject, "tuning.tutorialWallGap", 6.15f);
+            float bossDistance = GetFloat(serializedObject, "tuning.bossDistance", 800f);
+            float bossPadding = GetFloat(serializedObject, "tuning.bossApproachPadding", 20f);
+            return Mathf.Max(0f, bossDistance - tutorialEndZ - bossPadding);
+        }
+
+        private static float GetFloat(SerializedObject serializedObject, string path, float fallback)
+        {
+            SerializedProperty value = serializedObject.FindProperty(path);
+            return value != null ? value.floatValue : fallback;
+        }
+
+        private static int GetInt(SerializedObject serializedObject, string path, int fallback)
+        {
+            SerializedProperty value = serializedObject.FindProperty(path);
+            return value != null ? value.intValue : fallback;
+        }
+
+        private static void DrawHeader(SerializedProperty property)
+        {
+            FieldInfo field = FindField(property.serializedObject.targetObject.GetType(), property.propertyPath);
+            HeaderAttribute header = field != null ? field.GetCustomAttribute<HeaderAttribute>() : null;
+            if (header != null) EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+        }
+
         private static GUIContent GetLabel(SerializedProperty property)
         {
+            if (property.propertyType == SerializedPropertyType.Generic && property.propertyPath.Contains(".Array.data["))
+            {
+                SerializedProperty sectionName = property.FindPropertyRelative("sectionName");
+                if (sectionName != null && !string.IsNullOrEmpty(sectionName.stringValue))
+                    return new GUIContent(sectionName.stringValue, property.tooltip);
+            }
+
             FieldInfo field = FindField(property.serializedObject.targetObject.GetType(), property.propertyPath);
             if (field != null)
             {
                 InspectorNameAttribute inspectorName = field.GetCustomAttribute<InspectorNameAttribute>();
                 if (inspectorName != null && !string.IsNullOrEmpty(inspectorName.displayName))
-                    return new GUIContent(inspectorName.displayName);
+                    return new GUIContent(inspectorName.displayName, property.tooltip);
             }
 
-            return new GUIContent(property.displayName);
+            return new GUIContent(property.displayName, property.tooltip);
         }
 
         private static FieldInfo FindField(Type rootType, string propertyPath)
@@ -90,6 +212,8 @@ namespace PlayableAd.Editor
                         ? currentType.GetElementType()
                         : GetCollectionElementType(currentType);
                     i++;
+                    if (i == parts.Length - 1) return null;
+                    result = null;
                     continue;
                 }
 

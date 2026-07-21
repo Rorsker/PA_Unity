@@ -12,7 +12,6 @@ namespace PlayableAd
         [Range(0.6f, 1f), InspectorName("Total Duration（总时长）")] public float totalDuration = 0.82f;
         [Range(0.08f, 0.15f), InspectorName("Slow Motion Duration（慢动作时长）")] public float slowMotionDuration = 0.11f;
         [Range(0.2f, 0.65f), InspectorName("Slow Motion Scale（慢动作缩放）")] public float slowMotionScale = 0.32f;
-        [Range(0.2f, 0.45f), InspectorName("Camera Recovery（镜头恢复）")] public float cameraRecovery = 0.3f;
 
         [Header("Impact（冲击）")]
         [Range(0.25f, 0.8f), InspectorName("Camera Shake（镜头抖动）")] public float cameraShake = 0.48f;
@@ -30,6 +29,9 @@ namespace PlayableAd
         {
             public Transform transform;
             public Collider collider;
+            public Vector3 initialLocalPosition;
+            public Quaternion initialLocalRotation;
+            public Vector3 initialLocalScale;
             public Vector3 velocity;
             public Vector3 angularVelocity;
         }
@@ -42,20 +44,6 @@ namespace PlayableAd
         private float timer;
         private VisualPerformanceSettings performance;
         private Material lineMaterial;
-
-        public bool IsBreaking => breaking;
-        public bool AllCollidersDisabled
-        {
-            get
-            {
-                if (chunks == null) return false;
-                for (int i = 0; i < chunks.Length; i++)
-                {
-                    if (chunks[i].collider != null && chunks[i].collider.enabled) return false;
-                }
-                return true;
-            }
-        }
 
         public void Initialize(WallBreakSettings wallSettings, Color stoneColor, SpeedVisualProfile profile,
             VisualPerformanceSettings performanceSettings)
@@ -85,6 +73,11 @@ namespace PlayableAd
             for (int i = 0; i < chunks.Length; i++)
             {
                 ChunkState chunk = chunks[i];
+                if (chunk == null || chunk.transform == null) continue;
+                chunk.transform.gameObject.SetActive(true);
+                chunk.transform.localPosition = chunk.initialLocalPosition;
+                chunk.transform.localRotation = chunk.initialLocalRotation;
+                chunk.transform.localScale = chunk.initialLocalScale;
                 if (chunk.collider != null) chunk.collider.enabled = false;
                 float side = Mathf.Sign(chunk.transform.localPosition.x);
                 if (Mathf.Abs(side) < 0.1f) side = i % 2 == 0 ? -1f : 1f;
@@ -98,9 +91,16 @@ namespace PlayableAd
 
         private void Update()
         {
-            if (!breaking) return;
             float worldScale = BulletTimeManager.Instance != null ? BulletTimeManager.Instance.WorldTimeScale : 1f;
-            float dt = Time.unscaledDeltaTime * worldScale;
+            if (dustParticles != null)
+            {
+                ParticleSystem.MainModule main = dustParticles.main;
+                main.simulationSpeed = worldScale;
+            }
+            if (!breaking) return;
+            float dt = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
             timer += dt;
             for (int i = 0; i < chunks.Length; i++)
             {
@@ -123,7 +123,7 @@ namespace PlayableAd
             shockwave.startColor = color;
             shockwave.endColor = color;
             if (waveT >= 1f) shockwave.enabled = false;
-            if (timer >= settings.totalDuration)
+            if (timer >= Mathf.Max(settings.totalDuration, settings.chunkLifetime))
             {
                 breaking = false;
                 shockwave.enabled = false;
@@ -162,7 +162,7 @@ namespace PlayableAd
                 collider.enabled = true;
                 Renderer renderer = collider.GetComponent<Renderer>();
                 if (renderer != null) renderer.sharedMaterial = sharedStone;
-                chunks[i] = new ChunkState { transform = collider.transform, collider = collider };
+                chunks[i] = CreateChunkState(collider.transform, collider);
             }
         }
 
@@ -186,13 +186,21 @@ namespace PlayableAd
                     chunkObject.transform.localPosition = new Vector3(centeredColumn * 1.3f + (row == 1 ? 0.18f : 0f), 0.58f + row * 1.05f, 0f);
                     chunkObject.transform.localScale = new Vector3(1.24f, 0.96f, 0.64f);
                     chunkObject.GetComponent<Renderer>().sharedMaterial = sharedStone;
-                    chunks[index++] = new ChunkState
-                    {
-                        transform = chunkObject.transform,
-                        collider = chunkObject.GetComponent<Collider>()
-                    };
+                    chunks[index++] = CreateChunkState(chunkObject.transform, chunkObject.GetComponent<Collider>());
                 }
             }
+        }
+
+        private static ChunkState CreateChunkState(Transform chunkTransform, Collider collider)
+        {
+            return new ChunkState
+            {
+                transform = chunkTransform,
+                collider = collider,
+                initialLocalPosition = chunkTransform.localPosition,
+                initialLocalRotation = chunkTransform.localRotation,
+                initialLocalScale = chunkTransform.localScale
+            };
         }
 
         private void BuildShockwave()

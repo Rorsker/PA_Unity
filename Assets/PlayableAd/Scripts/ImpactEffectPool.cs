@@ -15,7 +15,6 @@ namespace PlayableAd
         [Range(0.03f, 0.06f), InspectorName("Hit Stop Duration（顿帧时长）")] public float hitStopDuration = 0.045f;
         [Range(0.2f, 0.8f), InspectorName("Hit Stop Time Scale（顿帧时间缩放）")] public float hitStopTimeScale = 0.35f;
         [Range(0.05f, 0.35f), InspectorName("Normal Flash（普通闪光）")] public float normalFlash = 0.16f;
-        [Range(0.1f, 0.4f), InspectorName("Trail Pulse Recovery（拖尾脉冲恢复）")] public float trailPulseRecovery = 0.2f;
         [InspectorName("Enable Normal Hit Stop（启用普通命中顿帧）")] public bool enableNormalHitStop = false;
         [Range(0f, 0.18f), InspectorName("Normal Camera Shake（普通镜头抖动）")] public float normalCameraShake = 0.065f;
         [Range(0f, 2f), InspectorName("Normal FOV Punch（普通视场角冲击）")] public float normalFovPunch = 0.8f;
@@ -125,20 +124,38 @@ namespace PlayableAd
                 shard.timer = 0f;
                 shard.duration = settings.energyReturnDuration * UnityEngine.Random.Range(0.9f, 1.08f);
                 shard.active = true;
-                shard.root.SetActive(true);
                 shard.root.transform.position = position;
+                shard.line.SetPosition(0, position);
+                shard.line.SetPosition(1, position);
                 shard.line.startColor = new Color(color.r, color.g, color.b, 0.9f * strength);
                 shard.line.endColor = new Color(color.r, color.g, color.b, 0f);
+                shard.root.SetActive(true);
             }
         }
 
         private void Update()
         {
+            float bulletTimeScale = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.WorldTimeScale
+                : 1f;
+            if (impactPool != null)
+            {
+                for (int i = 0; i < impactPool.Length; i++)
+                {
+                    if (impactPool[i] == null) continue;
+                    ParticleSystem.MainModule main = impactPool[i].main;
+                    main.simulationSpeed = bulletTimeScale;
+                }
+            }
+
             if (runner == null || energyShards == null)
             {
                 return;
             }
 
+            float worldDeltaTime = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
             for (int i = 0; i < energyShards.Length; i++)
             {
                 EnergyShard shard = energyShards[i];
@@ -150,10 +167,11 @@ namespace PlayableAd
                 if (shard.root == null || shard.line == null)
                 {
                     shard.active = false;
+                    if (shard.root != null) shard.root.SetActive(false);
                     continue;
                 }
 
-                shard.timer += Time.unscaledDeltaTime;
+                shard.timer += worldDeltaTime;
                 float t = Mathf.Clamp01(shard.timer / shard.duration);
                 Vector3 target = runner.position + Vector3.up * 0.75f;
                 Vector3 position;

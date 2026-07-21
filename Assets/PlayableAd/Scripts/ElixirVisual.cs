@@ -19,6 +19,7 @@ namespace PlayableAd
         [Range(0.1f, 0.3f), InspectorName("Upgrade Moment（升级时刻）")] public float upgradeMoment = 0.18f;
         [Range(0.05f, 0.15f), InspectorName("Slow Motion Duration（慢动作时长）")] public float slowMotionDuration = 0.09f;
         [Range(0.35f, 0.9f), InspectorName("Slow Motion Scale（慢动作缩放）")] public float slowMotionScale = 0.62f;
+        [Range(0f, 0.5f), InspectorName("Camera Shake（镜头抖动）")] public float cameraShake = 0.11f;
         [Range(0f, 5f), InspectorName("Camera Push In（镜头推进）")] public float cameraPushIn = 1.8f;
         [Range(0f, 6f), InspectorName("Camera Rebound（镜头回弹）")] public float cameraRebound = 3.2f;
         [Range(0f, 1f), InspectorName("Pickup Flash（拾取闪光）")] public float pickupFlash = 0.32f;

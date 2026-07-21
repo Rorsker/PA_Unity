@@ -101,9 +101,13 @@ namespace PlayableAd
             if (animator != null)
             {
                 bool actionState = animator.GetBool(IsShieldCharging) || animator.GetBool(IsFallen);
-                animator.speed = actionState
+                float baseSpeed = actionState
                     ? 1f
                     : movementActive ? Mathf.Lerp(0.8f, 1.4f, speedNormalized) : 0f;
+                float worldScale = BulletTimeManager.Instance != null
+                    ? BulletTimeManager.Instance.WorldTimeScale
+                    : 1f;
+                animator.speed = baseSpeed * worldScale;
             }
 
             UpdateShadow(false);

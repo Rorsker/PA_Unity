@@ -8,6 +8,8 @@ namespace PlayableAd
 {
     public sealed class PlayableAdGame : MonoBehaviour
     {
+        private const float WallCollisionDistance = 1.3f;
+
         public enum SoldierPlacementMode
         {
             [InspectorName("Free Random Dense（自由随机密集）")]
@@ -65,10 +67,6 @@ namespace PlayableAd
         [Serializable]
         public sealed class Tuning
         {
-            [Header("Experience（体验时长）")]
-            [Tooltip("Approximate duration target for the complete playable loop, including the Boss climax.")]
-            [Min(30f), InspectorName("Target Duration（目标总时长）")] public float targetDuration = 36.92f;
-            [Min(1f), InspectorName("Tutorial Duration（教学时长）")] public float tutorialDuration = 4.31f;
             [Header("Opening Tutorial（开场教学）")]
             [Range(1f, 2f), InspectorName("Opening Elixir Time（开场药剂时间）")] public float openingElixirTime = 1.23f;
             [Range(3, 5), InspectorName("Tutorial Soldier Count（教学士兵数量）")] public int tutorialSoldierCount = 5;
@@ -105,12 +103,7 @@ namespace PlayableAd
             [Header("Special reward progression（特殊奖励进程）")]
             [InspectorName("Special Reward Levels（特殊奖励等级）")] public int[] specialRewardLevels = { 7, 8, 9, 10 };
             [Header("Mobile encounter budget（移动端遭遇预算）")]
-            [Range(24, 64), InspectorName("Max Active Enemies（最大活动敌人数）")] public int maxActiveEnemies = 48;
-            [Range(40f, 140f), InspectorName("Spawn Ahead Distance（前方生成距离）")] public float spawnAheadDistance = 90f;
             [Range(8f, 30f), InspectorName("Recycle Distance（回收距离）")] public float recycleDistance = 18f;
-            [Range(1.2f, 1.6f), InspectorName("Target Preview Time（目标预览时间）")] public float targetPreviewTime = 1.35f;
-            [Range(8f, 24f), InspectorName("Minimum Target Preview Distance（最小目标预览距离）")] public float minimumTargetPreviewDistance = 12f;
-            [Range(30f, 100f), InspectorName("Maximum Target Preview Distance（最大目标预览距离）")] public float maximumTargetPreviewDistance = 54f;
             [Header("Continuous enemy visibility staging（连续敌人可见性分级）")]
             [Range(4f, 6f), InspectorName("Enemy Preload Time（敌人预加载时间）")] public float enemyPreloadTime = 5f;
             [Range(2f, 4f), InspectorName("Enemy Visible Preview Time（敌人可见预览时间）")] public float enemyVisiblePreviewTime = 3.2f;
@@ -126,23 +119,17 @@ namespace PlayableAd
             [Header("Fallback Route（备用路线）")]
             [Range(4f, 10f), InspectorName("Fallback Boost Magnet Distance（备用增益吸附距离）")] public float fallbackBoostMagnetDistance = 7f;
             [Range(6f, 20f), InspectorName("Fallback Boost Magnet Speed（备用增益吸附速度）")] public float fallbackBoostMagnetSpeed = 12f;
+
+            [Header("Touch steering（触屏横向操控）")]
             [Min(1f), InspectorName("Lane Half Width（路线半宽）")] public float laneHalfWidth = 3.2f;
             [Range(0.5f, 1.5f), InspectorName("Drag Follow Ratio（拖动跟随比例）")] public float dragFollowRatio = 1f;
+            [Tooltip("Fine movement response. Large drags automatically use a faster catch-up response.")]
+            [Range(30f, 70f), InspectorName("Drag Follow Sharpness（拖拽跟随灵敏度）")] public float dragFollowSharpness = 45f;
             [Min(1f), InspectorName("Keyboard Lateral Speed（键盘横移速度）")] public float lateralSpeed = 9f;
             [Range(0f, 0.05f), InspectorName("Drag Dead Zone（拖拽死区）")] public float dragDeadZone = 0.005f;
             [InspectorName("Invert Drag Input（反转拖拽输入）")] public bool invertDragInput;
             [InspectorName("Block Input Over UI（阻止界面区域输入）")] public bool blockInputOverUi = true;
 
-            [Header("Impact（冲击）")]
-            [Range(0.03f, 0.06f), InspectorName("Hit Stop Seconds（顿帧秒数）")] public float hitStopSeconds = 0.045f;
-            [Range(0f, 1f), InspectorName("Camera Shake（镜头抖动）")] public float cameraShake = 0.24f;
-            [Range(0f, 8f), InspectorName("FOV Punch（视场角冲击）")] public float fovPunch = 3.5f;
-            [Range(0f, 1f), InspectorName("Flash Alpha（闪光透明度）")] public float flashAlpha = 0.52f;
-            [Range(0.5f, 6f), InspectorName("Target Launch Seconds（目标飞出时长）")] public float targetLaunchSeconds = 2.25f;
-            [Range(2f, 30f), InspectorName("Target Launch Force（目标飞出力度）")] public float targetLaunchForce = 14f;
-            [Range(0f, 6f), InspectorName("Target Launch Side Speed（目标飞出侧向速度）")] public float targetLaunchSideSpeed = 2.6f;
-            [Range(0f, 8f), InspectorName("Target Launch Up Speed（目标飞出向上速度）")] public float targetLaunchUpSpeed = 3.8f;
-            [Range(0.1f, 1f), InspectorName("Target Launch Forward Scale（目标飞出前向倍率）")] public float targetLaunchForwardScale = 0.42f;
         }
 
         [Serializable]
@@ -186,19 +173,11 @@ namespace PlayableAd
         [Serializable]
         public sealed class PortraitCameraFraming
         {
-            [Range(0.45f, 0.8f), InspectorName("Reference Aspect Ratio（参考宽高比）")] public float referenceAspectRatio = 9f / 16f;
             [Range(45f, 75f), InspectorName("Field Of View（视场角）")] public float fieldOfView = 50f;
             [Range(3f, 12f), InspectorName("Camera Height（镜头高度）")] public float cameraHeight = 4.4f;
             [Range(5f, 20f), InspectorName("Camera Back Distance（镜头后置距离）")] public float cameraBackDistance = 7f;
             [Range(0f, 18f), InspectorName("Camera Look Ahead（镜头前视距离）")] public float cameraLookAhead = 2.8f;
             [Range(0f, 8f), InspectorName("Max Speed FOV Bonus（最高速视场角加成）")] public float maxSpeedFovBonus = 4f;
-            [Range(0.15f, 0.35f), InspectorName("Player Viewport Position（玩家视口位置）")] public float playerViewportPosition = 0.24f;
-            [Range(0.6f, 0.85f), InspectorName("Vanishing Point Viewport Position（消失点视口位置）")] public float vanishingPointViewportPosition = 0.72f;
-            [Min(1f), InspectorName("Near Road Width（近处道路宽度）")] public float nearRoadWidth = 8.5f;
-            [Min(0.5f), InspectorName("Far Road Width（远处道路宽度）")] public float farRoadWidth = 1.5f;
-            [Min(20f), InspectorName("Visible Depth Range（可见深度范围）")] public float visibleDepthRange = 60f;
-            [Range(0.4f, 0.7f), InspectorName("Min Supported Aspect（最小支持宽高比）")] public float minSupportedAspect = 0.45f;
-            [Range(0.6f, 0.9f), InspectorName("Max Supported Aspect（最大支持宽高比）")] public float maxSupportedAspect = 0.8f;
         }
 
         [Serializable]
@@ -235,7 +214,6 @@ namespace PlayableAd
             public EncounterType type;
             public int tier;
             public bool consumed;
-            public bool openingBoost;
             public bool fallbackBoost;
             public bool anticipated;
             public bool dangerPreviewPlayed;
@@ -248,6 +226,7 @@ namespace PlayableAd
             public float wallHalfWidth;
             public BulletTimeSettings bulletTimeSettings;
             public bool bulletTimeTriggered;
+            public bool completesTutorial;
             public bool hasPreviousDistance;
             public float previousDistance;
         }
@@ -321,7 +300,6 @@ namespace PlayableAd
 
         private readonly List<Encounter> encounters = new List<Encounter>();
         private readonly HashSet<int> targetVisualFallbackWarnings = new HashSet<int>();
-        private readonly List<Renderer> roadRenderers = new List<Renderer>();
         private Transform worldRoot;
         private Transform runner;
         private Transform runnerVisual;
@@ -337,7 +315,6 @@ namespace PlayableAd
         private SoldierBreakEffectPool soldierBreakPool;
         private BossClashVisual bossClashVisual;
         private SpeedBarView speedBarView;
-        private SpeedLevelFeedbackController speedLevelFeedback;
         private VisualTimeScaleController visualTimeScale;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
@@ -359,6 +336,7 @@ namespace PlayableAd
         private bool dragging;
         private float dragStartNormalizedX;
         private float dragOriginTargetX;
+        private float dragPixelsPerWorldUnit;
         private int activeTouchId = -1;
         private int lastScreenWidth;
         private int lastScreenHeight;
@@ -381,22 +359,17 @@ namespace PlayableAd
         private float lastImpactTime;
         private float lastNormalShakeTime;
         private int comboPitchIndex;
-        private int launchVariant;
+        private int impactSequence;
         private bool lowSpeedWarningShown;
         private bool gameplayStarted;
-        private int lastUiTier = -1;
-        private string speedReadout = "1/10";
-        private int generatedLevelOneSoldierCount;
-        private readonly int[] generatedRewardLaneCounts = new int[3];
+        private float runnerAnimationTime;
+        private Texture2D buttonNormalTexture;
+        private Texture2D buttonActiveTexture;
+        private bool ownsSpeedVisualProfile;
+        private bool ownsSpeedLevelFeedbackConfig;
 
         public PlayerSpeedController SpeedController => speedController;
         public RunFlowState CurrentFlowState => flowController != null ? flowController.CurrentState : RunFlowState.Intro;
-        public int GeneratedLevelOneSoldierCount => generatedLevelOneSoldierCount;
-        public int GeneratedSoldierSectionCount => prefab != null && prefab.soldierSections != null ? prefab.soldierSections.Length : 0;
-        public int GeneratedLeftRewardSections => generatedRewardLaneCounts[0];
-        public int GeneratedCenterRewardSections => generatedRewardLaneCounts[1];
-        public int GeneratedRightRewardSections => generatedRewardLaneCounts[2];
-        public float ConfiguredBossDistance => tuning.bossDistance;
         public float TargetForwardSpeed => forwardMotion != null ? forwardMotion.TargetForwardSpeed : 0f;
         public float CurrentForwardSpeed => forwardMotion != null ? forwardMotion.CurrentForwardSpeed : 0f;
         public float CurrentAnimationSpeed => runnerAnimator != null ? runnerAnimator.speed : 0f;
@@ -424,6 +397,7 @@ namespace PlayableAd
             {
                 speedVisualProfile = ScriptableObject.CreateInstance<SpeedVisualProfile>();
                 speedVisualProfile.name = "RuntimeSpeedVisualProfileFallback";
+                ownsSpeedVisualProfile = true;
             }
             flowController = GetComponent<RunFlowController>();
             if (flowController == null) flowController = gameObject.AddComponent<RunFlowController>();
@@ -448,7 +422,7 @@ namespace PlayableAd
             gameplayStarted = false;
             flowController?.ResetToIntro();
             forwardMotion?.Tick(0f, false);
-            dragging = false;
+            CancelDrag();
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
@@ -468,7 +442,7 @@ namespace PlayableAd
             forwardMotion?.SnapToTarget();
             targetX = 0f;
             flowController.StartTutorial();
-            dragging = false;
+            CancelDrag();
             runnerSpriteVisual?.ResetVisualState();
         }
 
@@ -482,6 +456,7 @@ namespace PlayableAd
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             HandleSpeedDebugInput();
 #endif
+            flashAlpha = Mathf.MoveTowards(flashAlpha, 0f, Time.unscaledDeltaTime * 3.8f);
             bool movementActive = gameplayStarted && !ending && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
             if (!movementActive)
             {
@@ -510,7 +485,6 @@ namespace PlayableAd
                 CheckBossEntry();
             }
 
-            flashAlpha = Mathf.MoveTowards(flashAlpha, 0f, Time.unscaledDeltaTime * 3.8f);
         }
 
         private void LateUpdate()
@@ -578,9 +552,9 @@ namespace PlayableAd
         {
             if (bossSequence || flowController == null || !flowController.IsGameplayActive)
             {
+                CancelDrag();
                 if (flowController == null || flowController.CurrentState == RunFlowState.Intro)
                 {
-                    dragging = false;
                     targetX = 0f;
                 }
                 return;
@@ -597,10 +571,7 @@ namespace PlayableAd
                         bool overUi = tuning.blockInputOverUi && EventSystem.current != null
                             && EventSystem.current.IsPointerOverGameObject(candidate.fingerId);
                         if (overUi) continue;
-                        dragging = true;
-                        activeTouchId = candidate.fingerId;
-                        dragStartNormalizedX = candidate.position.x / Mathf.Max(1f, Screen.width);
-                        dragOriginTargetX = targetX;
+                        BeginDrag(candidate.position.x / Mathf.Max(1f, Screen.width), candidate.fingerId);
                         break;
                     }
                 }
@@ -628,32 +599,51 @@ namespace PlayableAd
                         && EventSystem.current.IsPointerOverGameObject();
                     if (!overUi)
                     {
-                        dragging = true;
-                        dragStartNormalizedX = Input.mousePosition.x / Mathf.Max(1f, Screen.width);
-                        dragOriginTargetX = targetX;
+                        BeginDrag(Input.mousePosition.x / Mathf.Max(1f, Screen.width), -1);
                     }
                 }
                 else if (Input.GetMouseButtonUp(0))
                 {
-                    dragging = false;
+                    CancelDrag();
                 }
 
                 if (dragging)
                     ApplyNormalizedDrag(Input.mousePosition.x / Mathf.Max(1f, Screen.width));
             }
 
-            targetX += Input.GetAxisRaw("Horizontal") * tuning.lateralSpeed * Time.deltaTime;
+            targetX += Input.GetAxisRaw("Horizontal") * tuning.lateralSpeed * Time.unscaledDeltaTime;
             targetX = Mathf.Clamp(targetX, -tuning.laneHalfWidth, tuning.laneHalfWidth);
+        }
+
+        private void BeginDrag(float normalizedX, int touchId)
+        {
+            dragging = true;
+            activeTouchId = touchId;
+            dragStartNormalizedX = normalizedX;
+            dragOriginTargetX = runner != null ? runner.position.x : targetX;
+            targetX = dragOriginTargetX;
+            dragPixelsPerWorldUnit = GetRunnerPixelsPerWorldUnit();
         }
 
         private void ApplyNormalizedDrag(float normalizedX)
         {
             float delta = normalizedX - dragStartNormalizedX;
-            if (Mathf.Abs(delta) <= tuning.dragDeadZone) return;
-            delta -= Mathf.Sign(delta) * tuning.dragDeadZone;
+            delta = Mathf.Sign(delta) * Mathf.Max(0f, Mathf.Abs(delta) - tuning.dragDeadZone);
             if (tuning.invertDragInput) delta = -delta;
             float pixelDelta = delta * Mathf.Max(1f, Screen.width);
-            targetX = dragOriginTargetX + pixelDelta / GetRunnerPixelsPerWorldUnit() * tuning.dragFollowRatio;
+            float pixelsPerWorldUnit = dragPixelsPerWorldUnit > 0f
+                ? dragPixelsPerWorldUnit
+                : GetRunnerPixelsPerWorldUnit();
+            float unclampedTarget = dragOriginTargetX
+                + pixelDelta / pixelsPerWorldUnit * tuning.dragFollowRatio;
+            targetX = Mathf.Clamp(unclampedTarget, -tuning.laneHalfWidth, tuning.laneHalfWidth);
+
+            // Rebase at the road edge so reversing direction responds immediately after an over-drag.
+            if (!Mathf.Approximately(targetX, unclampedTarget))
+            {
+                dragStartNormalizedX = normalizedX;
+                dragOriginTargetX = targetX;
+            }
         }
 
         private float GetRunnerPixelsPerWorldUnit()
@@ -684,6 +674,7 @@ namespace PlayableAd
         {
             dragging = false;
             activeTouchId = -1;
+            dragPixelsPerWorldUnit = 0f;
         }
 
         private void MoveRunner()
@@ -695,12 +686,29 @@ namespace PlayableAd
                 ? forwardMotion.Tick(worldDeltaTime, true)
                 : speedController.GetForwardSpeed();
             float previousX = runner.position.x;
-            float x = dragging
-                ? targetX
-                : Mathf.MoveTowards(previousX, targetX, tuning.lateralSpeed * Time.deltaTime);
-            runner.position = new Vector3(x, runner.position.y, runner.position.z + forwardSpeed * Time.deltaTime);
-            float lateralInput = Time.deltaTime > 0f
-                ? (x - previousX) / (tuning.lateralSpeed * Time.deltaTime)
+            float horizontalDeltaTime = Time.unscaledDeltaTime;
+            float x;
+            if (dragging)
+            {
+                float error = Mathf.Abs(targetX - previousX);
+                float catchUp = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.05f,
+                    Mathf.Max(0.2f, tuning.laneHalfWidth * 0.4f), error));
+                float baseSharpness = Mathf.Max(1f, tuning.dragFollowSharpness);
+                float sharpness = Mathf.Lerp(baseSharpness,
+                    Mathf.Min(120f, baseSharpness * 2.2f), catchUp);
+                float response = 1f - Mathf.Exp(-sharpness * horizontalDeltaTime);
+                x = Mathf.Lerp(previousX, targetX, response);
+                if (Mathf.Abs(x - targetX) < 0.0001f) x = targetX;
+            }
+            else
+            {
+                x = Mathf.MoveTowards(previousX, targetX,
+                    tuning.lateralSpeed * horizontalDeltaTime);
+            }
+            runner.position = new Vector3(x, runner.position.y,
+                runner.position.z + forwardSpeed * worldDeltaTime);
+            float lateralInput = horizontalDeltaTime > 0f
+                ? (x - previousX) / (tuning.lateralSpeed * horizontalDeltaTime)
                 : 0f;
             runnerSpriteVisual?.SetHorizontalInput(lateralInput);
 
@@ -728,9 +736,13 @@ namespace PlayableAd
         private void UpdateRunnerFeedback(float forwardSpeed, bool movementActive)
         {
             float actualNormalized = forwardMotion != null ? forwardMotion.NormalizedActualSpeed : 0f;
+            float worldDeltaTime = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
+            if (movementActive) runnerAnimationTime += worldDeltaTime;
             if (runnerVisual != null)
             {
-                float pulse = 1f + Mathf.Sin(Time.time * forwardSpeed * 1.8f) * 0.035f;
+                float pulse = 1f + Mathf.Sin(runnerAnimationTime * forwardSpeed * 1.8f) * 0.035f;
                 float lean = (targetX - runner.position.x) * -7f;
                 runnerVisual.localScale = new Vector3(pulse, 1.55f / pulse, pulse);
                 float chargeLean = speedFeedback != null ? speedFeedback.CurrentChargeLean : 0f;
@@ -740,13 +752,21 @@ namespace PlayableAd
             if (runnerSpriteVisual != null)
                 runnerSpriteVisual.SetMovement(actualNormalized, movementActive);
             else if (runnerAnimator != null)
-                runnerAnimator.speed = movementActive ? Mathf.Lerp(0.8f, 1.4f, actualNormalized) : 0f;
+            {
+                float worldScale = BulletTimeManager.Instance != null
+                    ? BulletTimeManager.Instance.WorldTimeScale
+                    : 1f;
+                runnerAnimator.speed = movementActive
+                    ? Mathf.Lerp(0.8f, 1.4f, actualNormalized) * worldScale
+                    : 0f;
+            }
             if (!movementActive)
                 runnerSpriteVisual?.SetHorizontalInput(0f);
 
             if (speedFeedback != null)
             {
-                speedFeedback.UpdateFeedback(speedController.CurrentSpeed, CurrentTier, forwardSpeed, Time.unscaledDeltaTime);
+                speedFeedback.UpdateFeedback(speedController.CurrentSpeed, CurrentTier, forwardSpeed,
+                    Time.unscaledDeltaTime);
             }
             audioFeedback?.UpdateSpeed(CurrentTier,
                 Mathf.InverseLerp(playerSpeed.minimumSpeed, playerSpeed.maximumSpeed, speedController.CurrentSpeed),
@@ -760,7 +780,6 @@ namespace PlayableAd
         {
             int preloadedEnemies = 0;
             int distantVisibleEnemies = 0;
-            int activeEnemies = 0;
             float currentForwardSpeed = GetForwardSpeed();
             float preloadDistance = Mathf.Clamp(currentForwardSpeed * tuning.enemyPreloadTime,
                 tuning.minimumEnemyPreloadDistance, tuning.maximumEnemyPreloadDistance);
@@ -777,6 +796,14 @@ namespace PlayableAd
                 }
 
                 float dz = encounter.root.transform.position.z - runner.position.z;
+                if (encounter.type == EncounterType.Elixir && !encounter.fallbackBoost && dz > preloadDistance)
+                {
+                    if (encounter.root.activeSelf) encounter.root.SetActive(false);
+                    continue;
+                }
+                if (encounter.type == EncounterType.Elixir && !encounter.root.activeSelf)
+                    encounter.root.SetActive(true);
+
                 if (encounter.type == EncounterType.Target)
                 {
                     if (dz < -tuning.recycleDistance)
@@ -809,7 +836,6 @@ namespace PlayableAd
                     else
                     {
                         desiredState = EnemyVisibilityState.Active;
-                        activeEnemies++;
                     }
 
                     encounter.visibility?.SetState(desiredState);
@@ -834,6 +860,7 @@ namespace PlayableAd
                 if (dz < -tuning.recycleDistance && !crossedThisFrame)
                 {
                     encounter.consumed = true;
+                    CompleteTutorialIfNeeded(encounter);
                     if (encounter.visibility != null) encounter.visibility.Recycle();
                     else encounter.root.SetActive(false);
                     continue;
@@ -841,9 +868,10 @@ namespace PlayableAd
 
                 if (encounter.type == EncounterType.Wall)
                 {
-                    TryTriggerBulletTime(encounter, dz);
+                    TryTriggerBulletTime(encounter, dz - WallCollisionDistance);
                     bool runnerInsideWall = Mathf.Abs(runner.position.x - encounter.wallCenterX)
                         <= encounter.wallHalfWidth + 0.35f;
+                    if (crossedThisFrame) CompleteTutorialIfNeeded(encounter);
                     if (runnerInsideWall && !encounter.anticipated
                         && dz <= GetForwardSpeed() * wallBreakPresentation.anticipationDuration)
                     {
@@ -853,7 +881,7 @@ namespace PlayableAd
                         fovPunchOffset = -wallBreakPresentation.fovAnticipation;
                         speedFeedback?.Pulse(0.45f);
                     }
-                    if (runnerInsideWall && (Mathf.Abs(dz) < 1.3f || crossedThisFrame))
+                    if (runnerInsideWall && (Mathf.Abs(dz) < WallCollisionDistance || crossedThisFrame))
                     {
                         encounter.consumed = true;
                         ResolveObstacle(encounter);
@@ -886,6 +914,14 @@ namespace PlayableAd
                     }
                 }
             }
+        }
+
+        private void CompleteTutorialIfNeeded(Encounter encounter)
+        {
+            if (encounter == null || !encounter.completesTutorial || flowController == null
+                || flowController.CurrentState != RunFlowState.Tutorial)
+                return;
+            flowController.EnterMainRun();
         }
 
         private void TryTriggerBulletTime(Encounter encounter, float distanceToWall)
@@ -935,12 +971,7 @@ namespace PlayableAd
         {
             BreakableWallVisual wall = encounter.wall;
             wall?.Break();
-            if (flowController.CurrentState == RunFlowState.Tutorial)
-            {
-                flowController.EnterMainRun();
-                callout = "<  DRAG TO STEER  >";
-                calloutUntil = elapsed + 2.5f;
-            }
+            CompleteTutorialIfNeeded(encounter);
             flashAlpha = Mathf.Max(flashAlpha, 0.42f);
             directionalShake = Vector3.up * 0.35f;
             PunchCamera(0.34f, wallBreakPresentation.cameraShake, wallBreakPresentation.fovImpact);
@@ -969,10 +1000,10 @@ namespace PlayableAd
             visual?.BeginConsume();
             flashAlpha = Mathf.Max(flashAlpha, elixirPresentation.pickupFlash);
             fovPunchOffset = -elixirPresentation.cameraPushIn;
-            PunchCamera(0.13f, tuning.cameraShake * 0.45f, 0f);
+            PunchCamera(0.13f, elixirPresentation.cameraShake, 0f);
 
             visualTimeScale.RequestSlowMotion(elixirPresentation.slowMotionScale, elixirPresentation.slowMotionDuration);
-            SpeedTierVisualData elixirTier = speedVisualProfile.Get(playerSpeed.tutorialElixirTargetLevel);
+            SpeedTierVisualData elixirTier = speedVisualProfile.Get(nextTier);
             effectPool?.PlayImpact(pickup.transform.position + Vector3.up * 0.35f, elixirTier.primaryColor, 0.85f);
             Vector3 startScale = pickup != null ? pickup.transform.localScale : Vector3.one;
             float timer = 0f;
@@ -995,7 +1026,7 @@ namespace PlayableAd
                     fovPunchOffset = Mathf.Max(fovPunchOffset, elixirPresentation.cameraRebound);
                     callout = nextTier == speedController.MaxLevel ? "MAX SPEED!" : "";
                     calloutUntil = elapsed + 0.6f;
-                    StartCoroutine(PlayUpgradeRing());
+                    StartCoroutine(PlayUpgradeRing(nextTier));
                 }
 
                 yield return null;
@@ -1007,7 +1038,7 @@ namespace PlayableAd
             }
         }
 
-        private IEnumerator PlayUpgradeRing()
+        private IEnumerator PlayUpgradeRing(int targetLevel)
         {
             if (upgradeRing == null)
             {
@@ -1023,7 +1054,8 @@ namespace PlayableAd
                 float t = Mathf.Clamp01(timer / duration);
                 float radius = Mathf.Lerp(0.12f, elixirPresentation.energyRingMaxRadius, 1f - Mathf.Pow(1f - t, 2f));
                 upgradeRing.transform.localScale = new Vector3(radius, radius, radius);
-                Color color = Color.Lerp(speedVisualProfile.Get(1).primaryColor, speedVisualProfile.Get(playerSpeed.tutorialElixirTargetLevel).primaryColor, t);
+                Color color = Color.Lerp(speedVisualProfile.Get(1).primaryColor,
+                    speedVisualProfile.Get(targetLevel).primaryColor, t);
                 color.a = 1f - t;
                 upgradeRing.startColor = color;
                 upgradeRing.endColor = color;
@@ -1043,7 +1075,7 @@ namespace PlayableAd
                 calloutUntil = elapsed + 0.75f;
                 smashEffectStart = Time.unscaledTime;
                 smashEffectUntil = smashEffectStart + 0.28f;
-                Impact(encounter, CollisionOutcome.SpeedGain, true, 1.15f);
+                Impact(encounter, CollisionOutcome.SpeedGain, 1.15f);
                 bool wasAtMaximum = speedBeforeImpact >= playerSpeed.maximumSpeed - 0.001f;
                 int shards = wasAtMaximum ? impactPresentation.minEnergyShards : impactPresentation.maxEnergyShardsPerHit;
                 effectPool?.PlayEnergyReturn(encounter.root.transform.position + Vector3.up * 0.65f, shards,
@@ -1053,7 +1085,7 @@ namespace PlayableAd
             {
                 callout = "HOLD SPEED";
                 calloutUntil = elapsed + 0.7f;
-                Impact(encounter, CollisionOutcome.Neutral, true, 0.85f);
+                Impact(encounter, CollisionOutcome.Neutral, 0.85f);
             }
             else
             {
@@ -1068,20 +1100,30 @@ namespace PlayableAd
                     callout = string.Empty;
                     calloutUntil = elapsed;
                 }
-                Impact(encounter, CollisionOutcome.SpeedLoss, false, 1.25f);
+                Impact(encounter, CollisionOutcome.SpeedLoss, 1.25f);
             }
         }
 
         private ObstacleResolutionType ResolveObstacle(Encounter encounter)
         {
-            if (encounter.obstacle == null) return ObstacleResolutionType.Equal;
+            if (encounter.obstacle == null || encounter.obstacle.HasResolved)
+                return ObstacleResolutionType.Equal;
+            int levelBeforeImpact = speedController.GetCurrentLevel();
             float boost = encounter.obstacle.Type == ObstacleType.Soldier && encounter.tier == 1
                 ? playerSpeed.levelOneSoldierBoost
                 : playerSpeed.normalImpactBoost;
-            return encounter.obstacle.Resolve(speedController, boost, playerSpeed.maximumSpeed);
+            ObstacleResolutionType resolution = encounter.obstacle.Resolve(speedController, boost);
+            int levelAfterImpact = speedController.GetCurrentLevel();
+            if (levelBeforeImpact >= 9 && levelAfterImpact <= levelBeforeImpact)
+            {
+                float strength = encounter.obstacle.Type == ObstacleType.StoneWall ? 1.15f : 1f;
+                speedFeedback?.PlayHighSpeedImpactSonicBoom(levelBeforeImpact, strength,
+                    speedLevelFeedbackConfig != null && speedLevelFeedbackConfig.accessibilityReducedFlash);
+            }
+            return resolution;
         }
 
-        private void Impact(Encounter encounter, CollisionOutcome outcome, bool launchTarget, float strength)
+        private void Impact(Encounter encounter, CollisionOutcome outcome, float strength)
         {
             encounter.visibility?.MarkKnockedBack();
             if (Time.unscaledTime - lastImpactTime <= impactPresentation.comboWindow)
@@ -1095,11 +1137,12 @@ namespace PlayableAd
             lastImpactTime = Time.unscaledTime;
             float normalizedActualSpeed = forwardMotion != null ? forwardMotion.NormalizedActualSpeed : 0f;
             float impactForwardSpeed = forwardMotion != null ? forwardMotion.CurrentForwardSpeed : GetForwardSpeed();
+            int sequence = impactSequence++;
             audioFeedback?.PlayCollisionOutcome(outcome, comboPitchIndex, impactPresentation.comboPitchStep,
                 normalizedActualSpeed, encounter.root.transform.position);
             flashAlpha = Mathf.Max(flashAlpha, impactPresentation.normalFlash * strength);
             float side = Mathf.Sign(encounter.root.transform.position.x - runner.position.x);
-            if (Mathf.Abs(side) < 0.1f) side = launchVariant % 2 == 0 ? -1f : 1f;
+            if (Mathf.Abs(side) < 0.1f) side = (sequence & 1) == 0 ? -1f : 1f;
             directionalShake = new Vector3(side, 0.25f, 0f).normalized;
             if (Time.unscaledTime - lastNormalShakeTime >= impactPresentation.normalShakeCooldown && comboPitchIndex == 0)
             {
@@ -1110,7 +1153,7 @@ namespace PlayableAd
             float actualImpactScale = Mathf.Lerp(0.85f, 1.3f, normalizedActualSpeed)
                 * (speedFeedback != null ? speedFeedback.CurrentImpactMultiplier : 1f);
             effectPool?.PlayImpact(encounter.root.transform.position + Vector3.up,
-                launchTarget ? impactTier.secondaryColor : outlinePresentation.dangerColor,
+                outcome != CollisionOutcome.SpeedLoss ? impactTier.secondaryColor : outlinePresentation.dangerColor,
                 strength * actualImpactScale);
 
             Vector3 sourceDimensions = encounter.root.transform.localScale;
@@ -1134,79 +1177,6 @@ namespace PlayableAd
 
             if (impactPresentation.enableNormalHitStop)
                 visualTimeScale.RequestSlowMotion(impactPresentation.hitStopTimeScale, impactPresentation.hitStopDuration);
-        }
-
-        private IEnumerator LaunchTarget(GameObject target, float strength)
-        {
-            if (target == null)
-            {
-                yield break;
-            }
-
-            int variant = launchVariant++ % 3;
-            float side = Mathf.Sign(target.transform.position.x - runner.position.x);
-            if (Mathf.Abs(side) < 0.1f) side = variant == 1 ? -1f : 1f;
-            Vector3[] rotations =
-            {
-                new Vector3(430f, 260f, 150f),
-                new Vector3(280f, -390f, 240f),
-                new Vector3(-360f, 310f, -210f)
-            };
-            KnockedEnemyPhysics knockedPhysics = target.GetComponent<KnockedEnemyPhysics>();
-            if (knockedPhysics != null)
-            {
-                float sideVariation = 1f + variant * 0.12f;
-                Vector3 velocity = new Vector3(
-                    side * tuning.targetLaunchSideSpeed * sideVariation,
-                    tuning.targetLaunchUpSpeed * (0.94f + variant * 0.06f),
-                    tuning.targetLaunchForce * tuning.targetLaunchForwardScale * strength);
-                knockedPhysics.Launch(velocity, rotations[variant] * Mathf.Deg2Rad);
-                yield break;
-            }
-
-            float timer = 0f;
-            while (timer < tuning.targetLaunchSeconds && target != null)
-            {
-                timer += Time.unscaledDeltaTime;
-                yield return null;
-            }
-
-            if (target != null) target.SetActive(false);
-        }
-
-        private IEnumerator BounceTarget(GameObject target)
-        {
-            if (target == null)
-            {
-                yield break;
-            }
-
-            Vector3 start = target.transform.position;
-            float timer = 0f;
-            while (timer < 0.35f && target != null)
-            {
-                timer += Time.unscaledDeltaTime;
-                float t = timer / 0.35f;
-                target.transform.position = start + Vector3.forward * Mathf.Sin(t * Mathf.PI) * 0.8f;
-                yield return null;
-            }
-        }
-
-        private IEnumerator SquashRunner()
-        {
-            if (runnerVisual == null)
-            {
-                yield break;
-            }
-
-            float timer = 0f;
-            while (timer < 0.28f)
-            {
-                timer += Time.unscaledDeltaTime;
-                float wave = Mathf.Sin(timer / 0.28f * Mathf.PI);
-                runnerVisual.localScale = new Vector3(1f + wave * 0.35f, 1.55f - wave * 0.5f, 1f + wave * 0.35f);
-                yield return null;
-            }
         }
 
         private void PunchCamera(float duration, float strength, float fov)
@@ -1262,6 +1232,8 @@ namespace PlayableAd
             currentBossPhase = BossClashPhase.Contact;
             bossClashVisual.SetPhase(currentBossPhase);
             audioFeedback?.PlayBossContact();
+            speedFeedback?.PlayHighSpeedImpactSonicBoom(CurrentTier, 1.2f,
+                speedLevelFeedbackConfig != null && speedLevelFeedbackConfig.accessibilityReducedFlash);
             flashAlpha = Mathf.Max(flashAlpha, 0.48f);
             PunchCamera(bossClashPresentation.contactDuration, bossClashPresentation.contactShake, bossClashPresentation.contactFovPunch);
             effectPool?.PlayImpact(Vector3.Lerp(runner.position, boss.position, 0.5f) + Vector3.up, wins ? bossClashPresentation.playerEnergy : bossClashPresentation.bossEnergy, 1.65f);
@@ -1327,6 +1299,8 @@ namespace PlayableAd
         private IEnumerator BossFinishWin()
         {
             audioFeedback?.PlayBossFinish();
+            speedFeedback?.PlayHighSpeedImpactSonicBoom(CurrentTier, 1.35f,
+                speedLevelFeedbackConfig != null && speedLevelFeedbackConfig.accessibilityReducedFlash);
             flashAlpha = Mathf.Max(flashAlpha, 0.56f);
             PunchCamera(bossClashPresentation.finishDuration, bossClashPresentation.finishShake, bossClashPresentation.finishFovPunch);
             effectPool?.PlayImpact(Vector3.Lerp(runner.position, boss.position, 0.55f) + Vector3.up, bossClashPresentation.playerEnergy, 2f);
@@ -1445,10 +1419,10 @@ namespace PlayableAd
         {
             float scale = CourseDistanceScale;
             float start = tuning.bossDistance - 46f * scale;
-            CreateElixir(-2.2f, start, false, true, 8);
-            CreateElixir(2.2f, start + 11f * scale, false, true, 9);
-            CreateElixir(0f, start + 22f * scale, false, true, 10);
-            CreateElixir(0f, tuning.bossDistance - 10f * scale, false, true, playerSpeed.bossVictoryLevel);
+            CreateElixir(-2.2f, start, true, 8);
+            CreateElixir(2.2f, start + 11f * scale, true, 9);
+            CreateElixir(0f, start + 22f * scale, true, 10);
+            CreateElixir(0f, tuning.bossDistance - 10f * scale, true, playerSpeed.bossVictoryLevel);
         }
 
         private void BuildWorld()
@@ -1507,8 +1481,9 @@ namespace PlayableAd
             {
                 speedLevelFeedbackConfig = ScriptableObject.CreateInstance<SpeedLevelFeedbackConfig>();
                 speedLevelFeedbackConfig.name = "RuntimeSpeedLevelFeedbackConfigFallback";
+                ownsSpeedLevelFeedbackConfig = true;
             }
-            speedLevelFeedback = gameObject.AddComponent<SpeedLevelFeedbackController>();
+            SpeedLevelFeedbackController speedLevelFeedback = gameObject.AddComponent<SpeedLevelFeedbackController>();
             speedLevelFeedback.Initialize(speedController, speedLevelFeedbackConfig, speedVisualProfile,
                 speedFeedback, speedBarView, audioFeedback, OnLevelUpCameraFeedback);
         }
@@ -1659,9 +1634,6 @@ namespace PlayableAd
 
         private void OnPlayerSpeedChanged(SpeedChangedEvent change)
         {
-            int level = change.NewLevel;
-            lastUiTier = level;
-            speedReadout = level + "/" + speedController.MaxLevel;
             audioFeedback?.HandleSpeedChanged(change);
             if (change.NewLevel > change.OldLevel)
                 speedFeedback?.PulseLevelUp();
@@ -1673,6 +1645,18 @@ namespace PlayableAd
         {
             if (speedController != null) speedController.SpeedChanged -= OnPlayerSpeedChanged;
             visualTimeScale?.Restore();
+            if (ownsSpeedVisualProfile) DestroyOwnedObject(speedVisualProfile);
+            if (ownsSpeedLevelFeedbackConfig) DestroyOwnedObject(speedLevelFeedbackConfig);
+            DestroyOwnedObject(whiteTexture);
+            DestroyOwnedObject(buttonNormalTexture);
+            DestroyOwnedObject(buttonActiveTexture);
+        }
+
+        private static void DestroyOwnedObject(UnityEngine.Object value)
+        {
+            if (value == null) return;
+            if (Application.isPlaying) Destroy(value);
+            else DestroyImmediate(value);
         }
 
         private void BuildBossArea()
@@ -1714,7 +1698,7 @@ namespace PlayableAd
         private void BuildLevel()
         {
             float openingElixirZ = OpeningElixirZ;
-            CreateElixir(0f, openingElixirZ, true, false, playerSpeed.tutorialElixirTargetLevel);
+            CreateElixir(0f, openingElixirZ, false, playerSpeed.tutorialElixirTargetLevel);
 
             float firstSoldierZ = openingElixirZ + tuning.tutorialFirstSoldierGap;
             int soldierCount = Mathf.Clamp(tuning.tutorialSoldierCount, 3, 5);
@@ -1725,14 +1709,12 @@ namespace PlayableAd
 
             float wallZ = firstSoldierZ + (soldierCount - 1) * tuning.tutorialSoldierSpacing + tuning.tutorialWallGap;
             CreateBreakableWall(wallZ, "TutorialStoneWall", tuning.tutorialWallBlockingMode,
-                tuning.tutorialWallBulletTime);
+                tuning.tutorialWallBulletTime, true);
             BuildConfiguredMainRun(wallZ);
         }
 
         private void BuildConfiguredMainRun(float tutorialEndZ)
         {
-            generatedLevelOneSoldierCount = 0;
-            for (int i = 0; i < generatedRewardLaneCounts.Length; i++) generatedRewardLaneCounts[i] = 0;
             if (prefab != null && prefab.soldierSections != null)
             {
                 for (int i = 0; i < prefab.soldierSections.Length; i++)
@@ -1759,7 +1741,7 @@ namespace PlayableAd
                 while (IsNearSoldierSection(maintenanceZ, tutorialEndZ, 5f * scale)
                     || IsNearStoneWallSection(maintenanceZ, tutorialEndZ, 5f * scale))
                     maintenanceZ += 12f * scale;
-                CreateElixir(0f, maintenanceZ, false, false, tuning.maintenanceRewardLevel);
+                CreateElixir(0f, maintenanceZ, false, tuning.maintenanceRewardLevel);
                 maintenanceZ += tuning.maintenanceRewardSpacing;
             }
 
@@ -1774,13 +1756,13 @@ namespace PlayableAd
                         rewardZ += 12f * scale;
                     float x = rewardIndex % 2 == 0 ? 2.25f : -2.25f;
                     int targetLevel = Mathf.Clamp(rewards[Mathf.Min(rewardIndex, rewards.Length - 1)], 1, speedController.MaxLevel);
-                    CreateElixir(x, rewardZ, false, false, targetLevel);
+                    CreateElixir(x, rewardZ, false, targetLevel);
                     rewardIndex++;
                     rewardZ += tuning.specialRewardSpacing;
                 }
             }
 
-            CreateElixir(0f, tuning.bossDistance - 14f * scale, false, false, playerSpeed.bossVictoryLevel);
+            CreateElixir(0f, tuning.bossDistance - 14f * scale, false, playerSpeed.bossVictoryLevel);
         }
 
         private void CreateSoldierSection(float tutorialEndZ, SoldierFormationSettings section, int sectionIndex)
@@ -1820,7 +1802,6 @@ namespace PlayableAd
 
                 CreateTarget(x, startZ + z, 1, sectionObject.transform,
                     "Soldier_L1_" + section.placementMode + "_" + (soldierIndex + 1));
-                generatedLevelOneSoldierCount++;
             }
         }
 
@@ -1849,15 +1830,6 @@ namespace PlayableAd
         private static float GetSectionForwardSpacing(SoldierFormationSettings section)
         {
             return Mathf.Max(0.1f, section.minimumForwardSpacing);
-        }
-
-        public static int GetControlledRewardLane(int sectionIndex, int seed)
-        {
-            // Six entries contain two left, two center and two right placements, while
-            // avoiding repeated center groups. The seed only rotates this stable sequence.
-            int[] sequence = { -1, 1, 0, 1, -1, 0 };
-            int seedOffset = (int)((uint)seed % (uint)sequence.Length);
-            return sequence[(Mathf.Max(0, sectionIndex) + seedOffset) % sequence.Length];
         }
 
         private bool IsNearSoldierSection(float z, float tutorialEndZ, float padding)
@@ -1895,7 +1867,7 @@ namespace PlayableAd
             Renderer placeholderRenderer = root.GetComponent<Renderer>();
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
             Collider[] colliders = root.GetComponents<Collider>();
-            obstacle.Initialize(tier, ObstacleType.Soldier, root, root, colliders, ObstacleFeedbackType.NormalImpact);
+            obstacle.Initialize(tier, ObstacleType.Soldier, colliders);
 
             Renderer[] visibilityRenderers = placeholderRenderer != null
                 ? new[] { placeholderRenderer }
@@ -1927,8 +1899,6 @@ namespace PlayableAd
                     if (placeholderMesh != null) Destroy(placeholderMesh);
                     visibilityRenderers = modelRenderers;
                     outlineSources = modelRenderers;
-                    EnemySoldierVisual soldierVisual = visual.GetComponentInChildren<EnemySoldierVisual>(true);
-                    soldierVisual?.Initialize(obstacle);
                 }
                 else
                 {
@@ -2044,7 +2014,7 @@ namespace PlayableAd
                 tuning.bossDistance + 28f);
         }
 
-        private void CreateElixir(float x, float z, bool openingBoost = false, bool fallbackBoost = false, int targetLevel = 0)
+        private void CreateElixir(float x, float z, bool fallbackBoost = false, int targetLevel = 0)
         {
             int resolvedTargetLevel = targetLevel > 0 ? Mathf.Clamp(targetLevel, 1, speedController.MaxLevel) : playerSpeed.tutorialElixirTargetLevel;
             GameObject root = new GameObject("RoyalElixir");
@@ -2072,12 +2042,20 @@ namespace PlayableAd
             pickupCollider.radius = 1.1f;
             ElixirPickup pickup = root.AddComponent<ElixirPickup>();
             pickup.Initialize(speedController, resolvedTargetLevel, new Collider[] { pickupCollider });
-            encounters.Add(new Encounter { root = root, type = EncounterType.Elixir, tier = resolvedTargetLevel, openingBoost = openingBoost, fallbackBoost = fallbackBoost, elixir = pickup });
+            encounters.Add(new Encounter
+            {
+                root = root,
+                type = EncounterType.Elixir,
+                tier = resolvedTargetLevel,
+                fallbackBoost = fallbackBoost,
+                elixir = pickup
+            });
+            if (!fallbackBoost) root.SetActive(false);
         }
 
         private void CreateBreakableWall(float z, string objectName = "TutorialStoneWall",
             StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes,
-            BulletTimeSettings bulletTimeSettings = null)
+            BulletTimeSettings bulletTimeSettings = null, bool completesTutorial = false)
         {
             GameObject root;
             GameObject configuredWallPrefab = prefab != null ? prefab.stoneWallPrefab : null;
@@ -2102,7 +2080,8 @@ namespace PlayableAd
             wall.Initialize(wallBreakPresentation, new Color(0.4f, 0.43f, 0.44f), speedVisualProfile, visualPerformance);
             ObstacleController obstacle = root.GetComponent<ObstacleController>();
             if (obstacle == null) obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(playerSpeed.tutorialElixirTargetLevel, ObstacleType.StoneWall, root, root, root.GetComponentsInChildren<Collider>(), ObstacleFeedbackType.HeavyBreak);
+            obstacle.Initialize(playerSpeed.tutorialElixirTargetLevel, ObstacleType.StoneWall,
+                root.GetComponentsInChildren<Collider>(true));
             encounters.Add(new Encounter
             {
                 root = root,
@@ -2112,7 +2091,8 @@ namespace PlayableAd
                 obstacle = obstacle,
                 wallCenterX = centerX,
                 wallHalfWidth = halfWidth,
-                bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null
+                bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null,
+                completesTutorial = completesTutorial
             });
         }
 
@@ -2166,10 +2146,6 @@ namespace PlayableAd
             box.transform.localScale = scale;
             Renderer renderer = box.GetComponent<Renderer>();
             renderer.sharedMaterial = RuntimeStyle.CreateMaterial(color, 0f, 0.38f);
-            if (name == "Road" || name == "RoadBand")
-            {
-                roadRenderers.Add(renderer);
-            }
             return box;
         }
 
@@ -2327,13 +2303,15 @@ namespace PlayableAd
                 fontStyle = FontStyle.Normal,
                 normal = { textColor = Color.white }
             };
+            buttonNormalTexture = MakeTexture(new Color(0.95f, 0.25f, 0.08f));
+            buttonActiveTexture = MakeTexture(new Color(1f, 0.42f, 0.08f));
             buttonStyle = new GUIStyle(GUI.skin.button)
             {
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 27,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white, background = MakeTexture(new Color(0.95f, 0.25f, 0.08f)) },
-                active = { textColor = Color.white, background = MakeTexture(new Color(1f, 0.42f, 0.08f)) }
+                normal = { textColor = Color.white, background = buttonNormalTexture },
+                active = { textColor = Color.white, background = buttonActiveTexture }
             };
         }
 

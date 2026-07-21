@@ -23,7 +23,6 @@ namespace PlayableAd
         private float previewStrength = -1f;
 
         public EnemyVisibilityState State => state;
-        public float PreviewStrength => previewStrength;
 
         public void Initialize(Renderer[] renderers, Collider[] colliders, ObstacleOutline obstacleOutline)
         {
@@ -34,6 +33,7 @@ namespace PlayableAd
             SetRenderers(false);
             SetGameplayColliders(false);
             outline?.SetPreviewPresentation(false, 0f);
+            gameObject.SetActive(false);
         }
 
         public void SetState(EnemyVisibilityState nextState)

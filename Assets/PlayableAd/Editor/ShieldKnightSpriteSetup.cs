@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.U2D.Sprites;
 using UnityEngine;
 
 namespace PlayableAd.Editor
@@ -350,20 +351,32 @@ namespace PlayableAd.Editor
             importer.GetSourceTextureWidthAndHeight(out width, out height);
             int cellWidth = width / GridSize;
             int cellHeight = height / GridSize;
-            var metadata = new List<SpriteMetaData>(ActiveRows * GridSize);
+            var factory = new SpriteDataProviderFactories();
+            factory.Init();
+            ISpriteEditorDataProvider dataProvider = factory.GetSpriteEditorDataProviderFromObject(importer);
+            dataProvider.InitSpriteEditorDataProvider();
+            Dictionary<string, GUID> existingIds = dataProvider.GetSpriteRects()
+                .GroupBy(spriteRect => spriteRect.name)
+                .ToDictionary(group => group.Key, group => group.First().spriteID);
+            var spriteRects = new List<SpriteRect>(ActiveRows * GridSize);
             for (int row = 0; row < ActiveRows; row++)
             for (int column = 0; column < GridSize; column++)
             {
-                metadata.Add(new SpriteMetaData
+                string spriteName = "ShieldKnight_" + RowNames[row] + "_" + column.ToString("00");
+                spriteRects.Add(new SpriteRect
                 {
-                    name = "ShieldKnight_" + RowNames[row] + "_" + column.ToString("00"),
+                    name = spriteName,
                     rect = new Rect(column * cellWidth, height - (row + 1) * cellHeight, cellWidth, cellHeight),
-                    alignment = (int)SpriteAlignment.Custom,
+                    alignment = SpriteAlignment.Custom,
                     pivot = new Vector2(0.5f, 0f),
-                    border = Vector4.zero
+                    border = Vector4.zero,
+                    spriteID = existingIds.TryGetValue(spriteName, out GUID existingId)
+                        ? existingId
+                        : GUID.Generate()
                 });
             }
-            importer.spritesheet = metadata.ToArray();
+            dataProvider.SetSpriteRects(spriteRects.ToArray());
+            dataProvider.Apply();
             importer.SaveAndReimport();
         }
 

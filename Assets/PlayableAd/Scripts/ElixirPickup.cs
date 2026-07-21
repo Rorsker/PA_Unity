@@ -11,8 +11,6 @@ namespace PlayableAd
 
         private PlayerSpeedController speedController;
 
-        public event Action<ElixirPickup> Collected;
-
         public bool HasCollected => hasCollected;
 
         public void Initialize(PlayerSpeedController controller, int targetLevel, Collider[] colliders)
@@ -32,7 +30,6 @@ namespace PlayableAd
                 if (pickupColliders[i] != null) pickupColliders[i].enabled = false;
             float targetSpeed = speedController.GetLevelStartSpeed(targetSpeedLevel);
             speedController.SetSpeed(Mathf.Max(speedController.CurrentSpeed, targetSpeed), SpeedChangeReason.PotionPickup, this);
-            Collected?.Invoke(this);
             return true;
         }
     }

@@ -5,18 +5,7 @@ namespace PlayableAd
     [DisallowMultipleComponent]
     public sealed class EnemySoldierVisual : MonoBehaviour
     {
-        private static readonly int DeathTrigger = Animator.StringToHash("Death");
-
         [SerializeField, InspectorName("Animator（动画控制器）")] private Animator animator;
-        private ObstacleController obstacle;
-        private bool subscribed;
-
-        public void Initialize(ObstacleController source)
-        {
-            obstacle = source;
-            ConfigureAnimator();
-            Subscribe();
-        }
 
         private void OnEnable()
         {
@@ -28,7 +17,6 @@ namespace PlayableAd
                 animator.Rebind();
                 animator.Update(0f);
             }
-            Subscribe();
         }
 
         private void ConfigureAnimator()
@@ -39,27 +27,12 @@ namespace PlayableAd
             animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
         }
 
-        private void Subscribe()
+        private void Update()
         {
-            if (subscribed || obstacle == null) return;
-            obstacle.Resolved += OnObstacleResolved;
-            subscribed = true;
-        }
-
-        private void OnObstacleResolved(ObstacleResolvedEvent resolved)
-        {
-            if (animator == null || animator.runtimeAnimatorController == null) return;
-            animator.ResetTrigger(DeathTrigger);
-            animator.SetTrigger(DeathTrigger);
-            animator.Update(0f);
-            animator.enabled = false;
-        }
-
-        private void OnDisable()
-        {
-            if (!subscribed || obstacle == null) return;
-            obstacle.Resolved -= OnObstacleResolved;
-            subscribed = false;
+            if (animator == null || !animator.enabled) return;
+            animator.speed = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.WorldTimeScale
+                : 1f;
         }
     }
 }

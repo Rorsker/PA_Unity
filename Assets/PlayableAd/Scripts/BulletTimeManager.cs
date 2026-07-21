@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace PlayableAd
@@ -46,7 +47,8 @@ namespace PlayableAd
 
         [Header("Overlay Feedback（覆盖层反馈）")]
         [SerializeField, Range(0f, 1f), InspectorName("Warm Tint Strength（暖色滤镜强度）")] private float warmTintStrength = 0.22f;
-        [SerializeField, Range(0f, 1f), InspectorName("Desaturation Strength（降饱和强度）")] private float desaturationStrength = 0.18f;
+        [FormerlySerializedAs("desaturationStrength")]
+        [SerializeField, Range(0f, 1f), InspectorName("Additional Tint Strength（附加滤镜强度）")] private float additionalTintStrength = 0.18f;
         [SerializeField, Range(0f, 1f), InspectorName("Vignette Strength（暗角强度）")] private float vignetteStrength = 0.28f;
 
         private State state;
@@ -56,7 +58,6 @@ namespace PlayableAd
         private float elapsed;
         private float exitElapsed;
         private float exitStartScale = 1f;
-        private Canvas overlayCanvas;
         private Image tintImage;
         private RawImage vignetteImage;
         private Texture2D vignetteTexture;
@@ -69,7 +70,7 @@ namespace PlayableAd
         {
             if (instance != null && instance != this)
             {
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
 
@@ -124,7 +125,11 @@ namespace PlayableAd
 
         public float GetWorldDeltaTime()
         {
-            return Time.deltaTime * currentScale;
+            // Existing impact hit-stop still owns Time.timeScale outside Bullet Time.
+            // While this module is active, real time keeps the two slow-motion systems from multiplying.
+            return state == State.Inactive
+                ? Time.deltaTime
+                : Time.unscaledDeltaTime * currentScale;
         }
 
         public void StartBulletTime(float duration)
@@ -174,7 +179,7 @@ namespace PlayableAd
         {
             GameObject canvasObject = new GameObject("BulletTimeOverlay");
             canvasObject.transform.SetParent(transform, false);
-            overlayCanvas = canvasObject.AddComponent<Canvas>();
+            Canvas overlayCanvas = canvasObject.AddComponent<Canvas>();
             overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             overlayCanvas.sortingOrder = 40;
 
@@ -228,7 +233,7 @@ namespace PlayableAd
             if (tintImage == null || vignetteImage == null) return;
             float amount = Mathf.Clamp01(1f - currentScale);
             tintImage.color = new Color(0.68f, 0.56f, 0.34f,
-                amount * Mathf.Clamp01(warmTintStrength + desaturationStrength * 0.35f));
+                amount * Mathf.Clamp01(warmTintStrength + additionalTintStrength * 0.35f));
             vignetteImage.color = new Color(0.04f, 0.025f, 0.01f, amount * vignetteStrength);
         }
 
