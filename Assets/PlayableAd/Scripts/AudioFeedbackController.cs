@@ -20,6 +20,10 @@ namespace PlayableAd
         [Min(0.1f), InspectorName("Collision Min Distance（碰撞最小距离）")] public float collisionMinDistance = 2f;
         [Min(1f), InspectorName("Collision Max Distance（碰撞最大距离）")] public float collisionMaxDistance = 24f;
 
+        [Header("Background Music（背景音乐）")]
+        [InspectorName("Background Music Loop（背景音乐循环）")] public AudioClip backgroundMusicLoop;
+        [Range(0f, 1f), InspectorName("Background Music Volume（背景音乐音量）")] public float backgroundMusicVolume = 0.18f;
+
         [Header("Movement Loops（移动循环音效）")]
         [InspectorName("Footsteps Loop（脚步循环）")] public AudioClip footstepsLoop;
         [InspectorName("Running Wind Loop（奔跑风声循环）")] public AudioClip runningWindLoop;
@@ -88,6 +92,7 @@ namespace PlayableAd
         }
 
         private AudioFeedbackSettings settings;
+        private AudioSource backgroundMusic;
         private AudioSource footsteps;
         private AudioSource wind;
         private AudioSource speedEnergy;
@@ -108,6 +113,10 @@ namespace PlayableAd
         public int LastCollisionLayerCount { get; private set; }
         public bool LastCollisionWasSpatial { get; private set; }
         public Vector3 LastCollisionPosition { get; private set; }
+        public float LastCollisionVolume { get; private set; }
+        public float LastCollisionPitch { get; private set; }
+        public float LastUpgradeVolume { get; private set; }
+        public float LastUpgradePitch { get; private set; }
 
         public void Initialize(AudioFeedbackSettings feedbackSettings)
         {
@@ -116,6 +125,14 @@ namespace PlayableAd
             if (settings.useProceduralPlaceholders)
                 ProceduralAudioLibrary.FillMissing(settings, ownedProceduralClips);
 
+            if (settings.backgroundMusicLoop != null)
+            {
+                backgroundMusic = CreateSource("Audio_Music", settings.backgroundMusicLoop, true);
+                backgroundMusic.volume = settings.audioEnabled
+                    ? settings.backgroundMusicVolume * settings.masterVolume
+                    : 0f;
+                backgroundMusic.priority = 96;
+            }
             footsteps = CreateSource("Audio_Footsteps", settings.footstepsLoop, true);
             wind = CreateSource("Audio_Wind", settings.runningWindLoop, true);
             speedEnergy = CreateSource("Audio_SpeedEnergy", settings.speedEnergyLoop, true);
@@ -133,6 +150,7 @@ namespace PlayableAd
             }
 
             baseMovementVolume = settings.movementVolume * settings.masterVolume;
+            StartLoopIfAssigned(backgroundMusic);
             StartLoopIfAssigned(footsteps);
             StartLoopIfAssigned(wind);
             StartLoopIfAssigned(speedEnergy);
@@ -177,18 +195,28 @@ namespace PlayableAd
         public void PlayTierUpgrade(int targetLevel)
         {
             float progress = Mathf.InverseLerp(1f, PlayerSpeedSettings.RequiredLevelCount, targetLevel);
-            PlayVoice(settings.tierUpgrade, settings.upgradeVolume, Mathf.Lerp(0.94f, 1.12f, progress), 4);
+            float speedResponse = Mathf.SmoothStep(0f, 1f, progress);
+            float volume = settings.upgradeVolume * Mathf.Lerp(0.9f, 1.18f, speedResponse);
+            float pitch = Mathf.Lerp(0.94f, 1.26f, speedResponse);
+            LastUpgradeVolume = Mathf.Clamp01(volume * settings.masterVolume);
+            LastUpgradePitch = Mathf.Clamp(pitch, 0.5f, 2f);
+            PlayVoice(settings.tierUpgrade, volume, pitch, 4);
             TriggerHaptic(HapticStrength.Medium);
         }
 
         public void PlaySpeedLevelUp(int targetLevel, bool major, bool maximum)
         {
             float progress = Mathf.InverseLerp(1f, PlayerSpeedSettings.RequiredLevelCount, targetLevel);
+            float speedResponse = Mathf.SmoothStep(0f, 1f, progress);
             AudioClip clip = maximum && settings.tierUpgradeMax != null
                 ? settings.tierUpgradeMax
                 : major && settings.tierUpgradeMajor != null ? settings.tierUpgradeMajor : settings.tierUpgrade;
-            float volume = settings.upgradeVolume * (maximum ? 1.08f : major ? 0.94f : 0.8f);
-            PlayVoice(clip, volume, Mathf.Lerp(0.96f, 1.08f, progress), maximum ? 5 : 4);
+            float volume = settings.upgradeVolume * (maximum ? 1.08f : major ? 0.94f : 0.8f)
+                * Mathf.Lerp(0.82f, 1.18f, speedResponse);
+            float pitch = Mathf.Lerp(0.94f, 1.26f, speedResponse);
+            LastUpgradeVolume = Mathf.Clamp01(volume * settings.masterVolume);
+            LastUpgradePitch = Mathf.Clamp(pitch, 0.5f, 2f);
+            PlayVoice(clip, volume, pitch, maximum ? 5 : 4);
             TriggerHaptic(maximum || major ? HapticStrength.Medium : HapticStrength.Light);
         }
 
@@ -202,8 +230,10 @@ namespace PlayableAd
             LastCollisionPosition = worldPosition;
 
             float speed = Mathf.Clamp01(normalizedActualSpeed);
+            float speedResponse = Mathf.SmoothStep(0f, 1f, speed);
             float comboCompression = Mathf.Lerp(1f, 0.76f, Mathf.Clamp01(comboIndex / 5f));
-            float pitch = 1f + Mathf.Clamp(comboIndex, 0, 3) * Mathf.Min(0.012f, pitchStep * 0.25f)
+            float pitch = Mathf.Lerp(0.94f, 1.22f, speedResponse)
+                + Mathf.Clamp(comboIndex, 0, 3) * Mathf.Min(0.012f, pitchStep * 0.25f)
                 + UnityEngine.Random.Range(-0.03f, 0.03f);
             AudioClip variant = settings.impactTransient;
             if (settings.soldierImpactVariants != null && settings.soldierImpactVariants.Length > 0)
@@ -212,26 +242,29 @@ namespace PlayableAd
                 if (selected != null) variant = selected;
             }
 
-            float baseVolume = settings.normalImpactVolume * comboCompression;
-            if (PlayVoiceAt(variant, baseVolume * Mathf.Lerp(0.76f, 0.92f, speed), pitch, 3, worldPosition))
+            float baseVolume = settings.normalImpactVolume * comboCompression * Mathf.Lerp(1.15f, 1.65f, speedResponse);
+            float primaryVolume = baseVolume * Mathf.Lerp(0.82f, 1f, speedResponse);
+            LastCollisionVolume = Mathf.Clamp01(primaryVolume * settings.masterVolume);
+            LastCollisionPitch = Mathf.Clamp(pitch, 0.5f, 2f);
+            if (PlayVoiceAt(variant, primaryVolume, pitch, 3, worldPosition))
                 LastCollisionLayerCount++;
-            if (PlayVoiceAt(settings.armorContact, baseVolume * Mathf.Lerp(0.34f, 0.48f, speed), pitch * 0.985f, 2, worldPosition))
+            if (PlayVoiceAt(settings.armorContact, baseVolume * Mathf.Lerp(0.38f, 0.55f, speedResponse), pitch * 0.985f, 2, worldPosition))
                 LastCollisionLayerCount++;
 
             if (speed >= 0.3f || outcome == CollisionOutcome.SpeedLoss)
             {
-                if (PlayVoiceAt(settings.bodyWeight, baseVolume * Mathf.Lerp(0.2f, 0.42f, speed), 0.94f, 2, worldPosition))
+                if (PlayVoiceAt(settings.bodyWeight, baseVolume * Mathf.Lerp(0.26f, 0.48f, speedResponse), pitch * 0.94f, 2, worldPosition))
                     LastCollisionLayerCount++;
             }
 
             if (LastCollisionLayerCount < 4 && speed >= 0.68f && (comboIndex & 1) != 0)
             {
-                if (PlayVoiceAt(settings.highSpeedWhoosh, baseVolume * Mathf.InverseLerp(0.68f, 1f, speed) * 0.3f, 1.02f, 1, worldPosition))
+                if (PlayVoiceAt(settings.highSpeedWhoosh, baseVolume * Mathf.InverseLerp(0.68f, 1f, speed) * 0.35f, pitch * 1.04f, 1, worldPosition))
                     LastCollisionLayerCount++;
             }
             else if (LastCollisionLayerCount < 4 && (speed >= 0.48f || outcome == CollisionOutcome.SpeedGain))
             {
-                if (PlayVoiceAt(settings.armorBreak, baseVolume * Mathf.Lerp(0.2f, 0.38f, speed), pitch * 1.015f, 2, worldPosition))
+                if (PlayVoiceAt(settings.armorBreak, baseVolume * Mathf.Lerp(0.24f, 0.44f, speedResponse), pitch * 1.015f, 2, worldPosition))
                     LastCollisionLayerCount++;
             }
 
@@ -446,6 +479,7 @@ namespace PlayableAd
         private void OnEnable()
         {
             if (settings == null) return;
+            StartLoopIfAssigned(backgroundMusic);
             StartLoopIfAssigned(footsteps);
             StartLoopIfAssigned(wind);
             StartLoopIfAssigned(speedEnergy);
@@ -465,6 +499,7 @@ namespace PlayableAd
 
         private void StopAllSources()
         {
+            if (backgroundMusic != null) backgroundMusic.Stop();
             if (footsteps != null) footsteps.Stop();
             if (wind != null) wind.Stop();
             if (speedEnergy != null) speedEnergy.Stop();
