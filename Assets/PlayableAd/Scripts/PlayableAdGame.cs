@@ -35,7 +35,7 @@ namespace PlayableAd
         {
             [InspectorName("Section Name（区段名称）")] public string sectionName = "Momentum";
             [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 7.38f;
-            [Range(6, 50), InspectorName("Density Rows（密度行数）")] public int soldierCount = 10;
+            [Range(1, 50), InspectorName("Density Rows（密度行数）")] public int soldierCount = 10;
             [InspectorName("Placement Mode（摆放模式）")] public SoldierPlacementMode placementMode = SoldierPlacementMode.RandomDense;
             [Range(0.65f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.8f;
             [Range(0.4f, 1f), InspectorName("Horizontal Coverage（横向覆盖范围）")] public float horizontalCoverage = 1f;
@@ -48,6 +48,7 @@ namespace PlayableAd
             [InspectorName("Section Name（区段名称）")] public string sectionName = "StoneWall";
             [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 100f;
             [InspectorName("Blocking Mode（阻挡模式）")] public StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes;
+            [InspectorName("Bullet Time（子弹时间）")] public BulletTimeSettings bulletTime = new BulletTimeSettings { enabled = false };
         }
 
         [Serializable]
@@ -75,6 +76,15 @@ namespace PlayableAd
             [Range(1.5f, 5f), InspectorName("Tutorial First Soldier Gap（首个教学士兵间隔）")] public float tutorialFirstSoldierGap = 2.46f;
             [Range(3f, 12f), InspectorName("Tutorial Wall Gap（教学墙体间隔）")] public float tutorialWallGap = 6.15f;
             [InspectorName("Tutorial Wall Blocking Mode（教学墙阻挡模式）")] public StoneWallBlockingMode tutorialWallBlockingMode = StoneWallBlockingMode.AllThreeLanes;
+            [InspectorName("Tutorial Wall Bullet Time（教学墙子弹时间）")] public BulletTimeSettings tutorialWallBulletTime = new BulletTimeSettings
+            {
+                enabled = true,
+                triggerDistance = 3f,
+                duration = 0.55f,
+                worldTimeScale = 0.25f,
+                enterDuration = 0.2f,
+                exitDuration = 0.15f
+            };
 
             [Header("Forward Speed Loss（前进速度损失）")]
             [InspectorName("Speed Loss Enabled（启用速度损失）")] public bool forwardSpeedLossEnabled = true;
@@ -236,6 +246,8 @@ namespace PlayableAd
             public ElixirPickup elixir;
             public float wallCenterX;
             public float wallHalfWidth;
+            public BulletTimeSettings bulletTimeSettings;
+            public bool bulletTimeTriggered;
             public bool hasPreviousDistance;
             public float previousDistance;
         }
@@ -360,6 +372,10 @@ namespace PlayableAd
         private GUIStyle bodyStyle;
         private GUIStyle smallStyle;
         private GUIStyle buttonStyle;
+        private GUIStyle smashTitleStyle;
+        private GUIStyle smashSubtitleStyle;
+        private float smashEffectStart;
+        private float smashEffectUntil;
         private LineRenderer upgradeRing;
         private float lastImpactTime;
         private float lastNormalShakeTime;
@@ -557,9 +573,9 @@ namespace PlayableAd
 
         private void ReadInput()
         {
-            if (bossSequence || !FormalStarted)
+            if (bossSequence || flowController == null || !flowController.IsGameplayActive)
             {
-                if (!FormalStarted)
+                if (flowController == null || flowController.CurrentState == RunFlowState.Intro)
                 {
                     dragging = false;
                     targetX = 0f;
@@ -669,17 +685,20 @@ namespace PlayableAd
 
         private void MoveRunner()
         {
+            float worldDeltaTime = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
             float forwardSpeed = forwardMotion != null
-                ? forwardMotion.Tick(Time.deltaTime, true)
+                ? forwardMotion.Tick(worldDeltaTime, true)
                 : speedController.GetForwardSpeed();
             float x = dragging
                 ? targetX
                 : Mathf.MoveTowards(runner.position.x, targetX, tuning.lateralSpeed * Time.deltaTime);
-            runner.position = new Vector3(x, runner.position.y, runner.position.z + forwardSpeed * Time.deltaTime);
+            runner.position = new Vector3(x, runner.position.y, runner.position.z + forwardSpeed * worldDeltaTime);
 
             if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled && !IsInsideBossSpeedProtectionZone())
             {
-                speedController.ApplyContinuousSpeedLoss(Time.deltaTime, tuning.forwardSpeedLossPerSecond,
+                speedController.ApplyContinuousSpeedLoss(worldDeltaTime, tuning.forwardSpeedLossPerSecond,
                     tuning.minimumSpeedAfterLoss, this);
             }
 
@@ -711,7 +730,10 @@ namespace PlayableAd
             }
 
             if (runnerAnimator != null)
-                runnerAnimator.speed = movementActive ? Mathf.Lerp(0.9f, 1.65f, actualNormalized) : 0f;
+            {
+                float worldScale = BulletTimeManager.Instance != null ? BulletTimeManager.Instance.WorldTimeScale : 1f;
+                runnerAnimator.speed = movementActive ? Mathf.Lerp(0.9f, 1.65f, actualNormalized) * worldScale : 0f;
+            }
 
             if (speedFeedback != null)
             {
@@ -810,6 +832,7 @@ namespace PlayableAd
 
                 if (encounter.type == EncounterType.Wall)
                 {
+                    TryTriggerBulletTime(encounter, dz);
                     bool runnerInsideWall = Mathf.Abs(runner.position.x - encounter.wallCenterX)
                         <= encounter.wallHalfWidth + 0.35f;
                     if (runnerInsideWall && !encounter.anticipated
@@ -831,7 +854,10 @@ namespace PlayableAd
                 if (encounter.type == EncounterType.Elixir && encounter.fallbackBoost && dz > 0f && dz <= tuning.fallbackBoostMagnetDistance)
                 {
                     Vector3 position = encounter.root.transform.position;
-                    position.x = Mathf.MoveTowards(position.x, runner.position.x, tuning.fallbackBoostMagnetSpeed * Time.deltaTime);
+                    float worldDeltaTime = BulletTimeManager.Instance != null
+                        ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                        : Time.deltaTime;
+                    position.x = Mathf.MoveTowards(position.x, runner.position.x, tuning.fallbackBoostMagnetSpeed * worldDeltaTime);
                     encounter.root.transform.position = position;
                 }
 
@@ -849,6 +875,17 @@ namespace PlayableAd
                     }
                 }
             }
+        }
+
+        private void TryTriggerBulletTime(Encounter encounter, float distanceToWall)
+        {
+            if (encounter.bulletTimeTriggered || encounter.bulletTimeSettings == null
+                || !encounter.bulletTimeSettings.enabled || distanceToWall <= 0f)
+                return;
+
+            if (distanceToWall > encounter.bulletTimeSettings.triggerDistance) return;
+            encounter.bulletTimeTriggered = true;
+            BulletTimeManager.Instance?.StartBulletTime(encounter.bulletTimeSettings);
         }
 
         private void HandleTargetPreview(Encounter encounter, CollisionOutcome outcome)
@@ -990,8 +1027,10 @@ namespace PlayableAd
             ObstacleResolutionType resolution = ResolveObstacle(encounter);
             if (resolution == ObstacleResolutionType.Boosted)
             {
-                callout = "SMASH!";
+                callout = "撞！\n速度↑";
                 calloutUntil = elapsed + 0.75f;
+                smashEffectStart = Time.unscaledTime;
+                smashEffectUntil = smashEffectStart + 0.28f;
                 Impact(encounter, CollisionOutcome.SpeedGain, true, 1.15f);
                 bool wasAtMaximum = speedBeforeImpact >= playerSpeed.maximumSpeed - 0.001f;
                 int shards = wasAtMaximum ? impactPresentation.minEnergyShards : impactPresentation.maxEnergyShardsPerHit;
@@ -1401,6 +1440,8 @@ namespace PlayableAd
 
             worldRoot = new GameObject("GeneratedWorld").transform;
             worldRoot.SetParent(transform, false);
+            if (GetComponent<BulletTimeManager>() == null)
+                gameObject.AddComponent<BulletTimeManager>();
             BuildCameraAndLight();
             BuildRoad();
             BuildRunner();
@@ -1662,7 +1703,8 @@ namespace PlayableAd
             }
 
             float wallZ = firstSoldierZ + (soldierCount - 1) * tuning.tutorialSoldierSpacing + tuning.tutorialWallGap;
-            CreateBreakableWall(wallZ, "TutorialStoneWall", tuning.tutorialWallBlockingMode);
+            CreateBreakableWall(wallZ, "TutorialStoneWall", tuning.tutorialWallBlockingMode,
+                tuning.tutorialWallBulletTime);
             BuildConfiguredMainRun(wallZ);
         }
 
@@ -1684,7 +1726,7 @@ namespace PlayableAd
                     if (section == null) continue;
                     CreateBreakableWall(tutorialEndZ + section.startOffsetFromTutorial,
                         "StoneWallSection_" + (i + 1) + "_" + section.sectionName,
-                        section.blockingMode);
+                        section.blockingMode, section.bulletTime);
                 }
             }
 
@@ -1726,7 +1768,7 @@ namespace PlayableAd
             GameObject sectionObject = new GameObject("SoldierSection_" + (sectionIndex + 1) + "_" + section.sectionName);
             sectionObject.transform.SetParent(worldRoot, false);
             float startZ = tutorialEndZ + section.startOffsetFromTutorial;
-            int densityRows = Mathf.Clamp(section.soldierCount, 6, 50);
+            int densityRows = Mathf.Clamp(section.soldierCount, 1, 50);
             bool useStraightLane = section.placementMode != SoldierPlacementMode.RandomDense;
             int totalSoldiers = useStraightLane ? densityRows : densityRows * 3;
             float spacing = GetSectionForwardSpacing(section);
@@ -2013,7 +2055,8 @@ namespace PlayableAd
         }
 
         private void CreateBreakableWall(float z, string objectName = "TutorialStoneWall",
-            StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes)
+            StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes,
+            BulletTimeSettings bulletTimeSettings = null)
         {
             GameObject root;
             GameObject configuredWallPrefab = prefab != null ? prefab.stoneWallPrefab : null;
@@ -2047,7 +2090,8 @@ namespace PlayableAd
                 wall = wall,
                 obstacle = obstacle,
                 wallCenterX = centerX,
-                wallHalfWidth = halfWidth
+                wallHalfWidth = halfWidth,
+                bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null
             });
         }
 
@@ -2143,7 +2187,14 @@ namespace PlayableAd
 
             if (!ending && elapsed < calloutUntil)
             {
-                GUI.Label(new Rect(20f, height * 0.18f, width - 40f, 65f), callout, titleStyle);
+                if (callout == "撞！\n速度↑")
+                {
+                    DrawSmashCallout(width, height);
+                }
+                else
+                {
+                    GUI.Label(new Rect(20f, height * 0.18f, width - 40f, 65f), callout, titleStyle);
+                }
             }
 
             if (!FormalStarted && !ending)
@@ -2177,6 +2228,42 @@ namespace PlayableAd
             }
         }
 
+        private void DrawSmashCallout(float width, float height)
+        {
+            float now = Time.unscaledTime;
+            float effectProgress = smashEffectUntil > smashEffectStart
+                ? Mathf.Clamp01((now - smashEffectStart) / (smashEffectUntil - smashEffectStart))
+                : 1f;
+            float remainingEffect = 1f - effectProgress;
+            float jitterX = Mathf.Sin(now * 92f) * 7f * remainingEffect;
+            float jitterY = Mathf.Cos(now * 117f) * 4f * remainingEffect;
+
+            if (remainingEffect > 0f)
+            {
+                for (int i = 3; i >= 1; i--)
+                {
+                    float ghostOffset = i * 5f * remainingEffect;
+                    float ghostAlpha = 0.08f * remainingEffect * (4 - i);
+                    DrawSmashText(width, height,
+                        new Vector2(jitterX - ghostOffset, jitterY + i * 2f), ghostAlpha,
+                        new Color(1f, 0.72f, 0.3f, 1f));
+                }
+            }
+
+            DrawSmashText(width, height, new Vector2(jitterX, jitterY), 1f, Color.white);
+        }
+
+        private void DrawSmashText(float width, float height, Vector2 offset, float alpha, Color color)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = new Color(color.r, color.g, color.b, alpha);
+            float labelWidth = width * 0.84f;
+            float labelX = (width - labelWidth) * 0.5f + offset.x;
+            GUI.Label(new Rect(labelX + 18f, height * 0.16f + offset.y, labelWidth, 58f), "撞！", smashTitleStyle);
+            GUI.Label(new Rect(labelX, height * 0.225f + offset.y, labelWidth, 42f), "速度↑", smashSubtitleStyle);
+            GUI.color = previousColor;
+        }
+
         private void EnsureGuiStyles()
         {
             if (titleStyle != null)
@@ -2204,6 +2291,20 @@ namespace PlayableAd
                 fontSize = 16,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.9f, 0.92f, 0.94f) }
+            };
+            smashTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 43,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white }
+            };
+            smashSubtitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 24,
+                fontStyle = FontStyle.Normal,
+                normal = { textColor = Color.white }
             };
             buttonStyle = new GUIStyle(GUI.skin.button)
             {

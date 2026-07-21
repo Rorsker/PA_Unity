@@ -99,7 +99,8 @@ namespace PlayableAd
         private void Update()
         {
             if (!breaking) return;
-            float dt = Time.unscaledDeltaTime;
+            float worldScale = BulletTimeManager.Instance != null ? BulletTimeManager.Instance.WorldTimeScale : 1f;
+            float dt = Time.unscaledDeltaTime * worldScale;
             timer += dt;
             for (int i = 0; i < chunks.Length; i++)
             {

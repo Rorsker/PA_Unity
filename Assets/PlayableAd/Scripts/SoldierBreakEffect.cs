@@ -20,6 +20,8 @@ namespace PlayableAd
         private Vector3[] localPositions;
         private Quaternion[] localRotations;
         private Vector3[] localScales;
+        private Vector3[] velocities;
+        private Vector3[] angularVelocities;
         private float remaining;
         private bool playing;
         private uint sequence;
@@ -33,6 +35,8 @@ namespace PlayableAd
             localPositions = new Vector3[count];
             localRotations = new Quaternion[count];
             localScales = new Vector3[count];
+            velocities = new Vector3[count];
+            angularVelocities = new Vector3[count];
             for (int i = 0; i < count; i++)
             {
                 Transform fragment = fragments[i].transform;
@@ -65,14 +69,14 @@ namespace PlayableAd
                 fragment.localPosition = localPositions[i];
                 fragment.localRotation = localRotations[i];
                 fragment.localScale = localScales[i] * Random.Range(fragmentScaleRange.x, fragmentScaleRange.y);
-                body.isKinematic = false;
-                body.useGravity = true;
+                body.isKinematic = true;
+                body.useGravity = false;
                 body.detectCollisions = false;
                 float lane = count <= 1 ? 0f : i / (float)(count - 1) * 2f - 1f;
-                body.velocity = transform.forward * forwardForce * speedScale * Random.Range(0.88f, 1.08f)
+                velocities[i] = transform.forward * forwardForce * speedScale * Random.Range(0.88f, 1.08f)
                     + transform.right * sideForce * (lane + sideBias * 0.16f)
                     + Vector3.up * upwardForce * Random.Range(0.72f, 1.12f);
-                body.angularVelocity = Random.onUnitSphere * torque * Random.Range(0.7f, 1.15f);
+                angularVelocities[i] = Random.onUnitSphere * torque * Random.Range(0.7f, 1.15f) * Mathf.Rad2Deg;
             }
 
             for (int i = 0; i < particles.Length; i++)
@@ -82,30 +86,32 @@ namespace PlayableAd
             }
         }
 
-        private void FixedUpdate()
-        {
-            if (!playing || Mathf.Approximately(gravityMultiplier, 1f)) return;
-            Vector3 extraGravity = Physics.gravity * (gravityMultiplier - 1f);
-            int count = Mathf.Min(fragmentCount, fragments.Length);
-            for (int i = 0; i < count; i++)
-                if (!fragments[i].isKinematic) fragments[i].AddForce(extraGravity, ForceMode.Acceleration);
-        }
-
         private void Update()
         {
             if (!playing) return;
-            remaining -= Time.deltaTime;
+            float worldDeltaTime = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
+            remaining -= worldDeltaTime;
             if (remaining <= 0f)
             {
                 StopAndHide();
                 return;
             }
 
-            if (remaining > fadeDuration) return;
-            float scale = Mathf.Clamp01(remaining / Mathf.Max(0.01f, fadeDuration));
             int count = Mathf.Min(fragmentCount, fragments.Length);
             for (int i = 0; i < count; i++)
-                fragments[i].transform.localScale = localScales[i] * scale;
+            {
+                if (!fragments[i].gameObject.activeSelf) continue;
+                velocities[i] += Physics.gravity * gravityMultiplier * worldDeltaTime;
+                fragments[i].transform.position += velocities[i] * worldDeltaTime;
+                fragments[i].transform.Rotate(angularVelocities[i] * worldDeltaTime, Space.Self);
+                if (remaining <= fadeDuration)
+                {
+                    float scale = Mathf.Clamp01(remaining / Mathf.Max(0.01f, fadeDuration));
+                    fragments[i].transform.localScale = localScales[i] * scale;
+                }
+            }
         }
 
         public void StopAndHide()
@@ -120,6 +126,8 @@ namespace PlayableAd
                 body.useGravity = false;
                 body.isKinematic = true;
                 body.detectCollisions = false;
+                velocities[i] = Vector3.zero;
+                angularVelocities[i] = Vector3.zero;
                 body.transform.localPosition = localPositions[i];
                 body.transform.localRotation = localRotations[i];
                 body.transform.localScale = localScales[i];

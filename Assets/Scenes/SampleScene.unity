@@ -251,7 +251,14 @@ MonoBehaviour:
     tutorialSoldierSpacing: 1.846154
     tutorialFirstSoldierGap: 2.461538
     tutorialWallGap: 6.153846
-    tutorialWallBlockingMode: 0
+    tutorialWallBlockingMode: 1
+    tutorialWallBulletTime:
+      enabled: 1
+      triggerDistance: 3
+      duration: 0.55
+      worldTimeScale: 0.25
+      enterDuration: 0.2
+      exitDuration: 0.15
     forwardSpeedLossEnabled: 1
     forwardSpeedLossPerSecond: 0.158
     minimumSpeedAfterLoss: 1
@@ -300,142 +307,142 @@ MonoBehaviour:
   prefab:
     soldierSections:
     - sectionName: 1
-      startOffsetFromTutorial: 20.89
-      soldierCount: 6
+      startOffsetFromTutorial: 23
+      soldierCount: 5
       placementMode: 1
       minimumForwardSpacing: 1.002
       horizontalCoverage: 1
       forwardRandomness: 0.9
     - sectionName: 2
-      startOffsetFromTutorial: 48.37
-      soldierCount: 6
-      placementMode: 3
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 3
-      startOffsetFromTutorial: 63.48
-      soldierCount: 6
-      placementMode: 2
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 4
-      startOffsetFromTutorial: 93.08
-      soldierCount: 6
-      placementMode: 2
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 5
-      startOffsetFromTutorial: 124.18
-      soldierCount: 6
+      startOffsetFromTutorial: 33
+      soldierCount: 5
       placementMode: 1
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
+    - sectionName: 3
+      startOffsetFromTutorial: 46
+      soldierCount: 5
+      placementMode: 1
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
+    - sectionName: 4
+      startOffsetFromTutorial: 53
+      soldierCount: 5
+      placementMode: 1
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
+    - sectionName: 5
+      startOffsetFromTutorial: 81
+      soldierCount: 5
+      placementMode: 3
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
     - sectionName: 6
-      startOffsetFromTutorial: 167.75
-      soldierCount: 6
-      placementMode: 2
+      startOffsetFromTutorial: 98
+      soldierCount: 5
+      placementMode: 1
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 7
-      startOffsetFromTutorial: 210.68
-      soldierCount: 6
+      startOffsetFromTutorial: 114
+      soldierCount: 5
       placementMode: 3
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 8
-      startOffsetFromTutorial: 242.19
-      soldierCount: 6
+      startOffsetFromTutorial: 120
+      soldierCount: 5
       placementMode: 1
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 9
-      startOffsetFromTutorial: 285.97
-      soldierCount: 6
-      placementMode: 1
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 10
-      startOffsetFromTutorial: 294.41
-      soldierCount: 6
-      placementMode: 3
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 11
-      startOffsetFromTutorial: 312
-      soldierCount: 6
-      placementMode: 1
-      minimumForwardSpacing: 0.8
-      horizontalCoverage: 1
-      forwardRandomness: 0.8
-    - sectionName: 12
-      startOffsetFromTutorial: 341.89
-      soldierCount: 6
+      startOffsetFromTutorial: 127
+      soldierCount: 5
       placementMode: 2
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
-    - sectionName: 13
-      startOffsetFromTutorial: 383.95
-      soldierCount: 6
+    - sectionName: 10
+      startOffsetFromTutorial: 152
+      soldierCount: 5
+      placementMode: 1
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
+    - sectionName: 11
+      startOffsetFromTutorial: 163
+      soldierCount: 5
       placementMode: 3
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
+    - sectionName: 12
+      startOffsetFromTutorial: 186
+      soldierCount: 5
+      placementMode: 1
+      minimumForwardSpacing: 0.8
+      horizontalCoverage: 1
+      forwardRandomness: 0.8
+    - sectionName: 13
+      startOffsetFromTutorial: 204
+      soldierCount: 5
+      placementMode: 2
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 14
-      startOffsetFromTutorial: 405.94
-      soldierCount: 6
-      placementMode: 3
+      startOffsetFromTutorial: 220
+      soldierCount: 5
+      placementMode: 1
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 15
-      startOffsetFromTutorial: 453.67
-      soldierCount: 6
+      startOffsetFromTutorial: 227
+      soldierCount: 5
       placementMode: 1
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 16
-      startOffsetFromTutorial: 478.69
-      soldierCount: 6
-      placementMode: 2
+      startOffsetFromTutorial: 238
+      soldierCount: 5
+      placementMode: 3
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 17
-      startOffsetFromTutorial: 524.51
-      soldierCount: 6
-      placementMode: 3
+      startOffsetFromTutorial: 250
+      soldierCount: 5
+      placementMode: 2
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 18
-      startOffsetFromTutorial: 556.7
-      soldierCount: 6
-      placementMode: 3
+      startOffsetFromTutorial: 270
+      soldierCount: 5
+      placementMode: 2
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 19
-      startOffsetFromTutorial: 600.73
-      soldierCount: 6
+      startOffsetFromTutorial: 276
+      soldierCount: 5
       placementMode: 2
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 20
-      startOffsetFromTutorial: 621.53
-      soldierCount: 6
-      placementMode: 2
+      startOffsetFromTutorial: 296
+      soldierCount: 5
+      placementMode: 3
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
@@ -472,18 +479,53 @@ MonoBehaviour:
     - sectionName: StoneWall_1
       startOffsetFromTutorial: 108
       blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
     - sectionName: StoneWall_2
       startOffsetFromTutorial: 226
       blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
     - sectionName: StoneWall_3
       startOffsetFromTutorial: 365
       blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
     - sectionName: StoneWall_4
       startOffsetFromTutorial: 580
       blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
     - sectionName: StoneWall_5
       startOffsetFromTutorial: 695
       blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
   playerSpeed:
     minimumSpeed: 1
     maximumSpeed: 10

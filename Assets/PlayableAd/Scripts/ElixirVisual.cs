@@ -37,6 +37,7 @@ namespace PlayableAd
         private Color primaryColor;
         private Color secondaryColor;
         private Material sharedLineMaterial;
+        private float animationTime;
 
         public void Initialize(ElixirPresentationSettings presentationSettings, Renderer[] visualRenderers, SpeedVisualProfile profile, int targetLevel)
         {
@@ -45,6 +46,7 @@ namespace PlayableAd
             propertyBlock = new MaterialPropertyBlock();
             basePosition = transform.localPosition;
             seed = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+            animationTime = 0f;
             SpeedTierVisualData tier = profile.Get(targetLevel);
             primaryColor = tier.primaryColor;
             secondaryColor = tier.secondaryColor;
@@ -77,9 +79,13 @@ namespace PlayableAd
                 return;
             }
 
-            float wave = (Mathf.Sin(Time.time * settings.breathSpeed + seed) + 1f) * 0.5f;
+            float worldDeltaTime = BulletTimeManager.Instance != null
+                ? BulletTimeManager.Instance.GetWorldDeltaTime()
+                : Time.deltaTime;
+            animationTime += worldDeltaTime;
+            float wave = (Mathf.Sin(animationTime * settings.breathSpeed + seed) + 1f) * 0.5f;
             transform.localPosition = basePosition + Vector3.up * (wave * settings.hoverHeight);
-            transform.Rotate(0f, settings.rotationSpeed * Time.deltaTime, 0f, Space.Self);
+            transform.Rotate(0f, settings.rotationSpeed * worldDeltaTime, 0f, Space.Self);
 
             Color emission = secondaryColor * Mathf.Lerp(0.25f, settings.emissionIntensity, wave);
             for (int i = 0; i < renderers.Length; i++)
