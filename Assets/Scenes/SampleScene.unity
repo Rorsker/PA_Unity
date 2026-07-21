@@ -692,6 +692,9 @@ MonoBehaviour:
     lowQualitySpeedLineCount: 6
     lowQualityEnergyShardLimit: 12
     lowQualityWallChunkCount: 6
+  runningWindTrailPrefab: {fileID: 3696007233179127096, guid: c248f95ffea8b8543bc7ad0fffe0216d, type: 3}
+  runningSmokeTrailPrefab: {fileID: 8656522925564163052, guid: e509867be4f82f246a95eca1ee5a2d61, type: 3}
+  accelerationAuraPrefab: {fileID: 3280519133390621005, guid: a71be3e7990efb040a07565c43cbb198, type: 3}
   elixirPresentation:
     hoverHeight: 0.18
     rotationSpeed: 72

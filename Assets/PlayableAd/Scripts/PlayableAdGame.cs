@@ -265,6 +265,11 @@ namespace PlayableAd
         [SerializeField, InspectorName("Speed Visual Profile（速度视觉配置）")] private SpeedVisualProfile speedVisualProfile;
         [SerializeField, InspectorName("Visual Performance（视觉性能设置）")] private VisualPerformanceSettings visualPerformance = new VisualPerformanceSettings();
 
+        [Header("External speed VFX（外部速度特效）")]
+        [SerializeField, InspectorName("Running Wind Trail Prefab（跑步风痕预制体）")] private GameObject runningWindTrailPrefab;
+        [SerializeField, InspectorName("Running Smoke Trail Prefab（跑步烟尘预制体）")] private GameObject runningSmokeTrailPrefab;
+        [SerializeField, InspectorName("Acceleration Aura Prefab（加速法阵预制体）")] private GameObject accelerationAuraPrefab;
+
         [Header("Elixir presentation（药剂表现）")]
         [SerializeField, InspectorName("Elixir Presentation（药剂表现设置）")] private ElixirPresentationSettings elixirPresentation = new ElixirPresentationSettings();
 
@@ -1610,7 +1615,8 @@ namespace PlayableAd
             runnerSpriteVisual?.ResetVisualState();
 
             speedFeedback = root.AddComponent<SpeedVisualFeedback>();
-            speedFeedback.Initialize(speedVisualProfile, visualPerformance);
+            speedFeedback.Initialize(speedVisualProfile, visualPerformance, runningWindTrailPrefab,
+                runningSmokeTrailPrefab, accelerationAuraPrefab);
             BuildUpgradeRing(root.transform);
             audioFeedback = root.AddComponent<AudioFeedbackController>();
             audioFeedback.Initialize(audioPresentation);
