@@ -707,6 +707,9 @@ MonoBehaviour:
     lowQualitySpeedLineCount: 6
     lowQualityEnergyShardLimit: 12
     lowQualityWallChunkCount: 6
+  runningWindTrailPrefab: {fileID: 3696007233179127096, guid: c248f95ffea8b8543bc7ad0fffe0216d, type: 3}
+  runningSmokeTrailPrefab: {fileID: 8656522925564163052, guid: e509867be4f82f246a95eca1ee5a2d61, type: 3}
+  accelerationAuraPrefab: {fileID: 3280519133390621005, guid: a71be3e7990efb040a07565c43cbb198, type: 3}
   elixirPresentation:
     hoverHeight: 0.18
     rotationSpeed: 72
@@ -804,42 +807,42 @@ MonoBehaviour:
     collisionSpatialBlend: 0.62
     collisionMinDistance: 2
     collisionMaxDistance: 24
-    backgroundMusicLoop: {fileID: 8300000, guid: b9c873be358337c4989f79534403389d, type: 3}
+    backgroundMusicLoop: {fileID: 8300000, guid: b8591b312d1c30923a1c656ef4aeaf96, type: 3}
     backgroundMusicVolume: 0.18
     footstepsLoop: {fileID: 0}
     runningWindLoop: {fileID: 0}
     speedEnergyLoop: {fileID: 0}
-    elixirPickup: {fileID: 8300000, guid: ba39bf8baf6d13046889b2d64822381a, type: 3}
-    elixirAbsorb: {fileID: 8300000, guid: 7a9de5c4d998126449cf964a6b27a8b0, type: 3}
-    tierUpgrade: {fileID: 8300000, guid: 6cf9c85b5a3b88c468b21b9d21250adf, type: 3}
-    tierUpgradeMajor: {fileID: 8300000, guid: 973cbfce50fc9634b8c2729624d4cc4d, type: 3}
-    tierUpgradeMax: {fileID: 8300000, guid: 6e7f23ef945c235438595e89d6332d46, type: 3}
-    tierDrop: {fileID: 8300000, guid: bf0938dc5667ff34aa2616789bb48a17, type: 3}
-    impactPenalty: {fileID: 8300000, guid: acbcb75601b0082458fda8807f67c813, type: 3}
-    speedGainImpact: {fileID: 8300000, guid: b3b1ca576c2899b40befb38abb0775fe, type: 3}
-    neutralImpact: {fileID: 8300000, guid: 7c47b20bb9874304a809dc5580d403ba, type: 3}
-    speedLossImpact: {fileID: 8300000, guid: 8b23b175a78d6b5458322e3a6c9905d0, type: 3}
-    dangerPreview: {fileID: 8300000, guid: 1ed8fb76fc64e4e46847348138782234, type: 3}
+    elixirPickup: {fileID: 8300000, guid: 58ead51cfbaeb36f67fda3254ca8f946, type: 3}
+    elixirAbsorb: {fileID: 8300000, guid: af34dc8d2ae8d87b87f4f16bb94064ae, type: 3}
+    tierUpgrade: {fileID: 8300000, guid: eb54ea6e32c45ad86adc08d3129ff35d, type: 3}
+    tierUpgradeMajor: {fileID: 8300000, guid: 688e573929e69d3cc2a907ed577b04c1, type: 3}
+    tierUpgradeMax: {fileID: 8300000, guid: 4c76786d2e6039c20dfdb8f81f4ec229, type: 3}
+    tierDrop: {fileID: 8300000, guid: 3ee6abc836ee7555601035267dc53f01, type: 3}
+    impactPenalty: {fileID: 8300000, guid: 5fbf56b24bbe5ee856c3b451bff60110, type: 3}
+    speedGainImpact: {fileID: 8300000, guid: 373ffbb6a1e19d991b8715f9fe884199, type: 3}
+    neutralImpact: {fileID: 8300000, guid: e598316f463da93ff0d10a327cdbc5fd, type: 3}
+    speedLossImpact: {fileID: 8300000, guid: a621ddf8a8e47521cf2b460f87b70307, type: 3}
+    dangerPreview: {fileID: 8300000, guid: 55192db76c0b938f8be46d6bed33fbb1, type: 3}
     soldierImpactVariants:
-    - {fileID: 8300000, guid: 7c47b20bb9874304a809dc5580d403ba, type: 3}
-    - {fileID: 8300000, guid: 2b21ef916f6943c439b71a7c74568878, type: 3}
-    - {fileID: 8300000, guid: b7b5a6156961bac44a67504d42ce6fcf, type: 3}
-    - {fileID: 8300000, guid: 56703418e3aed4c47a5f6622816b8e41, type: 3}
-    impactTransient: {fileID: 8300000, guid: 323e15cfe809e114ab92c9f4b25e8bc2, type: 3}
-    armorContact: {fileID: 8300000, guid: b7b5a6156961bac44a67504d42ce6fcf, type: 3}
-    bodyWeight: {fileID: 8300000, guid: 2b21ef916f6943c439b71a7c74568878, type: 3}
-    armorBreak: {fileID: 8300000, guid: 88b1cbe3caa3fee4b8b103b5edd7aba9, type: 3}
-    highSpeedWhoosh: {fileID: 8300000, guid: c458b6714dab015479d507b21fd2cead, type: 3}
-    soldierFlyAway: {fileID: 8300000, guid: 566d2ea6240b489479a6e9fd608c2621, type: 3}
-    energyReturn: {fileID: 8300000, guid: 2a71d8e8ea428e0409d3df636b9f0192, type: 3}
-    wallLowImpact: {fileID: 8300000, guid: b7f8695cf65a4f24eb37544298821146, type: 3}
-    wallStoneDebris: {fileID: 8300000, guid: 1d74880bed4586644a16a79a2d9dc8af, type: 3}
-    wallDust: {fileID: 8300000, guid: 023ea3ddeaa8dd146b7633a0800e5a0e, type: 3}
-    wallImpactTail: {fileID: 8300000, guid: f1cb5d83282f2904a85f73111d068616, type: 3}
-    bossContact: {fileID: 8300000, guid: f1cb5d83282f2904a85f73111d068616, type: 3}
-    bossStruggleLoop: {fileID: 8300000, guid: 21c4a490b24ba2045bc815f7626a40ef, type: 3}
-    bossFinishImpact: {fileID: 8300000, guid: a652877b012108e41871f867ada9f176, type: 3}
-    cageBreak: {fileID: 8300000, guid: 1d74880bed4586644a16a79a2d9dc8af, type: 3}
+    - {fileID: 8300000, guid: e598316f463da93ff0d10a327cdbc5fd, type: 3}
+    - {fileID: 8300000, guid: 04aea703142bb3e1a1b5ee2b047c354e, type: 3}
+    - {fileID: 8300000, guid: 79296e7685deb97186cba7fce4403f7e, type: 3}
+    - {fileID: 8300000, guid: 5e94357b2436aa250237f6eb6d3c9d09, type: 3}
+    impactTransient: {fileID: 8300000, guid: 8c1fbb8399124101cb8706ceff3ef3c8, type: 3}
+    armorContact: {fileID: 8300000, guid: 79296e7685deb97186cba7fce4403f7e, type: 3}
+    bodyWeight: {fileID: 8300000, guid: 04aea703142bb3e1a1b5ee2b047c354e, type: 3}
+    armorBreak: {fileID: 8300000, guid: 94e9a7d6f187e06c7dc4c9e5ac6a54e7, type: 3}
+    highSpeedWhoosh: {fileID: 8300000, guid: 9cfda63ba750b1b419ea15746d976b72, type: 3}
+    soldierFlyAway: {fileID: 8300000, guid: 67d65c333da692e302e5b56601f7e48f, type: 3}
+    energyReturn: {fileID: 8300000, guid: 5084ac04c156002daa58cee3c6bc067e, type: 3}
+    wallLowImpact: {fileID: 8300000, guid: f0ca0e3ce343e6710f8d068fedb0555b, type: 3}
+    wallStoneDebris: {fileID: 8300000, guid: 5736984dbe2c11bfd4f7bb3668f903b9, type: 3}
+    wallDust: {fileID: 8300000, guid: 75fa625d8ada9a710df5f176b1df0b86, type: 3}
+    wallImpactTail: {fileID: 8300000, guid: a93d1d8a20c8e5fdd32f7f9fca723539, type: 3}
+    bossContact: {fileID: 8300000, guid: a93d1d8a20c8e5fdd32f7f9fca723539, type: 3}
+    bossStruggleLoop: {fileID: 8300000, guid: 888024e2976d3d3ecda2cbd343c062d9, type: 3}
+    bossFinishImpact: {fileID: 8300000, guid: 2660899f7b5f0de0e1b2cb8b4da05b8b, type: 3}
+    cageBreak: {fileID: 8300000, guid: 5736984dbe2c11bfd4f7bb3668f903b9, type: 3}
     movementVolume: 0.22
     normalImpactVolume: 0.62
     upgradeVolume: 0.68
