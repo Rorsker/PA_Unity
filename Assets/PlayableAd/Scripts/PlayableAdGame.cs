@@ -20,6 +20,16 @@ namespace PlayableAd
             RightLaneLine
         }
 
+        public enum StoneWallBlockingMode
+        {
+            [InspectorName("All Three Lanes（阻挡三条路线）")]
+            AllThreeLanes,
+            [InspectorName("Left And Center（阻挡左中路）")]
+            LeftAndCenter,
+            [InspectorName("Center And Right（阻挡中右路）")]
+            CenterAndRight
+        }
+
         [Serializable]
         public sealed class SoldierFormationSettings
         {
@@ -30,6 +40,25 @@ namespace PlayableAd
             [Range(0.65f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.8f;
             [Range(0.4f, 1f), InspectorName("Horizontal Coverage（横向覆盖范围）")] public float horizontalCoverage = 1f;
             [Range(0f, 0.9f), InspectorName("Forward Randomness（前后随机度）")] public float forwardRandomness = 0.8f;
+        }
+
+        [Serializable]
+        public sealed class StoneWallSectionSettings
+        {
+            [InspectorName("Section Name（区段名称）")] public string sectionName = "StoneWall";
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 100f;
+            [InspectorName("Blocking Mode（阻挡模式）")] public StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes;
+        }
+
+        [Serializable]
+        public sealed class PrefabModules
+        {
+            [Header("Soldier section modules（士兵区段模块）")]
+            [InspectorName("Soldier Sections（士兵区段）")] public SoldierFormationSettings[] soldierSections = Array.Empty<SoldierFormationSettings>();
+
+            [Header("Stone wall modules（石墙模块）")]
+            [InspectorName("Stone Wall Prefab（石墙预制体）")] public GameObject stoneWallPrefab;
+            [InspectorName("Additional Stone Walls（额外石墙区段）")] public StoneWallSectionSettings[] additionalStoneWalls = Array.Empty<StoneWallSectionSettings>();
         }
 
         [Serializable]
@@ -45,6 +74,7 @@ namespace PlayableAd
             [Range(1.2f, 3.2f), InspectorName("Tutorial Soldier Spacing（教学士兵间距）")] public float tutorialSoldierSpacing = 1.85f;
             [Range(1.5f, 5f), InspectorName("Tutorial First Soldier Gap（首个教学士兵间隔）")] public float tutorialFirstSoldierGap = 2.46f;
             [Range(3f, 12f), InspectorName("Tutorial Wall Gap（教学墙体间隔）")] public float tutorialWallGap = 6.15f;
+            [InspectorName("Tutorial Wall Blocking Mode（教学墙阻挡模式）")] public StoneWallBlockingMode tutorialWallBlockingMode = StoneWallBlockingMode.AllThreeLanes;
 
             [Header("Forward Speed Loss（前进速度损失）")]
             [InspectorName("Speed Loss Enabled（启用速度损失）")] public bool forwardSpeedLossEnabled = true;
@@ -62,17 +92,8 @@ namespace PlayableAd
             [Range(40f, 300f), InspectorName("Special Reward Spacing（特殊奖励间距）")] public float specialRewardSpacing = 166.15f;
             [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 21.54f;
             [InspectorName("Procedural Seed（程序化随机种子）")] public int proceduralSeed = 41723;
-            [Header("Randomized soldier formations（随机士兵编队）")]
+            [Header("Special reward progression（特殊奖励进程）")]
             [InspectorName("Special Reward Levels（特殊奖励等级）")] public int[] specialRewardLevels = { 7, 8, 9, 10 };
-            [InspectorName("Soldier Sections（士兵区段）")] public SoldierFormationSettings[] soldierSections =
-            {
-                new SoldierFormationSettings { sectionName = "MomentumBuild", startOffsetFromTutorial = 7.38f, soldierCount = 8 },
-                new SoldierFormationSettings { sectionName = "FirstCombo", startOffsetFromTutorial = 104.62f, soldierCount = 10 },
-                new SoldierFormationSettings { sectionName = "TwinColumnClimax", startOffsetFromTutorial = 240f, soldierCount = 16 },
-                new SoldierFormationSettings { sectionName = "WedgeBreakthrough", startOffsetFromTutorial = 381.54f, soldierCount = 10 },
-                new SoldierFormationSettings { sectionName = "PhalanxClimax", startOffsetFromTutorial = 523.08f, soldierCount = 16 },
-                new SoldierFormationSettings { sectionName = "BossSprint", startOffsetFromTutorial = 664.62f, soldierCount = 18 }
-            };
             [Header("Mobile encounter budget（移动端遭遇预算）")]
             [Range(24, 64), InspectorName("Max Active Enemies（最大活动敌人数）")] public int maxActiveEnemies = 48;
             [Range(40f, 140f), InspectorName("Spawn Ahead Distance（前方生成距离）")] public float spawnAheadDistance = 90f;
@@ -213,12 +234,17 @@ namespace PlayableAd
             public ObstacleController obstacle;
             public EnemyVisibilityController visibility;
             public ElixirPickup elixir;
+            public float wallCenterX;
+            public float wallHalfWidth;
             public bool hasPreviousDistance;
             public float previousDistance;
         }
 
         [Header("All gameplay values are configurable（所有玩法数值均可配置）")]
         [SerializeField, InspectorName("Tuning（玩法调校）")] private Tuning tuning = new Tuning();
+
+        [Header("Reusable gameplay prefabs（可复用玩法预制体）")]
+        [SerializeField, InspectorName("Prefab（可复用预制体）")] private PrefabModules prefab = new PrefabModules();
 
         [Header("Authoritative player speed（权威玩家速度）")]
         [SerializeField, InspectorName("Player Speed（玩家速度设置）")] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
@@ -349,7 +375,7 @@ namespace PlayableAd
         public PlayerSpeedController SpeedController => speedController;
         public RunFlowState CurrentFlowState => flowController != null ? flowController.CurrentState : RunFlowState.Intro;
         public int GeneratedLevelOneSoldierCount => generatedLevelOneSoldierCount;
-        public int GeneratedSoldierSectionCount => tuning.soldierSections != null ? tuning.soldierSections.Length : 0;
+        public int GeneratedSoldierSectionCount => prefab != null && prefab.soldierSections != null ? prefab.soldierSections.Length : 0;
         public int GeneratedLeftRewardSections => generatedRewardLaneCounts[0];
         public int GeneratedCenterRewardSections => generatedRewardLaneCounts[1];
         public int GeneratedRightRewardSections => generatedRewardLaneCounts[2];
@@ -371,6 +397,11 @@ namespace PlayableAd
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = false;
             Screen.autorotateToLandscapeRight = false;
+            if (!ValidatePrefabModules())
+            {
+                enabled = false;
+                return;
+            }
             if (playerSpeed == null) playerSpeed = new PlayerSpeedSettings();
             if (speedVisualProfile == null)
             {
@@ -779,13 +810,16 @@ namespace PlayableAd
 
                 if (encounter.type == EncounterType.Wall)
                 {
-                    if (!encounter.anticipated && dz <= GetForwardSpeed() * wallBreakPresentation.anticipationDuration)
+                    bool runnerInsideWall = Mathf.Abs(runner.position.x - encounter.wallCenterX)
+                        <= encounter.wallHalfWidth + 0.35f;
+                    if (runnerInsideWall && !encounter.anticipated
+                        && dz <= GetForwardSpeed() * wallBreakPresentation.anticipationDuration)
                     {
                         encounter.anticipated = true;
                         fovPunchOffset = -wallBreakPresentation.fovAnticipation;
                         speedFeedback?.Pulse(0.45f);
                     }
-                    if (Mathf.Abs(dz) < 1.3f || crossedThisFrame)
+                    if (runnerInsideWall && (Mathf.Abs(dz) < 1.3f || crossedThisFrame))
                     {
                         encounter.consumed = true;
                         ResolveObstacle(encounter);
@@ -824,6 +858,29 @@ namespace PlayableAd
                 encounter.dangerPreviewPlayed = true;
                 audioFeedback?.PlayDangerPreview();
             }
+        }
+
+        private bool ValidatePrefabModules()
+        {
+            List<string> missing = new List<string>();
+            if (prefab == null)
+            {
+                missing.Add("Prefab container");
+            }
+            else
+            {
+                if (prefab.soldierSections == null || prefab.soldierSections.Length == 0)
+                    missing.Add("Soldier Sections");
+                if (prefab.stoneWallPrefab == null)
+                    missing.Add("Stone Wall Prefab");
+                if (prefab.additionalStoneWalls == null || prefab.additionalStoneWalls.Length == 0)
+                    missing.Add("Additional Stone Walls");
+            }
+
+            if (missing.Count == 0) return true;
+            Debug.LogError("[PlayableAd] Prefab configuration is incomplete: "
+                + string.Join(", ", missing) + ". Configure the scene's Prefab group before Play Mode.", this);
+            return false;
         }
 
         private IEnumerator BreakWallSequence(Encounter encounter)
@@ -1605,7 +1662,7 @@ namespace PlayableAd
             }
 
             float wallZ = firstSoldierZ + (soldierCount - 1) * tuning.tutorialSoldierSpacing + tuning.tutorialWallGap;
-            CreateBreakableWall(wallZ);
+            CreateBreakableWall(wallZ, "TutorialStoneWall", tuning.tutorialWallBlockingMode);
             BuildConfiguredMainRun(wallZ);
         }
 
@@ -1613,10 +1670,22 @@ namespace PlayableAd
         {
             generatedLevelOneSoldierCount = 0;
             for (int i = 0; i < generatedRewardLaneCounts.Length; i++) generatedRewardLaneCounts[i] = 0;
-            if (tuning.soldierSections != null)
+            if (prefab != null && prefab.soldierSections != null)
             {
-                for (int i = 0; i < tuning.soldierSections.Length; i++)
-                    CreateSoldierSection(tutorialEndZ, tuning.soldierSections[i], i);
+                for (int i = 0; i < prefab.soldierSections.Length; i++)
+                    CreateSoldierSection(tutorialEndZ, prefab.soldierSections[i], i);
+            }
+
+            if (prefab != null && prefab.additionalStoneWalls != null)
+            {
+                for (int i = 0; i < prefab.additionalStoneWalls.Length; i++)
+                {
+                    StoneWallSectionSettings section = prefab.additionalStoneWalls[i];
+                    if (section == null) continue;
+                    CreateBreakableWall(tutorialEndZ + section.startOffsetFromTutorial,
+                        "StoneWallSection_" + (i + 1) + "_" + section.sectionName,
+                        section.blockingMode);
+                }
             }
 
             float scale = CourseDistanceScale;
@@ -1624,7 +1693,9 @@ namespace PlayableAd
             float maintenanceZ = tutorialEndZ + tuning.maintenanceRewardSpacing;
             while (maintenanceZ < tuning.bossDistance - tuning.bossApproachPadding)
             {
-                while (IsNearSoldierSection(maintenanceZ, tutorialEndZ, 5f * scale)) maintenanceZ += 12f * scale;
+                while (IsNearSoldierSection(maintenanceZ, tutorialEndZ, 5f * scale)
+                    || IsNearStoneWallSection(maintenanceZ, tutorialEndZ, 5f * scale))
+                    maintenanceZ += 12f * scale;
                 CreateElixir(0f, maintenanceZ, false, false, tuning.maintenanceRewardLevel);
                 maintenanceZ += tuning.maintenanceRewardSpacing;
             }
@@ -1635,7 +1706,9 @@ namespace PlayableAd
                 int rewardIndex = 0;
                 while (rewardZ < tuning.bossDistance - 18f * scale)
                 {
-                    while (IsNearSoldierSection(rewardZ, tutorialEndZ, 5f * scale)) rewardZ += 12f * scale;
+                    while (IsNearSoldierSection(rewardZ, tutorialEndZ, 5f * scale)
+                        || IsNearStoneWallSection(rewardZ, tutorialEndZ, 5f * scale))
+                        rewardZ += 12f * scale;
                     float x = rewardIndex % 2 == 0 ? 2.25f : -2.25f;
                     int targetLevel = Mathf.Clamp(rewards[Mathf.Min(rewardIndex, rewards.Length - 1)], 1, speedController.MaxLevel);
                     CreateElixir(x, rewardZ, false, false, targetLevel);
@@ -1726,14 +1799,27 @@ namespace PlayableAd
 
         private bool IsNearSoldierSection(float z, float tutorialEndZ, float padding)
         {
-            if (tuning.soldierSections == null) return false;
-            for (int i = 0; i < tuning.soldierSections.Length; i++)
+            if (prefab == null || prefab.soldierSections == null) return false;
+            for (int i = 0; i < prefab.soldierSections.Length; i++)
             {
-                SoldierFormationSettings section = tuning.soldierSections[i];
+                SoldierFormationSettings section = prefab.soldierSections[i];
                 if (section == null) continue;
                 float start = tutorialEndZ + section.startOffsetFromTutorial - padding;
                 float end = start + Mathf.Max(0, section.soldierCount - 1) * GetSectionForwardSpacing(section) + padding * 2f;
                 if (z >= start && z <= end) return true;
+            }
+            return false;
+        }
+
+        private bool IsNearStoneWallSection(float z, float tutorialEndZ, float padding)
+        {
+            if (prefab == null || prefab.additionalStoneWalls == null) return false;
+            for (int i = 0; i < prefab.additionalStoneWalls.Length; i++)
+            {
+                StoneWallSectionSettings section = prefab.additionalStoneWalls[i];
+                if (section == null) continue;
+                float wallZ = tutorialEndZ + section.startOffsetFromTutorial;
+                if (Mathf.Abs(z - wallZ) <= padding) return true;
             }
             return false;
         }
@@ -1926,16 +2012,62 @@ namespace PlayableAd
             encounters.Add(new Encounter { root = root, type = EncounterType.Elixir, tier = resolvedTargetLevel, openingBoost = openingBoost, fallbackBoost = fallbackBoost, elixir = pickup });
         }
 
-        private void CreateBreakableWall(float z)
+        private void CreateBreakableWall(float z, string objectName = "TutorialStoneWall",
+            StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes)
         {
-            GameObject root = new GameObject("TutorialStoneWall");
-            root.transform.SetParent(worldRoot, false);
-            root.transform.position = new Vector3(0f, 0f, z);
-            BreakableWallVisual wall = root.AddComponent<BreakableWallVisual>();
+            GameObject root;
+            GameObject configuredWallPrefab = prefab != null ? prefab.stoneWallPrefab : null;
+            if (configuredWallPrefab != null)
+            {
+                root = Instantiate(configuredWallPrefab, worldRoot, false);
+            }
+            else
+            {
+                root = new GameObject(objectName);
+                root.transform.SetParent(worldRoot, false);
+            }
+
+            root.name = objectName;
+            GetStoneWallPlacement(blockingMode, out float centerX, out float halfWidth, out float widthScale);
+            root.transform.position = new Vector3(centerX, 0f, z);
+            Vector3 rootScale = root.transform.localScale;
+            rootScale.x *= widthScale;
+            root.transform.localScale = rootScale;
+            BreakableWallVisual wall = root.GetComponent<BreakableWallVisual>();
+            if (wall == null) wall = root.AddComponent<BreakableWallVisual>();
             wall.Initialize(wallBreakPresentation, new Color(0.4f, 0.43f, 0.44f), speedVisualProfile, visualPerformance);
-            ObstacleController obstacle = root.AddComponent<ObstacleController>();
+            ObstacleController obstacle = root.GetComponent<ObstacleController>();
+            if (obstacle == null) obstacle = root.AddComponent<ObstacleController>();
             obstacle.Initialize(playerSpeed.tutorialElixirTargetLevel, ObstacleType.StoneWall, root, root, root.GetComponentsInChildren<Collider>(), ObstacleFeedbackType.HeavyBreak);
-            encounters.Add(new Encounter { root = root, type = EncounterType.Wall, tier = playerSpeed.tutorialElixirTargetLevel, wall = wall, obstacle = obstacle });
+            encounters.Add(new Encounter
+            {
+                root = root,
+                type = EncounterType.Wall,
+                tier = playerSpeed.tutorialElixirTargetLevel,
+                wall = wall,
+                obstacle = obstacle,
+                wallCenterX = centerX,
+                wallHalfWidth = halfWidth
+            });
+        }
+
+        private void GetStoneWallPlacement(StoneWallBlockingMode blockingMode, out float centerX,
+            out float halfWidth, out float widthScale)
+        {
+            float roadHalfWidth = Mathf.Max(0.5f, tuning.laneHalfWidth);
+            if (blockingMode == StoneWallBlockingMode.AllThreeLanes)
+            {
+                centerX = 0f;
+                halfWidth = roadHalfWidth;
+                widthScale = 1f;
+                return;
+            }
+
+            centerX = blockingMode == StoneWallBlockingMode.LeftAndCenter
+                ? -roadHalfWidth / 3f
+                : roadHalfWidth / 3f;
+            halfWidth = roadHalfWidth * 2f / 3f;
+            widthScale = 2f / 3f;
         }
 
         private void BuildUpgradeRing(Transform parent)

@@ -251,6 +251,7 @@ MonoBehaviour:
     tutorialSoldierSpacing: 1.846154
     tutorialFirstSoldierGap: 2.461538
     tutorialWallGap: 6.153846
+    tutorialWallBlockingMode: 0
     forwardSpeedLossEnabled: 1
     forwardSpeedLossPerSecond: 0.158
     minimumSpeedAfterLoss: 1
@@ -262,6 +263,41 @@ MonoBehaviour:
     bossApproachPadding: 21.53846
     proceduralSeed: 41723
     specialRewardLevels: 0700000008000000090000000a000000
+    maxActiveEnemies: 48
+    spawnAheadDistance: 90
+    recycleDistance: 18
+    targetPreviewTime: 1.35
+    minimumTargetPreviewDistance: 12
+    maximumTargetPreviewDistance: 54
+    enemyPreloadTime: 5
+    enemyVisiblePreviewTime: 3.2
+    enemyActiveTime: 1.35
+    minimumEnemyPreloadDistance: 32
+    maximumEnemyPreloadDistance: 140
+    minimumEnemyVisibleDistance: 20
+    maximumEnemyVisibleDistance: 100
+    minimumEnemyActiveDistance: 10
+    maximumEnemyActiveDistance: 52
+    maxPreloadedEnemies: 80
+    maxDistantVisibleEnemies: 48
+    fallbackBoostMagnetDistance: 7
+    fallbackBoostMagnetSpeed: 12
+    laneHalfWidth: 3.2
+    dragFollowRatio: 1
+    lateralSpeed: 9
+    dragDeadZone: 0.005
+    invertDragInput: 0
+    blockInputOverUi: 1
+    hitStopSeconds: 0.045
+    cameraShake: 0.24
+    fovPunch: 3.5
+    flashAlpha: 0.52
+    targetLaunchSeconds: 2.25
+    targetLaunchForce: 14
+    targetLaunchSideSpeed: 2.6
+    targetLaunchUpSpeed: 3.8
+    targetLaunchForwardScale: 0.42
+  prefab:
     soldierSections:
     - sectionName: 1
       startOffsetFromTutorial: 20.89
@@ -412,8 +448,8 @@ MonoBehaviour:
       forwardRandomness: 0.8
     - sectionName: 22
       startOffsetFromTutorial: 665.79
-      soldierCount: 6
-      placementMode: 3
+      soldierCount: 50
+      placementMode: 0
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
@@ -431,40 +467,23 @@ MonoBehaviour:
       minimumForwardSpacing: 0.8
       horizontalCoverage: 1
       forwardRandomness: 0.8
-    maxActiveEnemies: 48
-    spawnAheadDistance: 90
-    recycleDistance: 18
-    targetPreviewTime: 1.35
-    minimumTargetPreviewDistance: 12
-    maximumTargetPreviewDistance: 54
-    enemyPreloadTime: 5
-    enemyVisiblePreviewTime: 3.2
-    enemyActiveTime: 1.35
-    minimumEnemyPreloadDistance: 32
-    maximumEnemyPreloadDistance: 140
-    minimumEnemyVisibleDistance: 20
-    maximumEnemyVisibleDistance: 100
-    minimumEnemyActiveDistance: 10
-    maximumEnemyActiveDistance: 52
-    maxPreloadedEnemies: 80
-    maxDistantVisibleEnemies: 48
-    fallbackBoostMagnetDistance: 7
-    fallbackBoostMagnetSpeed: 12
-    laneHalfWidth: 3.2
-    dragFollowRatio: 1
-    lateralSpeed: 9
-    dragDeadZone: 0.005
-    invertDragInput: 0
-    blockInputOverUi: 1
-    hitStopSeconds: 0.045
-    cameraShake: 0.24
-    fovPunch: 3.5
-    flashAlpha: 0.52
-    targetLaunchSeconds: 2.25
-    targetLaunchForce: 14
-    targetLaunchSideSpeed: 2.6
-    targetLaunchUpSpeed: 3.8
-    targetLaunchForwardScale: 0.42
+    stoneWallPrefab: {fileID: 3591384800296594540, guid: f2bbdaf3c4f0ea7429c22cf3770c71f3, type: 3}
+    additionalStoneWalls:
+    - sectionName: StoneWall_1
+      startOffsetFromTutorial: 108
+      blockingMode: 1
+    - sectionName: StoneWall_2
+      startOffsetFromTutorial: 226
+      blockingMode: 2
+    - sectionName: StoneWall_3
+      startOffsetFromTutorial: 365
+      blockingMode: 2
+    - sectionName: StoneWall_4
+      startOffsetFromTutorial: 580
+      blockingMode: 1
+    - sectionName: StoneWall_5
+      startOffsetFromTutorial: 695
+      blockingMode: 2
   playerSpeed:
     minimumSpeed: 1
     maximumSpeed: 10

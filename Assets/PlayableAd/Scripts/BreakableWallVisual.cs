@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PlayableAd
@@ -62,7 +63,7 @@ namespace PlayableAd
             settings = wallSettings;
             performance = performanceSettings ?? new VisualPerformanceSettings();
             lineMaterial = profile != null ? profile.lineMaterial : null;
-            BuildChunks(stoneColor);
+            BindOrBuildChunks(stoneColor);
             BuildShockwave();
             BuildDustParticles(profile);
         }
@@ -125,6 +126,42 @@ namespace PlayableAd
             {
                 breaking = false;
                 shockwave.enabled = false;
+            }
+        }
+
+        private void BindOrBuildChunks(Color stoneColor)
+        {
+            Collider[] prefabColliders = GetComponentsInChildren<Collider>(true);
+            List<Collider> prefabChunks = new List<Collider>();
+            for (int i = 0; i < prefabColliders.Length; i++)
+            {
+                Collider candidate = prefabColliders[i];
+                if (candidate != null && candidate.transform != transform
+                    && candidate.name.StartsWith("WallChunk_", StringComparison.Ordinal))
+                    prefabChunks.Add(candidate);
+            }
+
+            if (prefabChunks.Count == 0)
+            {
+                BuildChunks(stoneColor);
+                return;
+            }
+
+            int requestedCount = performance.lowQualityMode
+                ? Mathf.Clamp(performance.lowQualityWallChunkCount, 1, prefabChunks.Count)
+                : prefabChunks.Count;
+            chunks = new ChunkState[requestedCount];
+            Material sharedStone = RuntimeStyle.CreateMaterial(stoneColor, 0f, 0.28f);
+            for (int i = 0; i < prefabChunks.Count; i++)
+            {
+                Collider collider = prefabChunks[i];
+                bool used = i < requestedCount;
+                collider.gameObject.SetActive(used);
+                if (!used) continue;
+                collider.enabled = true;
+                Renderer renderer = collider.GetComponent<Renderer>();
+                if (renderer != null) renderer.sharedMaterial = sharedStone;
+                chunks[i] = new ChunkState { transform = collider.transform, collider = collider };
             }
         }
 
