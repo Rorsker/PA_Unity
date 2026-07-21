@@ -224,6 +224,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2069326156}
   - component: {fileID: 2069326155}
+  - component: {fileID: 2069326157}
   m_Layer: 0
   m_Name: PlayableAdRoot
   m_TagString: Untagged
@@ -592,7 +593,7 @@ MonoBehaviour:
     energyReturnMinInterval: 0.08
     dangerPreviewGlobalCooldown: 0.65
     movementSmoothing: 12
-  playerVisualPrefab: {fileID: 1825439250495718832, guid: 343e0c9326ff77a4290fa49f3b58e8a1, type: 3}
+  playerVisualPrefab: {fileID: 7555292016606912567, guid: 8e6c54d9adcf25f40a220e9e62f64ce4, type: 3}
   playerAnimator: {fileID: 0}
   tier1SoldierPrefab: {fileID: 7456086963729349228, guid: b9ec7e44c7039c54bb05fb06a812a4ce, type: 3}
   tier4SoldierPrefab: {fileID: 3356697127791251490, guid: 9482cbbdf3aae5c4e9ae23fc7e8bd1e5, type: 3}
@@ -621,6 +622,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2069326157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2069326154}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae3f05055bfcd29448e73e4800bfd967, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  backgroundSprite: {fileID: 21300000, guid: e2b929de52ab7f14a824861ac40d9c12, type: 3}
+  fogSprite: {fileID: 21300000, guid: 0fcb45d3f065d3f46b02d5a711778cb6, type: 3}
+  horizontalFocus: 0.58
+  verticalOverscan: 1.08
+  verticalOffset: 0.04
+  brightness: 0.84
+  fogHeightFraction: 0.48
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
