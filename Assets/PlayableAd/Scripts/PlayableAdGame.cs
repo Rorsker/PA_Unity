@@ -3,12 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 
 namespace PlayableAd
 {
     public sealed class PlayableAdGame : MonoBehaviour
     {
         private const float WallCollisionDistance = 1.3f;
+        private const float FirstSpeedLossSectionEndZ = 150f;
+        private const float SecondSpeedLossSectionEndZ = 350f;
 
         public enum SoldierPlacementMode
         {
@@ -36,10 +39,10 @@ namespace PlayableAd
         public sealed class SoldierFormationSettings
         {
             [InspectorName("Section Name（区段名称）")] public string sectionName = "Momentum";
-            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 7.38f;
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 4.6125f;
             [Range(1, 50), InspectorName("Density Rows（密度行数）")] public int soldierCount = 10;
             [InspectorName("Placement Mode（摆放模式）")] public SoldierPlacementMode placementMode = SoldierPlacementMode.RandomDense;
-            [Range(0.65f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.8f;
+            [Range(0.4f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.5f;
             [Range(0.4f, 1f), InspectorName("Horizontal Coverage（横向覆盖范围）")] public float horizontalCoverage = 1f;
             [Range(0f, 0.9f), InspectorName("Forward Randomness（前后随机度）")] public float forwardRandomness = 0.8f;
         }
@@ -48,7 +51,7 @@ namespace PlayableAd
         public sealed class StoneWallSectionSettings
         {
             [InspectorName("Section Name（区段名称）")] public string sectionName = "StoneWall";
-            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 100f;
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 62.5f;
             [InspectorName("Blocking Mode（阻挡模式）")] public StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes;
             [InspectorName("Bullet Time（子弹时间）")] public BulletTimeSettings bulletTime = new BulletTimeSettings { enabled = false };
         }
@@ -86,19 +89,24 @@ namespace PlayableAd
 
             [Header("Forward Speed Loss（前进速度损失）")]
             [InspectorName("Speed Loss Enabled（启用速度损失）")] public bool forwardSpeedLossEnabled = true;
-            [Range(0f, 0.5f), InspectorName("Speed Loss Per Second（每秒速度损失）")] public float forwardSpeedLossPerSecond = 0.08f;
+            [FormerlySerializedAs("forwardSpeedLossPerSecond")]
+            [Min(0f), InspectorName("Section 1 Loss Per Second, Z 0-150（第一区段每秒速度损失，Z 0-150）")]
+            public float firstSectionSpeedLossPerSecond = 0.2f;
+            [Min(0f), InspectorName("Section 2 Loss Per Second, Z 150-350（第二区段每秒速度损失，Z 150-350）")]
+            public float secondSectionSpeedLossPerSecond = 0.2f;
+            [Min(0f), InspectorName("Section 3 Loss Per Second, Z 350-500（第三区段每秒速度损失，Z 350-500）")]
+            public float thirdSectionSpeedLossPerSecond;
             [Range(1f, 10f), InspectorName("Minimum Speed After Loss（损失后最低速度）")] public float minimumSpeedAfterLoss = 1f;
-            [Range(0f, 300f), InspectorName("Boss Speed Protection Distance（Boss 前停止掉速距离）")] public float bossSpeedProtectionDistance = 150f;
 
             [Header("Course（路线）")]
             [Tooltip("Total world-space distance from the start to the Boss encounter.")]
-            [Min(20f), InspectorName("Boss Distance（Boss 距离）")] public float bossDistance = 800f;
+            [Min(20f), InspectorName("Boss Distance（Boss 距离）")] public float bossDistance = 500f;
             [Header("Data-driven Main Run（数据驱动主流程）")]
             [Tooltip("Safe-lane recovery spacing. Keeps the normal route out of the level-one dead zone without granting high-tier progression.")]
-            [Range(80f, 300f), InspectorName("Maintenance Reward Spacing（维护奖励间距）")] public float maintenanceRewardSpacing = 135.38f;
+            [Range(80f, 300f), InspectorName("Maintenance Reward Spacing（维护奖励间距）")] public float maintenanceRewardSpacing = 84.6154f;
             [Range(3, 6), InspectorName("Maintenance Reward Level（维护奖励等级）")] public int maintenanceRewardLevel = 4;
-            [Range(40f, 300f), InspectorName("Special Reward Spacing（特殊奖励间距）")] public float specialRewardSpacing = 166.15f;
-            [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 21.54f;
+            [Range(40f, 300f), InspectorName("Special Reward Spacing（特殊奖励间距）")] public float specialRewardSpacing = 103.8461f;
+            [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 13.46154f;
             [InspectorName("Procedural Seed（程序化随机种子）")] public int proceduralSeed = 41723;
             [Header("Special reward progression（特殊奖励进程）")]
             [InspectorName("Special Reward Levels（特殊奖励等级）")] public int[] specialRewardLevels = { 7, 8, 9, 10 };
@@ -145,7 +153,7 @@ namespace PlayableAd
             [Range(4f, 14f), InspectorName("Camera Follow Sharpness（镜头跟随锐度）")] public float cameraFollowSharpness = 9f;
             [Range(0f, 6f), InspectorName("High Speed Pullback（高速后拉）")] public float highSpeedPullback = 1f;
             [Range(0f, 10f), InspectorName("High Speed Look Ahead Bonus（高速前视加成）")] public float highSpeedLookAheadBonus = 1.5f;
-            [Range(5f, 16f), InspectorName("Environment Reference Spacing（环境参考间距）")] public float environmentReferenceSpacing = 7.38f;
+            [Range(2f, 16f), InspectorName("Environment Reference Spacing（环境参考间距）")] public float environmentReferenceSpacing = 4.615384f;
 
             [Header("Road Collision Boundaries（道路碰撞边界）")]
             [Min(0.1f), InspectorName("Road Boundary Thickness（道路边界厚度）")] public float roadBoundaryThickness = 0.35f;
@@ -221,6 +229,7 @@ namespace PlayableAd
             public ObstacleOutline outline;
             public ObstacleController obstacle;
             public EnemyVisibilityController visibility;
+            public SoldierKnockbackEffect soldierKnockback;
             public ElixirPickup elixir;
             public float wallCenterX;
             public float wallHalfWidth;
@@ -236,6 +245,9 @@ namespace PlayableAd
 
         [Header("Reusable gameplay prefabs（可复用玩法预制体）")]
         [SerializeField, InspectorName("Prefab（可复用预制体）")] private PrefabModules prefab = new PrefabModules();
+
+        [SerializeField, InspectorName("Gameplay Combo（玩法连击）")]
+        private GameplayComboSettings gameplayCombo = new GameplayComboSettings();
 
         [Header("Authoritative player speed（权威玩家速度）")]
         [SerializeField, InspectorName("Player Speed（玩家速度设置）")] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
@@ -258,7 +270,6 @@ namespace PlayableAd
 
         [Header("External speed VFX（外部速度特效）")]
         [SerializeField, InspectorName("Running Wind Trail Prefab（跑步风痕预制体）")] private GameObject runningWindTrailPrefab;
-        [SerializeField, InspectorName("Running Smoke Trail Prefab（跑步烟尘预制体）")] private GameObject runningSmokeTrailPrefab;
         [SerializeField, InspectorName("Acceleration Aura Prefab（加速法阵预制体）")] private GameObject accelerationAuraPrefab;
 
         [Header("Elixir presentation（药剂表现）")]
@@ -267,8 +278,8 @@ namespace PlayableAd
         [Header("Normal impact presentation（普通冲击表现）")]
         [SerializeField, InspectorName("Impact Presentation（冲击表现设置）")] private ImpactPresentationSettings impactPresentation = new ImpactPresentationSettings();
 
-        [Header("Pooled enemy break presentation（敌人破碎对象池表现）")]
-        [SerializeField, InspectorName("Enemy Break Presentation（敌人破碎表现设置）")] private EnemyBreakPresentationSettings enemyBreakPresentation = new EnemyBreakPresentationSettings();
+        [Header("Whole soldier knockback presentation（完整士兵撞飞表现）")]
+        [SerializeField, InspectorName("Soldier Knockback Presentation（士兵撞飞表现设置）")] private SoldierKnockbackSettings soldierKnockbackPresentation = new SoldierKnockbackSettings();
 
         [Header("Tutorial wall presentation（教学墙体表现）")]
         [SerializeField, InspectorName("Wall Break Presentation（墙体破碎表现设置）")] private WallBreakSettings wallBreakPresentation = new WallBreakSettings();
@@ -290,8 +301,6 @@ namespace PlayableAd
         [SerializeField, InspectorName("Player Animator（玩家动画控制器）")] private RuntimeAnimatorController playerAnimator;
         [SerializeField, InspectorName("Tier 1 Soldier Prefab（等级 1 士兵预制体）")] private GameObject tier1SoldierPrefab;
         [SerializeField, InspectorName("Tier 4 Soldier Prefab（等级 4 士兵预制体）")] private GameObject tier4SoldierPrefab;
-        [SerializeField, InspectorName("Tier 1 Soldier Break Prefab（等级 1 士兵破碎预制体）")] private GameObject tier1SoldierBreakPrefab;
-        [SerializeField, InspectorName("Tier 4 Soldier Break Prefab（等级 4 士兵破碎预制体）")] private GameObject tier4SoldierBreakPrefab;
         [SerializeField, Min(0.1f), InspectorName("Tier 1 Target Height（等级 1 目标高度）")] private float tier1TargetHeight = 1.6f;
         [SerializeField, Min(0.1f), InspectorName("Tier 4 Target Height（等级 4 目标高度）")] private float tier4TargetHeight = 2.2f;
         [SerializeField, InspectorName("Boss Visual Prefab（Boss 视觉预制体）")] private GameObject bossVisualPrefab;
@@ -316,10 +325,10 @@ namespace PlayableAd
         private AudioFeedbackController audioFeedback;
         private SpeedVisualFeedback speedFeedback;
         private ImpactEffectPool effectPool;
-        private EnemyBreakEffectPool enemyBreakPool;
-        private SoldierBreakEffectPool soldierBreakPool;
         private BossClashVisual bossClashVisual;
         private SpeedBarView speedBarView;
+        private ComboManager comboManager;
+        private ComboUIController comboUIController;
         private VisualTimeScaleController visualTimeScale;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
@@ -378,10 +387,17 @@ namespace PlayableAd
         public float TargetForwardSpeed => forwardMotion != null ? forwardMotion.TargetForwardSpeed : 0f;
         public float CurrentForwardSpeed => forwardMotion != null ? forwardMotion.CurrentForwardSpeed : 0f;
         public float CurrentAnimationSpeed => runnerAnimator != null ? runnerAnimator.speed : 0f;
+        public int CurrentCombo => comboManager != null ? comboManager.GetCombo() : 0;
         private int CurrentTier => speedController != null ? speedController.GetCurrentLevel() : 1;
         private bool FormalStarted => flowController != null && flowController.CurrentState == RunFlowState.MainRun;
         private float CourseDistanceScale => tuning != null ? Mathf.Max(0.1f, tuning.bossDistance / 1300f) : 1f;
         private float OpeningElixirZ => tuning.openingElixirTime * playerSpeed.forwardSpeeds[0];
+
+        private void OnValidate()
+        {
+            if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
+            gameplayCombo.UpgradeLegacyDefaults();
+        }
 
         private void Awake()
         {
@@ -426,6 +442,7 @@ namespace PlayableAd
         {
             gameplayStarted = false;
             flowController?.ResetToIntro();
+            comboManager?.ResetCombo();
             forwardMotion?.Tick(0f, false);
             CancelDrag();
             targetX = 0f;
@@ -443,6 +460,7 @@ namespace PlayableAd
 
             gameplayStarted = true;
             elapsed = 0f;
+            comboManager?.ResetCombo();
             speedController.SetLevel(playerSpeed.startingLevel, SpeedChangeReason.InitialSetup, this);
             forwardMotion?.SnapToTarget();
             targetX = 0f;
@@ -717,20 +735,28 @@ namespace PlayableAd
                 : 0f;
             runnerSpriteVisual?.SetHorizontalInput(lateralInput);
 
-            if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled && !IsInsideBossSpeedProtectionZone())
+            if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled)
             {
-                speedController.ApplyContinuousSpeedLoss(worldDeltaTime, tuning.forwardSpeedLossPerSecond,
+                speedController.ApplyContinuousSpeedLoss(worldDeltaTime,
+                    GetSpeedLossPerSecond(runner.position.z),
                     tuning.minimumSpeedAfterLoss, this);
             }
 
             UpdateRunnerFeedback(forwardSpeed, true);
         }
 
-        private bool IsInsideBossSpeedProtectionZone()
+        private int GetSpeedLossSectionIndex(float worldZ)
         {
-            if (runner == null) return false;
-            float distanceToBoss = tuning.bossDistance - runner.position.z;
-            return distanceToBoss <= Mathf.Max(0f, tuning.bossSpeedProtectionDistance);
+            if (worldZ < FirstSpeedLossSectionEndZ) return 1;
+            return worldZ < SecondSpeedLossSectionEndZ ? 2 : 3;
+        }
+
+        private float GetSpeedLossPerSecond(float worldZ)
+        {
+            int section = GetSpeedLossSectionIndex(worldZ);
+            if (section == 1) return Mathf.Max(0f, tuning.firstSectionSpeedLossPerSecond);
+            if (section == 2) return Mathf.Max(0f, tuning.secondSectionSpeedLossPerSecond);
+            return Mathf.Max(0f, tuning.thirdSectionSpeedLossPerSecond);
         }
 
         private float GetForwardSpeed()
@@ -1074,6 +1100,7 @@ namespace PlayableAd
             runnerSpriteVisual?.PlayShieldCharge(0.72f);
             float speedBeforeImpact = speedController.CurrentSpeed;
             ObstacleResolutionType resolution = ResolveObstacle(encounter);
+            UpdateGameplayComboForSoldier(encounter, resolution);
             if (resolution == ObstacleResolutionType.Boosted)
             {
                 callout = "撞！\n速度↑";
@@ -1107,6 +1134,18 @@ namespace PlayableAd
                 }
                 Impact(encounter, CollisionOutcome.SpeedLoss, 1.25f);
             }
+        }
+
+        private void UpdateGameplayComboForSoldier(Encounter encounter, ObstacleResolutionType resolution)
+        {
+            if (encounter == null || encounter.obstacle == null
+                || encounter.obstacle.Type != ObstacleType.Soldier)
+                return;
+
+            if (resolution == ObstacleResolutionType.Boosted)
+                comboManager?.AddCombo();
+            else if (resolution == ObstacleResolutionType.Dropped)
+                comboManager?.ResetCombo();
         }
 
         private ObstacleResolutionType ResolveObstacle(Encounter encounter)
@@ -1161,24 +1200,14 @@ namespace PlayableAd
                 outcome != CollisionOutcome.SpeedLoss ? impactTier.secondaryColor : outlinePresentation.dangerColor,
                 strength * actualImpactScale);
 
-            Vector3 sourceDimensions = encounter.root.transform.localScale;
-            Color breakColor = outcome == CollisionOutcome.SpeedLoss
-                ? outlinePresentation.dangerColor
-                : impactTier.primaryColor;
-            bool usedSoldierBreak = false;
-            if ((encounter.tier == 1 || encounter.tier == 4) && soldierBreakPool != null)
+            bool launched = encounter.soldierKnockback != null
+                && encounter.soldierKnockback.Launch(soldierKnockbackPresentation,
+                    normalizedActualSpeed, impactForwardSpeed, CurrentTier, encounter.visibility);
+            if (!launched)
             {
-                Vector3 breakPosition = encounter.root.transform.position
-                    - Vector3.up * encounter.root.transform.lossyScale.y * 0.5f;
-                usedSoldierBreak = soldierBreakPool.PlayBreak(encounter.tier, breakPosition,
-                    encounter.root.transform.rotation, normalizedActualSpeed, impactForwardSpeed, CurrentTier);
+                if (encounter.visibility != null) encounter.visibility.Recycle();
+                else encounter.root.SetActive(false);
             }
-            if (!usedSoldierBreak)
-            {
-                enemyBreakPool?.PlayBreak(encounter.root.transform.position, sourceDimensions, breakColor,
-                    normalizedActualSpeed, impactForwardSpeed, CurrentTier);
-            }
-            encounter.root.SetActive(false);
 
             if (impactPresentation.enableNormalHitStop)
                 visualTimeScale.RequestSlowMotion(impactPresentation.hitStopTimeScale, impactPresentation.hitStopDuration);
@@ -1444,7 +1473,6 @@ namespace PlayableAd
             BuildRoad();
             BuildRunner();
             BuildEffectPool();
-            BuildEnemyBreakPool();
             BuildSpeedBar();
             BuildSpeedLevelFeedback();
             BuildBossArea();
@@ -1459,25 +1487,25 @@ namespace PlayableAd
             effectPool.EnergyShardAbsorbed = OnEnergyShardAbsorbed;
         }
 
-        private void BuildEnemyBreakPool()
-        {
-            GameObject poolRoot = new GameObject("EnemyBreakEffectPool");
-            poolRoot.transform.SetParent(worldRoot, false);
-            enemyBreakPool = poolRoot.AddComponent<EnemyBreakEffectPool>();
-            enemyBreakPool.Initialize(enemyBreakPresentation, visualPerformance);
-
-            GameObject soldierPoolRoot = new GameObject("SoldierBreakEffectPool");
-            soldierPoolRoot.transform.SetParent(worldRoot, false);
-            soldierBreakPool = soldierPoolRoot.AddComponent<SoldierBreakEffectPool>();
-            soldierBreakPool.Initialize(tier1SoldierBreakPrefab, tier4SoldierBreakPrefab);
-        }
-
         private void BuildSpeedBar()
         {
             GameObject canvasRoot = new GameObject("SpeedBarCanvas");
             canvasRoot.transform.SetParent(transform, false);
             speedBarView = canvasRoot.AddComponent<SpeedBarView>();
             speedBarView.Initialize(speedController, speedVisualProfile);
+            BuildComboSystem(canvasRoot);
+        }
+
+        private void BuildComboSystem(GameObject canvasRoot)
+        {
+            if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
+            gameplayCombo.UpgradeLegacyDefaults();
+            comboManager = GetComponent<ComboManager>();
+            if (comboManager == null) comboManager = gameObject.AddComponent<ComboManager>();
+            comboManager.Initialize(gameplayCombo);
+
+            comboUIController = canvasRoot.AddComponent<ComboUIController>();
+            comboUIController.Initialize(comboManager, gameplayCombo.presentation);
         }
 
         private void BuildSpeedLevelFeedback()
@@ -1578,8 +1606,8 @@ namespace PlayableAd
             for (float z = 0f; z < tuning.bossDistance; z += environment.environmentReferenceSpacing)
             {
                 CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
-                CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
-                CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
             }
 
             BuildDistantCastle();
@@ -1630,7 +1658,7 @@ namespace PlayableAd
 
             speedFeedback = root.AddComponent<SpeedVisualFeedback>();
             speedFeedback.Initialize(speedVisualProfile, visualPerformance, runningWindTrailPrefab,
-                runningSmokeTrailPrefab, accelerationAuraPrefab);
+                accelerationAuraPrefab);
             BuildUpgradeRing(root.transform);
             audioFeedback = root.AddComponent<AudioFeedbackController>();
             audioFeedback.Initialize(audioPresentation);
@@ -1920,6 +1948,7 @@ namespace PlayableAd
             ObstacleOutline outline = root.AddComponent<ObstacleOutline>();
             outline.Initialize(outlinePresentation, speedController, obstacle, outlineSources);
             EnemyVisibilityController visibility = root.AddComponent<EnemyVisibilityController>();
+            SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
             visibility.Initialize(visibilityRenderers, colliders, outline);
             encounters.Add(new Encounter
             {
@@ -1928,7 +1957,8 @@ namespace PlayableAd
                 tier = tier,
                 outline = outline,
                 obstacle = obstacle,
-                visibility = visibility
+                visibility = visibility,
+                soldierKnockback = soldierKnockback
             });
             root.SetActive(false);
         }
@@ -2177,12 +2207,16 @@ namespace PlayableAd
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (showSpeedDebugOverlay && speedController != null)
             {
+                float runnerZ = runner != null ? runner.position.z : 0f;
+                int speedLossSection = GetSpeedLossSectionIndex(runnerZ);
+                float currentSpeedLoss = GetSpeedLossPerSecond(runnerZ);
                 string diagnostics = "Speed " + speedController.CurrentSpeed.ToString("F2") + "  Level " + speedController.GetCurrentLevel() + "/" + speedController.MaxLevel
                     + "\nTarget " + TargetForwardSpeed.ToString("F2") + " m/s  Actual " + CurrentForwardSpeed.ToString("F2") + " m/s"
                     + "\nFOV " + (gameCamera != null ? gameCamera.fieldOfView.ToString("F1") : "-") + "  Anim " + CurrentAnimationSpeed.ToString("F2")
                     + "  Wind " + (audioFeedback != null ? audioFeedback.CurrentWindVolume.ToString("F2") : "-")
                     + "\nLast " + speedController.LastSpeedChangeReason + " @ " + speedController.LastSpeedChangeTime.ToString("F2")
-                    + "  SpeedLoss " + tuning.forwardSpeedLossEnabled + " @ " + tuning.forwardSpeedLossPerSecond.ToString("F2") + "/s"
+                    + "  SpeedLoss " + tuning.forwardSpeedLossEnabled + " S" + speedLossSection
+                    + " @ " + currentSpeedLoss.ToString("F2") + "/s"
                     + "\n[1-0] Level  [T] 100m test  Last " + (debugLastSegmentTime > 0f ? debugLastSegmentTime.ToString("F2") + "s" : "-");
                 GUI.Box(new Rect(width - 315f, 18f, 300f, 130f), diagnostics);
             }

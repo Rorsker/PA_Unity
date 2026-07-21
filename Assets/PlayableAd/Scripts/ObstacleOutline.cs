@@ -23,7 +23,6 @@ namespace PlayableAd
     public sealed class ObstacleOutline : MonoBehaviour
     {
         private static Material fallbackSharedMaterial;
-        private static Material statusRingSharedMaterial;
         private static readonly int ColorId = Shader.PropertyToID("_OutlineColor");
         private static readonly int WidthId = Shader.PropertyToID("_OutlineWidth");
         private static readonly int DangerId = Shader.PropertyToID("_Danger");
@@ -36,7 +35,6 @@ namespace PlayableAd
         private ObstacleController obstacle;
         private Renderer[] outlineRenderers = Array.Empty<Renderer>();
         private MaterialPropertyBlock propertyBlock;
-        private LineRenderer statusRing;
         private Coroutine transitionRoutine;
         private int lastPlayerLevel = -1;
         private bool subscribed;
@@ -49,7 +47,6 @@ namespace PlayableAd
         private static void ResetSharedMaterials()
         {
             DestroySharedMaterial(ref fallbackSharedMaterial);
-            DestroySharedMaterial(ref statusRingSharedMaterial);
         }
 
         private static void DestroySharedMaterial(ref Material material)
@@ -82,9 +79,8 @@ namespace PlayableAd
             if (visualSources != null && visualSources.Length > 0)
             {
                 // Separate shells on a skinned character expose internal and back-facing mesh edges.
-                // Soldiers use a low-interference ground ring instead of mesh outlines.
+                // Keep collision outcome tracking without adding a ground ring to soldiers.
                 outlineRenderers = Array.Empty<Renderer>();
-                BuildStatusRing();
             }
             else
             {
@@ -108,40 +104,6 @@ namespace PlayableAd
             SetPreviewActive(gameObject.activeInHierarchy);
         }
 
-        private void BuildStatusRing()
-        {
-            if (statusRingSharedMaterial == null)
-            {
-                Shader shader = Shader.Find("Sprites/Default");
-                statusRingSharedMaterial = new Material(shader) { name = "SharedEnemyStatusRing" };
-            }
-
-            GameObject ring = new GameObject("RiskStatusRing");
-            ring.transform.SetParent(transform, false);
-            ring.transform.localPosition = new Vector3(0f, -0.485f, 0f);
-            statusRing = ring.AddComponent<LineRenderer>();
-            statusRing.useWorldSpace = false;
-            statusRing.loop = true;
-            statusRing.positionCount = 32;
-            statusRing.startWidth = 0.035f;
-            statusRing.endWidth = 0.035f;
-            statusRing.numCornerVertices = 2;
-            statusRing.numCapVertices = 2;
-            statusRing.sharedMaterial = statusRingSharedMaterial;
-            statusRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            statusRing.receiveShadows = false;
-
-            float radius = obstacle.RequiredSpeedLevel >= 4 ? 0.78f : 0.56f;
-            float scaleX = Mathf.Max(0.001f, Mathf.Abs(transform.lossyScale.x));
-            float scaleZ = Mathf.Max(0.001f, Mathf.Abs(transform.lossyScale.z));
-            for (int i = 0; i < statusRing.positionCount; i++)
-            {
-                float angle = i / (float)statusRing.positionCount * Mathf.PI * 2f;
-                statusRing.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius / scaleX, 0f,
-                    Mathf.Sin(angle) * radius / scaleZ));
-            }
-        }
-
         public void SetPreviewActive(bool active)
         {
             SetPreviewPresentation(active, active ? 1f : 0f);
@@ -152,7 +114,6 @@ namespace PlayableAd
             if (obstacle == null || obstacle.HasResolved) visible = false;
             previewStrength = Mathf.Clamp01(strength);
             SetOutlineRenderersEnabled(visible && settings.enabled);
-            if (statusRing != null) statusRing.enabled = visible && settings.enabled && previewStrength >= 0.35f;
             if (visible && !subscribed)
             {
                 speedController.SpeedChanged += OnSpeedChanged;
@@ -174,10 +135,11 @@ namespace PlayableAd
 
         private void Refresh(int playerLevel, bool smooth)
         {
-            if ((outlineRenderers.Length == 0 && statusRing == null) || obstacle == null) return;
+            if (obstacle == null) return;
             lastPlayerLevel = playerLevel;
             CurrentOutcome = ObstacleController.EvaluateCollisionOutcome(playerLevel, obstacle.RequiredSpeedLevel);
             IsSafe = CurrentOutcome != CollisionOutcome.SpeedLoss;
+            if (outlineRenderers.Length == 0) return;
             SetOutlineRenderersEnabled(settings.enabled && !obstacle.HasResolved);
             Color color = GetOutcomeColor(CurrentOutcome);
             color *= settings.maxSceneBrightness;
@@ -187,7 +149,6 @@ namespace PlayableAd
                 transitionRoutine = StartCoroutine(TransitionVisual(color));
             else
                 ApplyVisual(color);
-            ConfigureStatusRing(color);
         }
 
         private IEnumerator TransitionVisual(Color targetColor)
@@ -238,19 +199,9 @@ namespace PlayableAd
             return settings.neutralColor;
         }
 
-        private void ConfigureStatusRing(Color color)
-        {
-            if (statusRing == null) return;
-            color.a = Mathf.Lerp(0.24f, 0.58f, previewStrength);
-            statusRing.startColor = color;
-            statusRing.endColor = color;
-            statusRing.enabled = settings.enabled && previewStrength >= 0.35f && !obstacle.HasResolved;
-        }
-
         private void OnObstacleResolved(ObstacleResolvedEvent resolved)
         {
             SetOutlineRenderersEnabled(false);
-            if (statusRing != null) statusRing.enabled = false;
             Unsubscribe();
         }
 
