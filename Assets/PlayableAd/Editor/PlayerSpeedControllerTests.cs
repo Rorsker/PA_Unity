@@ -391,6 +391,42 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
+        public void BackgroundMusicUsesDedicatedLoopSourceAtConfiguredVolume()
+        {
+            AudioClip clip = AudioClip.Create("BackgroundMusicTest", 256, 2, 22050, false);
+            try
+            {
+                AudioFeedbackSettings audioSettings = new AudioFeedbackSettings
+                {
+                    audioEnabled = true,
+                    hapticsEnabled = false,
+                    useProceduralPlaceholders = false,
+                    masterVolume = 0.5f,
+                    backgroundMusicLoop = clip,
+                    backgroundMusicVolume = 0.4f,
+                    actionVoiceCount = 2
+                };
+                AudioFeedbackController controller = root.AddComponent<AudioFeedbackController>();
+
+                controller.Initialize(audioSettings);
+
+                Transform musicObject = root.transform.Find("Audio_Music");
+                Assert.That(musicObject, Is.Not.Null);
+                AudioSource source = musicObject.GetComponent<AudioSource>();
+                Assert.That(source, Is.Not.Null);
+                Assert.That(source.clip, Is.EqualTo(clip));
+                Assert.That(source.loop, Is.True);
+                Assert.That(source.playOnAwake, Is.False);
+                Assert.That(source.volume, Is.EqualTo(0.2f).Within(0.0001f));
+                Assert.That(source.priority, Is.EqualTo(96));
+            }
+            finally
+            {
+                Object.DestroyImmediate(clip);
+            }
+        }
+
+        [Test]
         public void CollisionAudioFallsBackWhenVariantSlotIsMissingAndUsesWorldPosition()
         {
             AudioClip fallback = AudioClip.Create("CollisionFallbackTest", 256, 1, 22050, false);
@@ -432,6 +468,57 @@ namespace PlayableAdEditor.Tests
             {
                 Object.DestroyImmediate(fallback);
             }
+        }
+
+        [Test]
+        public void CollisionAndUpgradeAudioGrowStrongerAndFasterWithSpeed()
+        {
+            AudioClip clip = AudioClip.Create("SpeedResponsiveAudioTest", 256, 1, 22050, false);
+            GameObject lowObject = new GameObject("LowSpeedAudio");
+            GameObject highObject = new GameObject("HighSpeedAudio");
+            lowObject.transform.SetParent(root.transform);
+            highObject.transform.SetParent(root.transform);
+            try
+            {
+                AudioFeedbackSettings lowSettings = CreateSpeedResponsiveAudioSettings(clip);
+                AudioFeedbackSettings highSettings = CreateSpeedResponsiveAudioSettings(clip);
+                AudioFeedbackController low = lowObject.AddComponent<AudioFeedbackController>();
+                AudioFeedbackController high = highObject.AddComponent<AudioFeedbackController>();
+                low.Initialize(lowSettings);
+                high.Initialize(highSettings);
+
+                low.PlayCollisionOutcome(CollisionOutcome.Neutral, 0, 0f, 0f, Vector3.zero);
+                high.PlayCollisionOutcome(CollisionOutcome.Neutral, 0, 0f, 1f, Vector3.zero);
+                low.PlaySpeedLevelUp(1, false, false);
+                high.PlaySpeedLevelUp(PlayerSpeedSettings.RequiredLevelCount, false, false);
+
+                Assert.That(high.LastCollisionVolume, Is.GreaterThan(low.LastCollisionVolume + 0.2f));
+                Assert.That(high.LastCollisionPitch, Is.GreaterThan(low.LastCollisionPitch + 0.12f));
+                Assert.That(high.LastUpgradeVolume, Is.GreaterThan(low.LastUpgradeVolume + 0.15f));
+                Assert.That(high.LastUpgradePitch, Is.GreaterThan(low.LastUpgradePitch + 0.2f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(clip);
+            }
+        }
+
+        private static AudioFeedbackSettings CreateSpeedResponsiveAudioSettings(AudioClip clip)
+        {
+            return new AudioFeedbackSettings
+            {
+                audioEnabled = true,
+                hapticsEnabled = false,
+                useProceduralPlaceholders = false,
+                masterVolume = 1f,
+                normalImpactVolume = 0.62f,
+                upgradeVolume = 0.68f,
+                actionVoiceCount = 5,
+                impactTransient = clip,
+                neutralImpact = clip,
+                tierUpgrade = clip,
+                soldierImpactVariants = new[] { clip }
+            };
         }
 
         [TestCase(4, 1, CollisionOutcome.SpeedGain)]
