@@ -70,6 +70,18 @@ namespace PlayableAd
 
         public ObstacleResolutionType Resolve(PlayerSpeedController speedController, float boostAmount)
         {
+            return ResolveInternal(speedController, boostAmount, null);
+        }
+
+        public ObstacleResolutionType Resolve(PlayerSpeedController speedController, float boostAmount,
+            float speedLossAmount)
+        {
+            return ResolveInternal(speedController, boostAmount, Mathf.Max(0f, speedLossAmount));
+        }
+
+        private ObstacleResolutionType ResolveInternal(PlayerSpeedController speedController, float boostAmount,
+            float? fixedSpeedLossAmount)
+        {
             if (hasResolved || speedController == null)
                 return ObstacleResolutionType.Equal;
 
@@ -92,7 +104,15 @@ namespace PlayableAd
             else
             {
                 resolution = ObstacleResolutionType.Dropped;
-                speedController.DropOneLevel(SpeedChangeReason.HighLevelCollisionPenalty, this);
+                if (fixedSpeedLossAmount.HasValue)
+                {
+                    speedController.SetSpeed(speedController.CurrentSpeed - fixedSpeedLossAmount.Value,
+                        SpeedChangeReason.HighLevelCollisionPenalty, this);
+                }
+                else
+                {
+                    speedController.DropOneLevel(SpeedChangeReason.HighLevelCollisionPenalty, this);
+                }
             }
 
             Resolved?.Invoke(new ObstacleResolvedEvent(this, resolution, outcome, playerLevel, requiredSpeedLevel));

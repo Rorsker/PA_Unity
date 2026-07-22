@@ -42,7 +42,6 @@ namespace PlayableAd
         [InspectorName("Speed Gain Impact（速度增加冲击）")] public AudioClip speedGainImpact;
         [InspectorName("Neutral Impact（中性冲击）")] public AudioClip neutralImpact;
         [InspectorName("Speed Loss Impact（速度降低冲击）")] public AudioClip speedLossImpact;
-        [InspectorName("Danger Preview（危险预览）")] public AudioClip dangerPreview;
 
         [Header("Soldier Hit Layers（士兵命中音层）")]
         [InspectorName("Soldier Impact Variants（士兵冲击变体）")] public AudioClip[] soldierImpactVariants = Array.Empty<AudioClip>();
@@ -78,7 +77,6 @@ namespace PlayableAd
         [Range(2, 8), InspectorName("Action Voice Count（动作音源数量）")] public int actionVoiceCount = 5;
         [Range(0.03f, 0.2f), InspectorName("Normal Impact Min Interval（普通冲击最小间隔）")] public float normalImpactMinInterval = 0.055f;
         [Range(0.04f, 0.3f), InspectorName("Energy Return Min Interval（能量回收最小间隔）")] public float energyReturnMinInterval = 0.08f;
-        [Range(0.25f, 1.5f), InspectorName("Danger Preview Global Cooldown（危险预览全局冷却）")] public float dangerPreviewGlobalCooldown = 0.65f;
         [Range(2f, 24f), InspectorName("Movement Smoothing（移动平滑度）")] public float movementSmoothing = 12f;
     }
 
@@ -104,7 +102,6 @@ namespace PlayableAd
         private float lastSoldierImpactTime = float.NegativeInfinity;
         private float lastEnergyReturnTime = float.NegativeInfinity;
         private float lastHapticTime = float.NegativeInfinity;
-        private float lastDangerPreviewTime = float.NegativeInfinity;
 
         public Action<HapticStrength> ExternalHapticHandler;
         public int ActionVoiceCount => actionVoices.Length;
@@ -271,14 +268,6 @@ namespace PlayableAd
                     outcome == CollisionOutcome.SpeedLoss ? 3 : 1, worldPosition))
                 LastCollisionLayerCount++;
             TriggerHaptic(outcome == CollisionOutcome.SpeedLoss ? HapticStrength.Medium : HapticStrength.Light);
-        }
-
-        public bool PlayDangerPreview()
-        {
-            if (Time.unscaledTime - lastDangerPreviewTime < settings.dangerPreviewGlobalCooldown) return false;
-            lastDangerPreviewTime = Time.unscaledTime;
-            PlayVoice(settings.dangerPreview, settings.normalImpactVolume * 0.28f, 0.92f, 2);
-            return true;
         }
 
         public void PlayTierDrop(bool collisionPenalty)

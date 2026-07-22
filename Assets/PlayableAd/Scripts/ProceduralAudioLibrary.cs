@@ -23,7 +23,6 @@ namespace PlayableAd
             Assign(ref settings.speedGainImpact, MakeChirp("PA_SpeedGainImpact", 0.16f, 430f, 780f, 0.18f), owned);
             Assign(ref settings.neutralImpact, MakeImpact("PA_NeutralImpact", 0.18f, 132f, 0.3f, 0.13f, 43), owned);
             Assign(ref settings.speedLossImpact, MakeImpact("PA_SpeedLossImpact", 0.25f, 76f, 0.42f, 0.18f, 59), owned);
-            Assign(ref settings.dangerPreview, MakeChirp("PA_DangerPreview", 0.2f, 260f, 150f, 0.13f), owned);
 
             if (settings.soldierImpactVariants == null || settings.soldierImpactVariants.Length < 4)
             {

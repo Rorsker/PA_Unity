@@ -5,11 +5,33 @@ namespace PlayableAd
 {
     public sealed class SpeedBarView : MonoBehaviour
     {
+        private sealed class EncounterHintView
+        {
+            public RectTransform root;
+            public Image icon;
+            public Sprite unlockedSprite;
+            public Sprite lockedSprite;
+            public Color unlockedTint;
+            public int unlockLevel;
+            public bool initialized;
+            public bool unlocked;
+            public float animationTimeRemaining;
+        }
+
+        private const float HintUnlockAnimationDuration = 0.24f;
+        private const float HintUnlockPeakScale = 1.32f;
         private Image[] tickMarkers;
         private Image[] tickHighlights;
         private Text[] tickLabels;
         private PlayerSpeedController speedController;
         private SpeedVisualProfile profile;
+        private Sprite hintFrameSprite;
+        private Sprite soldierHintIcon;
+        private Sprite stoneWallHintIcon;
+        private Sprite stoneWallLockedHintIcon;
+        private int stoneWallHintLevel = 7;
+        private EncounterHintView soldierHint;
+        private EncounterHintView stoneWallHint;
         private RectTransform safeAreaRoot;
         private RectTransform panel;
         private RectTransform continuousFill;
@@ -30,8 +52,20 @@ namespace PlayableAd
 
         public void Initialize(PlayerSpeedController controller, SpeedVisualProfile visualProfile)
         {
+            Initialize(controller, visualProfile, null, null, null, null, 7);
+        }
+
+        public void Initialize(PlayerSpeedController controller, SpeedVisualProfile visualProfile,
+            Sprite frameSprite, Sprite soldierIcon, Sprite stoneWallIcon,
+            Sprite lockedStoneWallIcon, int wallHintLevel)
+        {
             speedController = controller;
             profile = visualProfile;
+            hintFrameSprite = frameSprite;
+            soldierHintIcon = soldierIcon;
+            stoneWallHintIcon = stoneWallIcon;
+            stoneWallLockedHintIcon = lockedStoneWallIcon;
+            stoneWallHintLevel = Mathf.Clamp(wallHintLevel, 1, speedController.LevelCount);
             tickMarkers = new Image[speedController.LevelCount];
             tickHighlights = new Image[speedController.LevelCount];
             tickLabels = new Text[speedController.LevelCount];
@@ -161,7 +195,62 @@ namespace PlayableAd
                 label.alignment = TextAnchor.MiddleCenter;
                 label.raycastTarget = false;
                 tickLabels[index] = label;
+
+                if (level == 1 && soldierHintIcon != null)
+                {
+                    soldierHint = BuildEncounterHint(tick, "SoldierHitHint", 1,
+                        soldierHintIcon, soldierHintIcon, new Vector2(88f, 124f), Color.white);
+                }
+                if (level == stoneWallHintLevel && stoneWallHintIcon != null)
+                {
+                    stoneWallHint = BuildEncounterHint(tick, "StoneWallHitHint", stoneWallHintLevel,
+                        stoneWallHintIcon,
+                        stoneWallLockedHintIcon != null ? stoneWallLockedHintIcon : stoneWallHintIcon,
+                        new Vector2(128f, 80f), new Color(1f, 0.78f, 0.42f, 1f));
+                }
             }
+        }
+
+        private EncounterHintView BuildEncounterHint(RectTransform tick, string objectName, int unlockLevel,
+            Sprite unlockedSprite, Sprite lockedSprite, Vector2 iconSize, Color unlockedTint)
+        {
+            RectTransform root = CreateRect(objectName, tick);
+            root.anchorMin = new Vector2(0.5f, 0f);
+            root.anchorMax = new Vector2(0.5f, 0f);
+            root.pivot = new Vector2(0.5f, 1f);
+            root.anchoredPosition = new Vector2(0f, -55f);
+            root.sizeDelta = new Vector2(152f, 152f);
+
+            Image frame = root.gameObject.AddComponent<Image>();
+            frame.sprite = hintFrameSprite;
+            frame.preserveAspect = true;
+            frame.color = Color.white;
+            frame.raycastTarget = false;
+
+            Shadow shadow = root.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.6f);
+            shadow.effectDistance = new Vector2(1.5f, -1.5f);
+            shadow.useGraphicAlpha = true;
+
+            RectTransform iconRect = CreateRect("Icon", root);
+            iconRect.anchorMin = iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = iconSize;
+            Image icon = iconRect.gameObject.AddComponent<Image>();
+            icon.sprite = lockedSprite;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+
+            return new EncounterHintView
+            {
+                root = root,
+                icon = icon,
+                unlockedSprite = unlockedSprite,
+                lockedSprite = lockedSprite,
+                unlockedTint = unlockedTint,
+                unlockLevel = unlockLevel
+            };
         }
 
         private void BuildCurrentLabel()
@@ -251,6 +340,43 @@ namespace PlayableAd
                 tickHighlights[i].color = highlightColor;
                 tickHighlights[i].enabled = tickLevel == currentLevel;
             }
+
+            RefreshEncounterHint(soldierHint, currentLevel);
+            RefreshEncounterHint(stoneWallHint, currentLevel);
+        }
+
+        private static void RefreshEncounterHint(EncounterHintView hint, int level)
+        {
+            if (hint == null) return;
+            bool shouldBeUnlocked = level >= hint.unlockLevel;
+            if (!hint.initialized)
+            {
+                hint.initialized = true;
+                hint.unlocked = shouldBeUnlocked;
+                ApplyEncounterHintState(hint);
+                return;
+            }
+            if (hint.unlocked == shouldBeUnlocked) return;
+
+            hint.unlocked = shouldBeUnlocked;
+            ApplyEncounterHintState(hint);
+            if (shouldBeUnlocked)
+                hint.animationTimeRemaining = HintUnlockAnimationDuration;
+            else
+            {
+                hint.animationTimeRemaining = 0f;
+                hint.root.localScale = Vector3.one;
+            }
+        }
+
+        private static void ApplyEncounterHintState(EncounterHintView hint)
+        {
+            hint.icon.sprite = hint.unlocked ? hint.unlockedSprite : hint.lockedSprite;
+            hint.icon.color = hint.unlocked
+                ? hint.unlockedTint
+                : new Color(0.72f, 0.72f, 0.72f, 0.82f);
+            if (hint.animationTimeRemaining <= 0f)
+                hint.root.localScale = Vector3.one;
         }
 
         private void Update()
@@ -267,6 +393,8 @@ namespace PlayableAd
             Color overlayColor = profile.Get(currentLevel).uiColor;
             overlayColor.a = pulse * 0.24f;
             pulseOverlay.color = overlayColor;
+            UpdateEncounterHintAnimation(soldierHint);
+            UpdateEncounterHintAnimation(stoneWallHint);
 
             if (badgeTimer > 0f)
             {
@@ -280,6 +408,30 @@ namespace PlayableAd
                 levelUpBadge.rectTransform.localScale = Vector3.one * badgeScale * Mathf.Lerp(1.12f, 1f, normalized);
                 if (badgeTimer <= 0f) levelUpBadge.enabled = false;
             }
+        }
+
+        private static void UpdateEncounterHintAnimation(EncounterHintView hint)
+        {
+            if (hint == null || hint.animationTimeRemaining <= 0f) return;
+            hint.animationTimeRemaining = Mathf.Max(0f,
+                hint.animationTimeRemaining - Time.unscaledDeltaTime);
+            float progress = 1f - hint.animationTimeRemaining / HintUnlockAnimationDuration;
+            float scale;
+            if (progress < 0.3f)
+            {
+                float t = progress / 0.3f;
+                float eased = 1f - Mathf.Pow(1f - t, 3f);
+                scale = Mathf.Lerp(1f, HintUnlockPeakScale, eased);
+            }
+            else
+            {
+                float t = (progress - 0.3f) / 0.7f;
+                float eased = 1f - Mathf.Pow(1f - t, 3f);
+                scale = Mathf.Lerp(HintUnlockPeakScale, 1f, eased);
+            }
+            hint.root.localScale = Vector3.one * scale;
+            if (hint.animationTimeRemaining <= 0f)
+                hint.root.localScale = Vector3.one;
         }
 
         private void ApplyFill(float value)

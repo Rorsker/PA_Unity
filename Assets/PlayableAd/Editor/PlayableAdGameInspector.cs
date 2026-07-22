@@ -98,17 +98,17 @@ namespace PlayableAd.Editor
             if (property.name == "soldierSections")
             {
                 element.FindPropertyRelative("sectionName").stringValue = (index + 1).ToString();
-                element.FindPropertyRelative("startOffsetFromTutorial").floatValue = previousOffset + 30f;
+                element.FindPropertyRelative("startOffsetFromTutorial").floatValue = previousOffset + 18.75f;
                 element.FindPropertyRelative("soldierCount").intValue = 5;
                 element.FindPropertyRelative("placementMode").enumValueIndex = 0;
-                element.FindPropertyRelative("minimumForwardSpacing").floatValue = 0.8f;
+                element.FindPropertyRelative("minimumForwardSpacing").floatValue = 0.5f;
                 element.FindPropertyRelative("horizontalCoverage").floatValue = 1f;
                 element.FindPropertyRelative("forwardRandomness").floatValue = 0.8f;
                 return;
             }
 
             element.FindPropertyRelative("sectionName").stringValue = "StoneWall" + (index + 1);
-            float nextOffset = previousOffset + 100f;
+            float nextOffset = previousOffset + 62.5f;
             float maximumOffset = GetMaximumStoneWallOffset(property.serializedObject);
             if (nextOffset > maximumOffset)
             {
@@ -153,8 +153,8 @@ namespace PlayableAd.Editor
                 + GetFloat(serializedObject, "tuning.tutorialFirstSoldierGap", 2.46f)
                 + (soldierCount - 1) * GetFloat(serializedObject, "tuning.tutorialSoldierSpacing", 1.85f)
                 + GetFloat(serializedObject, "tuning.tutorialWallGap", 6.15f);
-            float bossDistance = GetFloat(serializedObject, "tuning.bossDistance", 800f);
-            float bossPadding = GetFloat(serializedObject, "tuning.bossApproachPadding", 20f);
+            float bossDistance = GetFloat(serializedObject, "tuning.bossDistance", 500f);
+            float bossPadding = GetFloat(serializedObject, "tuning.bossApproachPadding", 13.46154f);
             return Mathf.Max(0f, bossDistance - tutorialEndZ - bossPadding);
         }
 

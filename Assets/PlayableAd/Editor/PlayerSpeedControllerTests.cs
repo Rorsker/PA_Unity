@@ -536,7 +536,7 @@ namespace PlayableAdEditor.Tests
                 MeshRenderer renderer = enemy.AddComponent<MeshRenderer>();
                 BoxCollider collider = enemy.AddComponent<BoxCollider>();
                 EnemyVisibilityController visibility = enemy.AddComponent<EnemyVisibilityController>();
-                visibility.Initialize(new Renderer[] { renderer }, new Collider[] { collider }, null);
+                visibility.Initialize(new Renderer[] { renderer }, new Collider[] { collider });
 
                 visibility.SetState(EnemyVisibilityState.Preloaded);
                 Assert.That(enemy.activeSelf, Is.True);

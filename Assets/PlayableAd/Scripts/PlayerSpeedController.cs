@@ -17,7 +17,8 @@ namespace PlayableAd
         PotionPickup,
         SpecialReward,
         BossEvent,
-        DebugCommand
+        DebugCommand,
+        TutorialElixirExpired
     }
 
     [Serializable]

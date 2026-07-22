@@ -3,12 +3,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 
 namespace PlayableAd
 {
     public sealed class PlayableAdGame : MonoBehaviour
     {
         private const float WallCollisionDistance = 1.3f;
+        private const float FirstSpeedLossSectionEndZ = 150f;
+        private const float SecondSpeedLossSectionEndZ = 350f;
+        private const int OpeningElixirGroupId = 1;
+        private const int MainRunLowSpeedRecoveryLevel = 4;
+        private const float ElixirVisualTargetHeight = 1.45f;
+        private const float ElixirVisualBottomOffset = -0.72f;
+        private static readonly Color SpeedLossImpactColor = new Color(0.82f, 0.035f, 0.025f, 0.76f);
         private const float RoadBorderSourceSegmentLength = 6.012f;
         private const float RoadBorderSegmentScale = 4f;
         private const float RoadBorderSegmentLength = RoadBorderSourceSegmentLength * RoadBorderSegmentScale;
@@ -48,10 +56,10 @@ namespace PlayableAd
         public sealed class SoldierFormationSettings
         {
             [InspectorName("Section Name（区段名称）")] public string sectionName = "Momentum";
-            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 7.38f;
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 4.6125f;
             [Range(1, 50), InspectorName("Density Rows（密度行数）")] public int soldierCount = 10;
             [InspectorName("Placement Mode（摆放模式）")] public SoldierPlacementMode placementMode = SoldierPlacementMode.RandomDense;
-            [Range(0.65f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.8f;
+            [Range(0.4f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.5f;
             [Range(0.4f, 1f), InspectorName("Horizontal Coverage（横向覆盖范围）")] public float horizontalCoverage = 1f;
             [Range(0f, 0.9f), InspectorName("Forward Randomness（前后随机度）")] public float forwardRandomness = 0.8f;
         }
@@ -60,7 +68,7 @@ namespace PlayableAd
         public sealed class StoneWallSectionSettings
         {
             [InspectorName("Section Name（区段名称）")] public string sectionName = "StoneWall";
-            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 100f;
+            [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 62.5f;
             [InspectorName("Blocking Mode（阻挡模式）")] public StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes;
             [InspectorName("Bullet Time（子弹时间）")] public BulletTimeSettings bulletTime = new BulletTimeSettings { enabled = false };
         }
@@ -70,6 +78,12 @@ namespace PlayableAd
         {
             [Header("Soldier section modules（士兵区段模块）")]
             [InspectorName("Soldier Sections（士兵区段）")] public SoldierFormationSettings[] soldierSections = Array.Empty<SoldierFormationSettings>();
+
+            [Header("Elixir visual modules（药剂视觉模块）")]
+            [InspectorName("Tutorial Left Elixir - Bottle 8（教学左路药剂 - Bottle 8）")] public GameObject openingElixirLeftPrefab;
+            [InspectorName("Tutorial Center Elixir - Bottle 9（教学中路药剂 - Bottle 9）")] public GameObject openingElixirCenterPrefab;
+            [InspectorName("Tutorial Right Elixir - Bottle 10（教学右路药剂 - Bottle 10）")] public GameObject openingElixirRightPrefab;
+            [InspectorName("Boss Max Speed Elixir - Bottle 4（Boss前满速药剂 - Bottle 4）")] public GameObject bossMaxSpeedElixirPrefab;
 
             [Header("Stone wall modules（石墙模块）")]
             [InspectorName("Stone Wall Prefab（石墙预制体）")] public GameObject stoneWallPrefab;
@@ -95,25 +109,35 @@ namespace PlayableAd
                 enterDuration = 0.2f,
                 exitDuration = 0.15f
             };
+            [Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Tutorial Exit Speed Level（教学结束速度等级）")]
+            public int tutorialExitSpeedLevel = 2;
+
+            [Header("Stone Wall Collision（石墙碰撞）")]
+            [Min(1), InspectorName("Stone Wall Safe Speed Level（石墙安全速度等级）")]
+            public int stoneWallSafeSpeedLevel = 7;
+            [Tooltip("Subtracts from the continuous speed value（从连续速度值中扣除）")]
+            [Min(0f), InspectorName("Stone Wall Speed Penalty Levels（石墙减速等级）")]
+            public float stoneWallSpeedPenaltyLevels = 0.5f;
 
             [Header("Forward Speed Loss（前进速度损失）")]
             [InspectorName("Speed Loss Enabled（启用速度损失）")] public bool forwardSpeedLossEnabled = true;
-            [Range(0f, 0.5f), InspectorName("Speed Loss Per Second（每秒速度损失）")] public float forwardSpeedLossPerSecond = 0.08f;
+            [FormerlySerializedAs("forwardSpeedLossPerSecond")]
+            [Min(0f), InspectorName("Section 1 Loss Per Second, Z 0-150（第一区段每秒速度损失，Z 0-150）")]
+            public float firstSectionSpeedLossPerSecond = 0.2f;
+            [Min(0f), InspectorName("Section 2 Loss Per Second, Z 150-350（第二区段每秒速度损失，Z 150-350）")]
+            public float secondSectionSpeedLossPerSecond = 0.2f;
+            [Min(0f), InspectorName("Section 3 Loss Per Second, Z 350-500（第三区段每秒速度损失，Z 350-500）")]
+            public float thirdSectionSpeedLossPerSecond;
             [Range(1f, 10f), InspectorName("Minimum Speed After Loss（损失后最低速度）")] public float minimumSpeedAfterLoss = 1f;
-            [Range(0f, 300f), InspectorName("Boss Speed Protection Distance（Boss 前停止掉速距离）")] public float bossSpeedProtectionDistance = 150f;
 
             [Header("Course（路线）")]
             [Tooltip("Total world-space distance from the start to the Boss encounter.")]
-            [Min(20f), InspectorName("Boss Distance（Boss 距离）")] public float bossDistance = 800f;
+            [Min(20f), InspectorName("Boss Distance（Boss 距离）")] public float bossDistance = 500f;
+            [Min(0f), InspectorName("Boss Max Speed Elixir Distance（Boss前满速药剂距离）")]
+            public float bossMaxSpeedElixirDistance = 30f;
             [Header("Data-driven Main Run（数据驱动主流程）")]
-            [Tooltip("Safe-lane recovery spacing. Keeps the normal route out of the level-one dead zone without granting high-tier progression.")]
-            [Range(80f, 300f), InspectorName("Maintenance Reward Spacing（维护奖励间距）")] public float maintenanceRewardSpacing = 135.38f;
-            [Range(3, 6), InspectorName("Maintenance Reward Level（维护奖励等级）")] public int maintenanceRewardLevel = 4;
-            [Range(40f, 300f), InspectorName("Special Reward Spacing（特殊奖励间距）")] public float specialRewardSpacing = 166.15f;
-            [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 21.54f;
+            [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 13.46154f;
             [InspectorName("Procedural Seed（程序化随机种子）")] public int proceduralSeed = 41723;
-            [Header("Special reward progression（特殊奖励进程）")]
-            [InspectorName("Special Reward Levels（特殊奖励等级）")] public int[] specialRewardLevels = { 7, 8, 9, 10 };
             [Header("Mobile encounter budget（移动端遭遇预算）")]
             [Range(8f, 30f), InspectorName("Recycle Distance（回收距离）")] public float recycleDistance = 18f;
             [Header("Continuous enemy visibility staging（连续敌人可见性分级）")]
@@ -128,10 +152,6 @@ namespace PlayableAd
             [Range(30f, 70f), InspectorName("Maximum Enemy Active Distance（最大敌人活动距离）")] public float maximumEnemyActiveDistance = 52f;
             [Range(48, 96), InspectorName("Max Preloaded Enemies（最大预加载敌人数）")] public int maxPreloadedEnemies = 80;
             [Range(24, 64), InspectorName("Max Distant Visible Enemies（最大远处可见敌人数）")] public int maxDistantVisibleEnemies = 48;
-            [Header("Fallback Route（备用路线）")]
-            [Range(4f, 10f), InspectorName("Fallback Boost Magnet Distance（备用增益吸附距离）")] public float fallbackBoostMagnetDistance = 7f;
-            [Range(6f, 20f), InspectorName("Fallback Boost Magnet Speed（备用增益吸附速度）")] public float fallbackBoostMagnetSpeed = 12f;
-
             [Header("Touch steering（触屏横向操控）")]
             [Min(1f), InspectorName("Lane Half Width（路线半宽）")] public float laneHalfWidth = 3.2f;
             [Range(0.5f, 1.5f), InspectorName("Drag Follow Ratio（拖动跟随比例）")] public float dragFollowRatio = 1f;
@@ -157,7 +177,7 @@ namespace PlayableAd
             [Range(4f, 14f), InspectorName("Camera Follow Sharpness（镜头跟随锐度）")] public float cameraFollowSharpness = 9f;
             [Range(0f, 6f), InspectorName("High Speed Pullback（高速后拉）")] public float highSpeedPullback = 1f;
             [Range(0f, 10f), InspectorName("High Speed Look Ahead Bonus（高速前视加成）")] public float highSpeedLookAheadBonus = 1.5f;
-            [Range(5f, 16f), InspectorName("Environment Reference Spacing（环境参考间距）")] public float environmentReferenceSpacing = 7.38f;
+            [Range(2f, 16f), InspectorName("Environment Reference Spacing（环境参考间距）")] public float environmentReferenceSpacing = 4.615384f;
 
             [Header("Road Collision Boundaries（道路碰撞边界）")]
             [Min(0.1f), InspectorName("Road Boundary Thickness（道路边界厚度）")] public float roadBoundaryThickness = 0.35f;
@@ -226,13 +246,12 @@ namespace PlayableAd
             public EncounterType type;
             public int tier;
             public bool consumed;
-            public bool fallbackBoost;
+            public int exclusivePickupGroupId;
             public bool anticipated;
-            public bool dangerPreviewPlayed;
             public BreakableWallVisual wall;
-            public ObstacleOutline outline;
             public ObstacleController obstacle;
             public EnemyVisibilityController visibility;
+            public SoldierKnockbackEffect soldierKnockback;
             public ElixirPickup elixir;
             public float wallCenterX;
             public float wallHalfWidth;
@@ -248,6 +267,9 @@ namespace PlayableAd
 
         [Header("Reusable gameplay prefabs（可复用玩法预制体）")]
         [SerializeField, InspectorName("Prefab（可复用预制体）")] private PrefabModules prefab = new PrefabModules();
+
+        [SerializeField, InspectorName("Gameplay Combo（玩法连击）")]
+        private GameplayComboSettings gameplayCombo = new GameplayComboSettings();
 
         [Header("Authoritative player speed（权威玩家速度）")]
         [SerializeField, InspectorName("Player Speed（玩家速度设置）")] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
@@ -268,9 +290,14 @@ namespace PlayableAd
         [SerializeField, InspectorName("Speed Visual Profile（速度视觉配置）")] private SpeedVisualProfile speedVisualProfile;
         [SerializeField, InspectorName("Visual Performance（视觉性能设置）")] private VisualPerformanceSettings visualPerformance = new VisualPerformanceSettings();
 
+        [Header("Speed bar collision hints（速度条碰撞提示）")]
+        [SerializeField, InspectorName("Hint Frame（提示框）")] private Sprite speedBarHintFrame;
+        [SerializeField, InspectorName("Level 1 Soldier Icon（1级士兵图标）")] private Sprite speedBarSoldierHintIcon;
+        [SerializeField, InspectorName("Stone Wall Icon（石墙图标）")] private Sprite speedBarStoneWallHintIcon;
+        [SerializeField, InspectorName("Locked Stone Wall Icon（未解锁石墙图标）")] private Sprite speedBarStoneWallLockedHintIcon;
+
         [Header("External speed VFX（外部速度特效）")]
         [SerializeField, InspectorName("Running Wind Trail Prefab（跑步风痕预制体）")] private GameObject runningWindTrailPrefab;
-        [SerializeField, InspectorName("Running Smoke Trail Prefab（跑步烟尘预制体）")] private GameObject runningSmokeTrailPrefab;
         [SerializeField, InspectorName("Acceleration Aura Prefab（加速法阵预制体）")] private GameObject accelerationAuraPrefab;
 
         [Header("Elixir presentation（药剂表现）")]
@@ -279,14 +306,11 @@ namespace PlayableAd
         [Header("Normal impact presentation（普通冲击表现）")]
         [SerializeField, InspectorName("Impact Presentation（冲击表现设置）")] private ImpactPresentationSettings impactPresentation = new ImpactPresentationSettings();
 
-        [Header("Pooled enemy break presentation（敌人破碎对象池表现）")]
-        [SerializeField, InspectorName("Enemy Break Presentation（敌人破碎表现设置）")] private EnemyBreakPresentationSettings enemyBreakPresentation = new EnemyBreakPresentationSettings();
+        [Header("Whole soldier knockback presentation（完整士兵撞飞表现）")]
+        [SerializeField, InspectorName("Soldier Knockback Presentation（士兵撞飞表现设置）")] private SoldierKnockbackSettings soldierKnockbackPresentation = new SoldierKnockbackSettings();
 
         [Header("Tutorial wall presentation（教学墙体表现）")]
         [SerializeField, InspectorName("Wall Break Presentation（墙体破碎表现设置）")] private WallBreakSettings wallBreakPresentation = new WallBreakSettings();
-
-        [Header("Obstacle risk outline（障碍风险轮廓）")]
-        [SerializeField, InspectorName("Outline Presentation（轮廓表现设置）")] private ObstacleOutlineSettings outlinePresentation = new ObstacleOutlineSettings();
 
         [Header("Authoritative level-up feedback（权威升级反馈）")]
         [SerializeField, InspectorName("Speed Level Feedback Config（速度等级反馈配置）")] private SpeedLevelFeedbackConfig speedLevelFeedbackConfig;
@@ -302,8 +326,6 @@ namespace PlayableAd
         [SerializeField, InspectorName("Player Animator（玩家动画控制器）")] private RuntimeAnimatorController playerAnimator;
         [SerializeField, InspectorName("Tier 1 Soldier Prefab（等级 1 士兵预制体）")] private GameObject tier1SoldierPrefab;
         [SerializeField, InspectorName("Tier 4 Soldier Prefab（等级 4 士兵预制体）")] private GameObject tier4SoldierPrefab;
-        [SerializeField, InspectorName("Tier 1 Soldier Break Prefab（等级 1 士兵破碎预制体）")] private GameObject tier1SoldierBreakPrefab;
-        [SerializeField, InspectorName("Tier 4 Soldier Break Prefab（等级 4 士兵破碎预制体）")] private GameObject tier4SoldierBreakPrefab;
         [SerializeField, Min(0.1f), InspectorName("Tier 1 Target Height（等级 1 目标高度）")] private float tier1TargetHeight = 1.6f;
         [SerializeField, Min(0.1f), InspectorName("Tier 4 Target Height（等级 4 目标高度）")] private float tier4TargetHeight = 2.2f;
         [SerializeField, InspectorName("Boss Visual Prefab（Boss 视觉预制体）")] private GameObject bossVisualPrefab;
@@ -336,10 +358,10 @@ namespace PlayableAd
         private AudioFeedbackController audioFeedback;
         private SpeedVisualFeedback speedFeedback;
         private ImpactEffectPool effectPool;
-        private EnemyBreakEffectPool enemyBreakPool;
-        private SoldierBreakEffectPool soldierBreakPool;
         private BossClashVisual bossClashVisual;
         private SpeedBarView speedBarView;
+        private ComboManager comboManager;
+        private ComboUIController comboUIController;
         private VisualTimeScaleController visualTimeScale;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
@@ -367,7 +389,6 @@ namespace PlayableAd
         private int lastScreenHeight;
         private bool bossSequence;
         private bool ending;
-        private bool fallbackActive;
         private BossClashPhase currentBossPhase;
         private string callout = string.Empty;
         private float calloutUntil;
@@ -378,8 +399,11 @@ namespace PlayableAd
         private GUIStyle buttonStyle;
         private GUIStyle smashTitleStyle;
         private GUIStyle smashSubtitleStyle;
+        private GUIStyle tutorialBulletWarningStyle;
+        private GUIStyle tutorialBulletWarningShadowStyle;
         private float smashEffectStart;
         private float smashEffectUntil;
+        private bool tutorialBulletTimeWarningActive;
         private LineRenderer upgradeRing;
         private float lastImpactTime;
         private float lastNormalShakeTime;
@@ -398,10 +422,17 @@ namespace PlayableAd
         public float TargetForwardSpeed => forwardMotion != null ? forwardMotion.TargetForwardSpeed : 0f;
         public float CurrentForwardSpeed => forwardMotion != null ? forwardMotion.CurrentForwardSpeed : 0f;
         public float CurrentAnimationSpeed => runnerAnimator != null ? runnerAnimator.speed : 0f;
+        public int CurrentCombo => comboManager != null ? comboManager.GetCombo() : 0;
         private int CurrentTier => speedController != null ? speedController.GetCurrentLevel() : 1;
         private bool FormalStarted => flowController != null && flowController.CurrentState == RunFlowState.MainRun;
         private float CourseDistanceScale => tuning != null ? Mathf.Max(0.1f, tuning.bossDistance / 1300f) : 1f;
         private float OpeningElixirZ => tuning.openingElixirTime * playerSpeed.forwardSpeeds[0];
+
+        private void OnValidate()
+        {
+            if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
+            gameplayCombo.UpgradeLegacyDefaults();
+        }
 
         private void Awake()
         {
@@ -446,11 +477,13 @@ namespace PlayableAd
         {
             gameplayStarted = false;
             flowController?.ResetToIntro();
+            comboManager?.ResetCombo();
             forwardMotion?.Tick(0f, false);
             CancelDrag();
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
+            tutorialBulletTimeWarningActive = false;
             runnerSpriteVisual?.ResetVisualState();
         }
 
@@ -463,11 +496,13 @@ namespace PlayableAd
 
             gameplayStarted = true;
             elapsed = 0f;
+            comboManager?.ResetCombo();
             speedController.SetLevel(playerSpeed.startingLevel, SpeedChangeReason.InitialSetup, this);
             forwardMotion?.SnapToTarget();
             targetX = 0f;
             flowController.StartTutorial();
             CancelDrag();
+            tutorialBulletTimeWarningActive = false;
             runnerSpriteVisual?.ResetVisualState();
         }
 
@@ -482,6 +517,7 @@ namespace PlayableAd
             HandleSpeedDebugInput();
 #endif
             flashAlpha = Mathf.MoveTowards(flashAlpha, 0f, Time.unscaledDeltaTime * 3.8f);
+            UpdateTutorialBulletTimeWarningState();
             bool movementActive = gameplayStarted && !ending && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
             if (!movementActive)
             {
@@ -507,6 +543,7 @@ namespace PlayableAd
             {
                 MoveRunner();
                 ProcessEncounters();
+                RecoverFromLevelOneAfterTutorial();
                 CheckBossEntry();
             }
 
@@ -737,20 +774,39 @@ namespace PlayableAd
                 : 0f;
             runnerSpriteVisual?.SetHorizontalInput(lateralInput);
 
-            if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled && !IsInsideBossSpeedProtectionZone())
+            if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled)
             {
-                speedController.ApplyContinuousSpeedLoss(worldDeltaTime, tuning.forwardSpeedLossPerSecond,
+                speedController.ApplyContinuousSpeedLoss(worldDeltaTime,
+                    GetSpeedLossPerSecond(runner.position.z),
                     tuning.minimumSpeedAfterLoss, this);
             }
 
             UpdateRunnerFeedback(forwardSpeed, true);
         }
 
-        private bool IsInsideBossSpeedProtectionZone()
+        private int GetSpeedLossSectionIndex(float worldZ)
         {
-            if (runner == null) return false;
-            float distanceToBoss = tuning.bossDistance - runner.position.z;
-            return distanceToBoss <= Mathf.Max(0f, tuning.bossSpeedProtectionDistance);
+            if (worldZ < FirstSpeedLossSectionEndZ) return 1;
+            return worldZ < SecondSpeedLossSectionEndZ ? 2 : 3;
+        }
+
+        private float GetSpeedLossPerSecond(float worldZ)
+        {
+            int section = GetSpeedLossSectionIndex(worldZ);
+            if (section == 1) return Mathf.Max(0f, tuning.firstSectionSpeedLossPerSecond);
+            if (section == 2) return Mathf.Max(0f, tuning.secondSectionSpeedLossPerSecond);
+            return Mathf.Max(0f, tuning.thirdSectionSpeedLossPerSecond);
+        }
+
+        private void RecoverFromLevelOneAfterTutorial()
+        {
+            if (!FormalStarted || speedController == null || speedController.GetCurrentLevel() > 1) return;
+
+            int recoveryLevel = Mathf.Min(MainRunLowSpeedRecoveryLevel, speedController.MaxLevel);
+            if (recoveryLevel <= 1) return;
+
+            speedController.SetLevel(recoveryLevel, SpeedChangeReason.SpecialReward, this);
+            forwardMotion?.SnapToTarget();
         }
 
         private float GetForwardSpeed()
@@ -821,7 +877,7 @@ namespace PlayableAd
                 }
 
                 float dz = encounter.root.transform.position.z - runner.position.z;
-                if (encounter.type == EncounterType.Elixir && !encounter.fallbackBoost && dz > preloadDistance)
+                if (encounter.type == EncounterType.Elixir && dz > preloadDistance)
                 {
                     if (encounter.root.activeSelf) encounter.root.SetActive(false);
                     continue;
@@ -864,18 +920,6 @@ namespace PlayableAd
                     }
 
                     encounter.visibility?.SetState(desiredState);
-                    if (desiredState == EnemyVisibilityState.DistantVisible)
-                    {
-                        float approach = 1f - Mathf.InverseLerp(activeDistance, visibleDistance, dz);
-                        encounter.visibility?.SetDistantPreviewStrength(Mathf.Lerp(0.22f, 0.74f, approach));
-                    }
-                    if (desiredState == EnemyVisibilityState.DistantVisible || desiredState == EnemyVisibilityState.Active)
-                    {
-                        CollisionOutcome previewOutcome = encounter.outline != null
-                            ? encounter.outline.CurrentOutcome
-                            : ObstacleController.EvaluateCollisionOutcome(CurrentTier, encounter.tier);
-                        HandleTargetPreview(encounter, previewOutcome);
-                    }
                     if (desiredState != EnemyVisibilityState.Active) continue;
                 }
 
@@ -909,33 +953,31 @@ namespace PlayableAd
                     if (runnerInsideWall && (Mathf.Abs(dz) < WallCollisionDistance || crossedThisFrame))
                     {
                         encounter.consumed = true;
-                        ResolveObstacle(encounter);
+                        ObstacleResolutionType resolution = ResolveObstacle(encounter);
+                        UpdateGameplayCombo(encounter, resolution);
                         StartCoroutine(BreakWallSequence(encounter));
                     }
                     continue;
                 }
 
-                if (encounter.type == EncounterType.Elixir && encounter.fallbackBoost && dz > 0f && dz <= tuning.fallbackBoostMagnetDistance)
+                const float collectionHalfWidth = 1.15f;
+                bool isExclusiveElixir = encounter.type == EncounterType.Elixir
+                    && encounter.exclusivePickupGroupId > 0;
+                bool insideCollectionWidth = isExclusiveElixir
+                    || Mathf.Abs(encounter.root.transform.position.x - runner.position.x) < collectionHalfWidth;
+                if ((Mathf.Abs(dz) < 1.25f || crossedThisFrame) && insideCollectionWidth)
                 {
-                    Vector3 position = encounter.root.transform.position;
-                    float worldDeltaTime = BulletTimeManager.Instance != null
-                        ? BulletTimeManager.Instance.GetWorldDeltaTime()
-                        : Time.deltaTime;
-                    position.x = Mathf.MoveTowards(position.x, runner.position.x, tuning.fallbackBoostMagnetSpeed * worldDeltaTime);
-                    encounter.root.transform.position = position;
-                }
-
-                float collectionHalfWidth = encounter.fallbackBoost ? tuning.laneHalfWidth * 2f : 1.15f;
-                if ((Mathf.Abs(dz) < 1.25f || crossedThisFrame) && Mathf.Abs(encounter.root.transform.position.x - runner.position.x) < collectionHalfWidth)
-                {
-                    encounter.consumed = true;
-                    if (encounter.type == EncounterType.Elixir)
+                    if (isExclusiveElixir)
                     {
-                        CollectElixir(encounter);
+                        CollectExclusiveElixirGroup(encounter.exclusivePickupGroupId);
                     }
                     else
                     {
-                        HitTarget(encounter);
+                        encounter.consumed = true;
+                        if (encounter.type == EncounterType.Elixir)
+                            CollectElixir(encounter);
+                        else
+                            HitTarget(encounter);
                     }
                 }
             }
@@ -947,6 +989,8 @@ namespace PlayableAd
                 || flowController.CurrentState != RunFlowState.Tutorial)
                 return;
             flowController.EnterMainRun();
+            speedController?.SetLevel(tuning.tutorialExitSpeedLevel,
+                SpeedChangeReason.TutorialElixirExpired, this);
         }
 
         private void TryTriggerBulletTime(Encounter encounter, float distanceToWall)
@@ -957,16 +1001,25 @@ namespace PlayableAd
 
             if (distanceToWall > encounter.bulletTimeSettings.triggerDistance) return;
             encounter.bulletTimeTriggered = true;
-            BulletTimeManager.Instance?.StartBulletTime(encounter.bulletTimeSettings);
+            BulletTimeManager manager = BulletTimeManager.Instance;
+            manager?.StartBulletTime(encounter.bulletTimeSettings);
+
+            if (!encounter.completesTutorial || manager == null || !manager.IsBulletTime()) return;
+
+            tutorialBulletTimeWarningActive = true;
+            callout = string.Empty;
+            calloutUntil = elapsed;
+            smashEffectStart = 0f;
+            smashEffectUntil = 0f;
         }
 
-        private void HandleTargetPreview(Encounter encounter, CollisionOutcome outcome)
+        private void UpdateTutorialBulletTimeWarningState()
         {
-            if (outcome == CollisionOutcome.SpeedLoss && !encounter.dangerPreviewPlayed)
-            {
-                encounter.dangerPreviewPlayed = true;
-                audioFeedback?.PlayDangerPreview();
-            }
+            if (!tutorialBulletTimeWarningActive) return;
+
+            BulletTimeManager manager = BulletTimeManager.Instance;
+            if (manager == null || !manager.IsBulletTime())
+                tutorialBulletTimeWarningActive = false;
         }
 
         private bool ValidatePrefabModules()
@@ -1016,6 +1069,42 @@ namespace PlayableAd
             audioFeedback?.PlayElixirContact();
             if (!encounter.elixir.TryCollect()) return;
             StartCoroutine(ElixirUpgradeSequence(encounter, encounter.tier));
+        }
+
+        private void CollectExclusiveElixirGroup(int groupId)
+        {
+            Encounter selected = null;
+            float closestDistance = float.MaxValue;
+            for (int i = 0; i < encounters.Count; i++)
+            {
+                Encounter candidate = encounters[i];
+                if (candidate.consumed || candidate.root == null
+                    || candidate.type != EncounterType.Elixir
+                    || candidate.elixir == null || candidate.elixir.HasCollected
+                    || candidate.exclusivePickupGroupId != groupId)
+                    continue;
+
+                float distance = Mathf.Abs(candidate.root.transform.position.x - runner.position.x);
+                if (distance >= closestDistance) continue;
+                closestDistance = distance;
+                selected = candidate;
+            }
+
+            if (selected == null) return;
+            for (int i = 0; i < encounters.Count; i++)
+            {
+                Encounter member = encounters[i];
+                if (member.type != EncounterType.Elixir
+                    || member.exclusivePickupGroupId != groupId)
+                    continue;
+
+                member.consumed = true;
+                if (member != selected && member.root != null)
+                    member.root.SetActive(false);
+            }
+
+            selected.root.SetActive(true);
+            CollectElixir(selected);
         }
 
         private IEnumerator ElixirUpgradeSequence(Encounter encounter, int nextTier)
@@ -1094,6 +1183,7 @@ namespace PlayableAd
             runnerSpriteVisual?.PlayShieldCharge(0.72f);
             float speedBeforeImpact = speedController.CurrentSpeed;
             ObstacleResolutionType resolution = ResolveObstacle(encounter);
+            UpdateGameplayCombo(encounter, resolution);
             if (resolution == ObstacleResolutionType.Boosted)
             {
                 callout = "撞！\n速度↑";
@@ -1129,6 +1219,24 @@ namespace PlayableAd
             }
         }
 
+        private void UpdateGameplayCombo(Encounter encounter, ObstacleResolutionType resolution)
+        {
+            if (encounter == null || encounter.obstacle == null) return;
+
+            if (encounter.obstacle.Type == ObstacleType.Soldier)
+            {
+                if (resolution == ObstacleResolutionType.Boosted)
+                    comboManager?.AddCombo();
+                else if (resolution == ObstacleResolutionType.Dropped)
+                    comboManager?.ResetCombo();
+            }
+            else if (encounter.obstacle.Type == ObstacleType.StoneWall
+                     && resolution == ObstacleResolutionType.Dropped)
+            {
+                comboManager?.ResetCombo();
+            }
+        }
+
         private ObstacleResolutionType ResolveObstacle(Encounter encounter)
         {
             if (encounter.obstacle == null || encounter.obstacle.HasResolved)
@@ -1137,7 +1245,10 @@ namespace PlayableAd
             float boost = encounter.obstacle.Type == ObstacleType.Soldier && encounter.tier == 1
                 ? playerSpeed.levelOneSoldierBoost
                 : playerSpeed.normalImpactBoost;
-            ObstacleResolutionType resolution = encounter.obstacle.Resolve(speedController, boost);
+            bool isStoneWall = encounter.obstacle.Type == ObstacleType.StoneWall;
+            ObstacleResolutionType resolution = isStoneWall
+                ? encounter.obstacle.Resolve(speedController, boost, tuning.stoneWallSpeedPenaltyLevels)
+                : encounter.obstacle.Resolve(speedController, boost);
             int levelAfterImpact = speedController.GetCurrentLevel();
             if (levelBeforeImpact >= 9 && levelAfterImpact <= levelBeforeImpact)
             {
@@ -1178,27 +1289,17 @@ namespace PlayableAd
             float actualImpactScale = Mathf.Lerp(0.85f, 1.3f, normalizedActualSpeed)
                 * (speedFeedback != null ? speedFeedback.CurrentImpactMultiplier : 1f);
             effectPool?.PlayImpact(encounter.root.transform.position + Vector3.up,
-                outcome != CollisionOutcome.SpeedLoss ? impactTier.secondaryColor : outlinePresentation.dangerColor,
+                outcome != CollisionOutcome.SpeedLoss ? impactTier.secondaryColor : SpeedLossImpactColor,
                 strength * actualImpactScale);
 
-            Vector3 sourceDimensions = encounter.root.transform.localScale;
-            Color breakColor = outcome == CollisionOutcome.SpeedLoss
-                ? outlinePresentation.dangerColor
-                : impactTier.primaryColor;
-            bool usedSoldierBreak = false;
-            if ((encounter.tier == 1 || encounter.tier == 4) && soldierBreakPool != null)
+            bool launched = encounter.soldierKnockback != null
+                && encounter.soldierKnockback.Launch(soldierKnockbackPresentation,
+                    normalizedActualSpeed, impactForwardSpeed, CurrentTier, encounter.visibility);
+            if (!launched)
             {
-                Vector3 breakPosition = encounter.root.transform.position
-                    - Vector3.up * encounter.root.transform.lossyScale.y * 0.5f;
-                usedSoldierBreak = soldierBreakPool.PlayBreak(encounter.tier, breakPosition,
-                    encounter.root.transform.rotation, normalizedActualSpeed, impactForwardSpeed, CurrentTier);
+                if (encounter.visibility != null) encounter.visibility.Recycle();
+                else encounter.root.SetActive(false);
             }
-            if (!usedSoldierBreak)
-            {
-                enemyBreakPool?.PlayBreak(encounter.root.transform.position, sourceDimensions, breakColor,
-                    normalizedActualSpeed, impactForwardSpeed, CurrentTier);
-            }
-            encounter.root.SetActive(false);
 
             if (impactPresentation.enableNormalHitStop)
                 visualTimeScale.RequestSlowMotion(impactPresentation.hitStopTimeScale, impactPresentation.hitStopDuration);
@@ -1357,7 +1458,6 @@ namespace PlayableAd
 
             bossClashVisual.SetVisible(false);
             BreakCage();
-            fallbackActive = false;
             currentBossPhase = BossClashPhase.None;
             yield return new WaitForSecondsRealtime(0.55f);
             ending = true;
@@ -1386,7 +1486,6 @@ namespace PlayableAd
 
         private IEnumerator FallbackSequence()
         {
-            speedController.DropOneLevel(SpeedChangeReason.BossEvent, this);
             Vector3 from = runner.position;
             Vector3 to = new Vector3(0f, runner.position.y, tuning.bossDistance - 58f * CourseDistanceScale);
             float timer = 0f;
@@ -1401,12 +1500,12 @@ namespace PlayableAd
 
             runnerVisual.localRotation = Quaternion.identity;
             runnerSpriteVisual?.SetFallen(false);
+            speedController.SetLevel(speedController.MaxLevel, SpeedChangeReason.BossEvent, this);
+            forwardMotion?.SnapToTarget();
             boss.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
             boss.rotation = Quaternion.identity;
-            fallbackActive = true;
-            callout = "BOOST ROUTE UNLOCKED!";
+            callout = "TRY AGAIN!";
             calloutUntil = elapsed + 2f;
-            SpawnFallbackBoosts();
             bossSequence = false;
             flowController.EnterMainRun();
         }
@@ -1452,16 +1551,6 @@ namespace PlayableAd
             }
         }
 
-        private void SpawnFallbackBoosts()
-        {
-            float scale = CourseDistanceScale;
-            float start = tuning.bossDistance - 46f * scale;
-            CreateElixir(-2.2f, start, true, 8);
-            CreateElixir(2.2f, start + 11f * scale, true, 9);
-            CreateElixir(0f, start + 22f * scale, true, 10);
-            CreateElixir(0f, tuning.bossDistance - 10f * scale, true, playerSpeed.bossVictoryLevel);
-        }
-
         private void BuildWorld()
         {
             whiteTexture = new Texture2D(1, 1);
@@ -1476,7 +1565,6 @@ namespace PlayableAd
             BuildRoad();
             BuildRunner();
             BuildEffectPool();
-            BuildEnemyBreakPool();
             BuildSpeedBar();
             BuildSpeedLevelFeedback();
             BuildBossArea();
@@ -1491,25 +1579,28 @@ namespace PlayableAd
             effectPool.EnergyShardAbsorbed = OnEnergyShardAbsorbed;
         }
 
-        private void BuildEnemyBreakPool()
-        {
-            GameObject poolRoot = new GameObject("EnemyBreakEffectPool");
-            poolRoot.transform.SetParent(worldRoot, false);
-            enemyBreakPool = poolRoot.AddComponent<EnemyBreakEffectPool>();
-            enemyBreakPool.Initialize(enemyBreakPresentation, visualPerformance);
-
-            GameObject soldierPoolRoot = new GameObject("SoldierBreakEffectPool");
-            soldierPoolRoot.transform.SetParent(worldRoot, false);
-            soldierBreakPool = soldierPoolRoot.AddComponent<SoldierBreakEffectPool>();
-            soldierBreakPool.Initialize(tier1SoldierBreakPrefab, tier4SoldierBreakPrefab);
-        }
-
         private void BuildSpeedBar()
         {
             GameObject canvasRoot = new GameObject("SpeedBarCanvas");
             canvasRoot.transform.SetParent(transform, false);
             speedBarView = canvasRoot.AddComponent<SpeedBarView>();
-            speedBarView.Initialize(speedController, speedVisualProfile);
+            speedBarView.Initialize(speedController, speedVisualProfile,
+                speedBarHintFrame, speedBarSoldierHintIcon, speedBarStoneWallHintIcon,
+                speedBarStoneWallLockedHintIcon,
+                Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel));
+            BuildComboSystem(canvasRoot);
+        }
+
+        private void BuildComboSystem(GameObject canvasRoot)
+        {
+            if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
+            gameplayCombo.UpgradeLegacyDefaults();
+            comboManager = GetComponent<ComboManager>();
+            if (comboManager == null) comboManager = gameObject.AddComponent<ComboManager>();
+            comboManager.Initialize(gameplayCombo);
+
+            comboUIController = canvasRoot.AddComponent<ComboUIController>();
+            comboUIController.Initialize(comboManager, gameplayCombo.presentation);
         }
 
         private void BuildSpeedLevelFeedback()
@@ -1615,8 +1706,8 @@ namespace PlayableAd
                 CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
                 if (!hasAuthoredRoadBorders)
                 {
-                    CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
-                    CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                    CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                    CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
                 }
             }
 
@@ -1767,7 +1858,7 @@ namespace PlayableAd
 
             speedFeedback = root.AddComponent<SpeedVisualFeedback>();
             speedFeedback.Initialize(speedVisualProfile, visualPerformance, runningWindTrailPrefab,
-                runningSmokeTrailPrefab, accelerationAuraPrefab);
+                accelerationAuraPrefab);
             BuildUpgradeRing(root.transform);
             audioFeedback = root.AddComponent<AudioFeedbackController>();
             audioFeedback.Initialize(audioPresentation);
@@ -1804,8 +1895,6 @@ namespace PlayableAd
 
         private void BuildBossArea()
         {
-           
-
             GameObject bossRoot = new GameObject("Boss");
             bossRoot.transform.SetParent(worldRoot, false);
             bossRoot.transform.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
@@ -1842,7 +1931,17 @@ namespace PlayableAd
         private void BuildLevel()
         {
             float openingElixirZ = OpeningElixirZ;
-            CreateElixir(0f, openingElixirZ, false, playerSpeed.tutorialElixirTargetLevel);
+            float safeHalfWidth = Mathf.Max(0.5f, tuning.laneHalfWidth - 0.35f);
+            float openingLaneOffset = GetSoldierLaneCenter(SoldierPlacementMode.RightLaneLine, safeHalfWidth);
+            CreateElixir(-openingLaneOffset, openingElixirZ,
+                playerSpeed.tutorialElixirTargetLevel, OpeningElixirGroupId,
+                prefab != null ? prefab.openingElixirLeftPrefab : null);
+            CreateElixir(0f, openingElixirZ,
+                playerSpeed.tutorialElixirTargetLevel, OpeningElixirGroupId,
+                prefab != null ? prefab.openingElixirCenterPrefab : null);
+            CreateElixir(openingLaneOffset, openingElixirZ,
+                playerSpeed.tutorialElixirTargetLevel, OpeningElixirGroupId,
+                prefab != null ? prefab.openingElixirRightPrefab : null);
 
             float firstSoldierZ = openingElixirZ + tuning.tutorialFirstSoldierGap;
             int soldierCount = Mathf.Clamp(tuning.tutorialSoldierCount, 3, 5);
@@ -1855,6 +1954,12 @@ namespace PlayableAd
             CreateBreakableWall(wallZ, "TutorialStoneWall", tuning.tutorialWallBlockingMode,
                 tuning.tutorialWallBulletTime, true);
             BuildConfiguredMainRun(wallZ);
+
+            float bossElixirZ = Mathf.Max(0f,
+                tuning.bossDistance - Mathf.Max(0f, tuning.bossMaxSpeedElixirDistance));
+            CreateElixir(0f, bossElixirZ, speedController.MaxLevel, 0,
+                prefab != null ? prefab.bossMaxSpeedElixirPrefab : null,
+                "BossMaxSpeedElixir");
         }
 
         private void BuildConfiguredMainRun(float tutorialEndZ)
@@ -1877,36 +1982,6 @@ namespace PlayableAd
                 }
             }
 
-            float scale = CourseDistanceScale;
-            int[] rewards = tuning.specialRewardLevels;
-            float maintenanceZ = tutorialEndZ + tuning.maintenanceRewardSpacing;
-            while (maintenanceZ < tuning.bossDistance - tuning.bossApproachPadding)
-            {
-                while (IsNearSoldierSection(maintenanceZ, tutorialEndZ, 5f * scale)
-                    || IsNearStoneWallSection(maintenanceZ, tutorialEndZ, 5f * scale))
-                    maintenanceZ += 12f * scale;
-                CreateElixir(0f, maintenanceZ, false, tuning.maintenanceRewardLevel);
-                maintenanceZ += tuning.maintenanceRewardSpacing;
-            }
-
-            if (rewards != null && rewards.Length > 0)
-            {
-                float rewardZ = tutorialEndZ + tuning.specialRewardSpacing;
-                int rewardIndex = 0;
-                while (rewardZ < tuning.bossDistance - 18f * scale)
-                {
-                    while (IsNearSoldierSection(rewardZ, tutorialEndZ, 5f * scale)
-                        || IsNearStoneWallSection(rewardZ, tutorialEndZ, 5f * scale))
-                        rewardZ += 12f * scale;
-                    float x = rewardIndex % 2 == 0 ? 2.25f : -2.25f;
-                    int targetLevel = Mathf.Clamp(rewards[Mathf.Min(rewardIndex, rewards.Length - 1)], 1, speedController.MaxLevel);
-                    CreateElixir(x, rewardZ, false, targetLevel);
-                    rewardIndex++;
-                    rewardZ += tuning.specialRewardSpacing;
-                }
-            }
-
-            CreateElixir(0f, tuning.bossDistance - 14f * scale, false, playerSpeed.bossVictoryLevel);
         }
 
         private void CreateSoldierSection(float tutorialEndZ, SoldierFormationSettings section, int sectionIndex)
@@ -1976,33 +2051,6 @@ namespace PlayableAd
             return Mathf.Max(0.1f, section.minimumForwardSpacing);
         }
 
-        private bool IsNearSoldierSection(float z, float tutorialEndZ, float padding)
-        {
-            if (prefab == null || prefab.soldierSections == null) return false;
-            for (int i = 0; i < prefab.soldierSections.Length; i++)
-            {
-                SoldierFormationSettings section = prefab.soldierSections[i];
-                if (section == null) continue;
-                float start = tutorialEndZ + section.startOffsetFromTutorial - padding;
-                float end = start + Mathf.Max(0, section.soldierCount - 1) * GetSectionForwardSpacing(section) + padding * 2f;
-                if (z >= start && z <= end) return true;
-            }
-            return false;
-        }
-
-        private bool IsNearStoneWallSection(float z, float tutorialEndZ, float padding)
-        {
-            if (prefab == null || prefab.additionalStoneWalls == null) return false;
-            for (int i = 0; i < prefab.additionalStoneWalls.Length; i++)
-            {
-                StoneWallSectionSettings section = prefab.additionalStoneWalls[i];
-                if (section == null) continue;
-                float wallZ = tutorialEndZ + section.startOffsetFromTutorial;
-                if (Mathf.Abs(z - wallZ) <= padding) return true;
-            }
-            return false;
-        }
-
         private void CreateTarget(float x, float z, int tier, Transform parent = null, string objectName = "Target")
         {
             Vector3 dimensions = targetShapes.Get(tier);
@@ -2016,7 +2064,6 @@ namespace PlayableAd
             Renderer[] visibilityRenderers = placeholderRenderer != null
                 ? new[] { placeholderRenderer }
                 : Array.Empty<Renderer>();
-            Renderer[] outlineSources = null;
             GameObject visualPrefab = tier == 1 ? tier1SoldierPrefab : tier == 4 ? tier4SoldierPrefab : null;
             if (visualPrefab != null)
             {
@@ -2042,7 +2089,6 @@ namespace PlayableAd
                     MeshFilter placeholderMesh = root.GetComponent<MeshFilter>();
                     if (placeholderMesh != null) Destroy(placeholderMesh);
                     visibilityRenderers = modelRenderers;
-                    outlineSources = modelRenderers;
                 }
                 else
                 {
@@ -2055,18 +2101,17 @@ namespace PlayableAd
                 WarnTargetVisualFallback(tier, tier == 1 ? nameof(tier1SoldierPrefab) : nameof(tier4SoldierPrefab));
             }
 
-            ObstacleOutline outline = root.AddComponent<ObstacleOutline>();
-            outline.Initialize(outlinePresentation, speedController, obstacle, outlineSources);
             EnemyVisibilityController visibility = root.AddComponent<EnemyVisibilityController>();
-            visibility.Initialize(visibilityRenderers, colliders, outline);
+            SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
+            visibility.Initialize(visibilityRenderers, colliders);
             encounters.Add(new Encounter
             {
                 root = root,
                 type = EncounterType.Target,
                 tier = tier,
-                outline = outline,
                 obstacle = obstacle,
-                visibility = visibility
+                visibility = visibility,
+                soldierKnockback = soldierKnockback
             });
             root.SetActive(false);
         }
@@ -2158,28 +2203,22 @@ namespace PlayableAd
                 tuning.bossDistance + 28f);
         }
 
-        private void CreateElixir(float x, float z, bool fallbackBoost = false, int targetLevel = 0)
+        private void CreateElixir(float x, float z, int targetLevel = 0,
+            int exclusivePickupGroupId = 0, GameObject visualPrefab = null,
+            string objectNameOverride = null)
         {
             int resolvedTargetLevel = targetLevel > 0 ? Mathf.Clamp(targetLevel, 1, speedController.MaxLevel) : playerSpeed.tutorialElixirTargetLevel;
-            GameObject root = new GameObject("RoyalElixir");
+            string objectName = !string.IsNullOrEmpty(objectNameOverride)
+                ? objectNameOverride
+                : "RoyalElixir";
+            if (exclusivePickupGroupId > 0 && string.IsNullOrEmpty(objectNameOverride))
+                objectName = x < -0.01f ? "OpeningElixir_Left"
+                    : x > 0.01f ? "OpeningElixir_Right" : "OpeningElixir_Center";
+            GameObject root = new GameObject(objectName);
             root.transform.SetParent(worldRoot, false);
             root.transform.position = new Vector3(x, 0.9f, z);
 
-            GameObject bottle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            bottle.transform.SetParent(root.transform, false);
-            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f);
-            SpeedTierVisualData elixirTier = speedVisualProfile.Get(resolvedTargetLevel);
-            bottle.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.primaryColor, 0.15f, 0.9f);
-            Destroy(bottle.GetComponent<Collider>());
-
-            GameObject cap = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cap.transform.SetParent(root.transform, false);
-            cap.transform.localPosition = new Vector3(0f, 0.85f, 0f);
-            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f);
-            cap.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.secondaryColor, 0.4f, 0.8f);
-            Destroy(cap.GetComponent<Collider>());
-
-            Renderer[] renderers = { bottle.GetComponent<Renderer>(), cap.GetComponent<Renderer>() };
+            Renderer[] renderers = CreateElixirVisual(root, visualPrefab, resolvedTargetLevel);
             root.AddComponent<ElixirVisual>().Initialize(elixirPresentation, renderers, speedVisualProfile, resolvedTargetLevel);
             SphereCollider pickupCollider = root.AddComponent<SphereCollider>();
             pickupCollider.isTrigger = true;
@@ -2191,10 +2230,72 @@ namespace PlayableAd
                 root = root,
                 type = EncounterType.Elixir,
                 tier = resolvedTargetLevel,
-                fallbackBoost = fallbackBoost,
+                exclusivePickupGroupId = exclusivePickupGroupId,
                 elixir = pickup
             });
-            if (!fallbackBoost) root.SetActive(false);
+            root.SetActive(false);
+        }
+
+        private Renderer[] CreateElixirVisual(GameObject root, GameObject visualPrefab, int targetLevel)
+        {
+            if (visualPrefab != null)
+            {
+                GameObject visual = Instantiate(visualPrefab, root.transform, false);
+                visual.name = visualPrefab.name;
+                Collider[] visualColliders = visual.GetComponentsInChildren<Collider>(true);
+                for (int i = 0; i < visualColliders.Length; i++) visualColliders[i].enabled = false;
+
+                Rigidbody[] visualBodies = visual.GetComponentsInChildren<Rigidbody>(true);
+                for (int i = 0; i < visualBodies.Length; i++)
+                {
+                    visualBodies[i].isKinematic = true;
+                    visualBodies[i].detectCollisions = false;
+                }
+
+                Renderer[] importedRenderers = visual.GetComponentsInChildren<Renderer>(true);
+                if (importedRenderers.Length > 0)
+                {
+                    FitElixirVisual(root.transform, visual.transform, importedRenderers);
+                    return importedRenderers;
+                }
+
+                Destroy(visual);
+            }
+
+            return CreateProceduralElixirVisual(root, targetLevel);
+        }
+
+        private static void FitElixirVisual(Transform root, Transform visual, Renderer[] renderers)
+        {
+            Bounds bounds = CalculateRendererBounds(renderers);
+            float scaleFactor = ElixirVisualTargetHeight / Mathf.Max(0.001f, bounds.size.y);
+            visual.localScale *= scaleFactor;
+
+            bounds = CalculateRendererBounds(renderers);
+            Vector3 rootPosition = root.position;
+            visual.position += new Vector3(
+                rootPosition.x - bounds.center.x,
+                rootPosition.y + ElixirVisualBottomOffset - bounds.min.y,
+                rootPosition.z - bounds.center.z);
+        }
+
+        private Renderer[] CreateProceduralElixirVisual(GameObject root, int targetLevel)
+        {
+            GameObject bottle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            bottle.transform.SetParent(root.transform, false);
+            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f);
+            SpeedTierVisualData elixirTier = speedVisualProfile.Get(targetLevel);
+            bottle.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.primaryColor, 0.15f, 0.9f);
+            Destroy(bottle.GetComponent<Collider>());
+
+            GameObject cap = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cap.transform.SetParent(root.transform, false);
+            cap.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f);
+            cap.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.secondaryColor, 0.4f, 0.8f);
+            Destroy(cap.GetComponent<Collider>());
+
+            return new[] { bottle.GetComponent<Renderer>(), cap.GetComponent<Renderer>() };
         }
 
         private void CreateBreakableWall(float z, string objectName = "TutorialStoneWall",
@@ -2224,13 +2325,14 @@ namespace PlayableAd
             wall.Initialize(wallBreakPresentation, new Color(0.4f, 0.43f, 0.44f), speedVisualProfile, visualPerformance);
             ObstacleController obstacle = root.GetComponent<ObstacleController>();
             if (obstacle == null) obstacle = root.AddComponent<ObstacleController>();
-            obstacle.Initialize(playerSpeed.tutorialElixirTargetLevel, ObstacleType.StoneWall,
+            int requiredSpeedLevel = Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel);
+            obstacle.Initialize(requiredSpeedLevel, ObstacleType.StoneWall,
                 root.GetComponentsInChildren<Collider>(true));
             encounters.Add(new Encounter
             {
                 root = root,
                 type = EncounterType.Wall,
-                tier = playerSpeed.tutorialElixirTargetLevel,
+                tier = requiredSpeedLevel,
                 wall = wall,
                 obstacle = obstacle,
                 wallCenterX = centerX,
@@ -2315,18 +2417,30 @@ namespace PlayableAd
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (showSpeedDebugOverlay && speedController != null)
             {
+                float runnerZ = runner != null ? runner.position.z : 0f;
+                int speedLossSection = GetSpeedLossSectionIndex(runnerZ);
+                float currentSpeedLoss = GetSpeedLossPerSecond(runnerZ);
                 string diagnostics = "Speed " + speedController.CurrentSpeed.ToString("F2") + "  Level " + speedController.GetCurrentLevel() + "/" + speedController.MaxLevel
                     + "\nTarget " + TargetForwardSpeed.ToString("F2") + " m/s  Actual " + CurrentForwardSpeed.ToString("F2") + " m/s"
                     + "\nFOV " + (gameCamera != null ? gameCamera.fieldOfView.ToString("F1") : "-") + "  Anim " + CurrentAnimationSpeed.ToString("F2")
                     + "  Wind " + (audioFeedback != null ? audioFeedback.CurrentWindVolume.ToString("F2") : "-")
                     + "\nLast " + speedController.LastSpeedChangeReason + " @ " + speedController.LastSpeedChangeTime.ToString("F2")
-                    + "  SpeedLoss " + tuning.forwardSpeedLossEnabled + " @ " + tuning.forwardSpeedLossPerSecond.ToString("F2") + "/s"
+                    + "  SpeedLoss " + tuning.forwardSpeedLossEnabled + " S" + speedLossSection
+                    + " @ " + currentSpeedLoss.ToString("F2") + "/s"
                     + "\n[1-0] Level  [T] 100m test  Last " + (debugLastSegmentTime > 0f ? debugLastSegmentTime.ToString("F2") + "s" : "-");
                 GUI.Box(new Rect(width - 315f, 18f, 300f, 130f), diagnostics);
             }
 #endif
 
-            if (!ending && elapsed < calloutUntil)
+            BulletTimeManager bulletTimeManager = BulletTimeManager.Instance;
+            bool showTutorialBulletWarning = tutorialBulletTimeWarningActive
+                && bulletTimeManager != null
+                && bulletTimeManager.IsBulletTime();
+            if (showTutorialBulletWarning)
+            {
+                DrawTutorialBulletTimeWarning(width, height);
+            }
+            else if (!ending && elapsed < calloutUntil)
             {
                 if (callout == "撞！\n速度↑")
                 {
@@ -2345,11 +2459,6 @@ namespace PlayableAd
             else if (!ending && !bossSequence)
             {
                 GUI.Label(new Rect(20f, height - 108f, width - 40f, 45f), "KEEP MOMENTUM", smallStyle);
-            }
-
-            if (fallbackActive && !ending)
-            {
-                GUI.Label(new Rect(20f, height * 0.26f, width - 40f, 48f), "COLLECT EVERY BLUE ELIXIR", bodyStyle);
             }
 
             if (ending)
@@ -2405,8 +2514,47 @@ namespace PlayableAd
             GUI.color = previousColor;
         }
 
+        private void DrawTutorialBulletTimeWarning(float width, float height)
+        {
+            const string warning = "还撞不碎这个！";
+            float pulse = 1f + Mathf.Sin(Time.unscaledTime * Mathf.PI * 6.4f) * 0.1f;
+            tutorialBulletWarningStyle.fontSize = Mathf.RoundToInt(58f * pulse);
+            tutorialBulletWarningShadowStyle.fontSize = tutorialBulletWarningStyle.fontSize;
+
+            float labelWidth = width * 0.94f;
+            float centerX = width * 0.5f + 18f;
+            float centerY = height * 0.4f;
+            Rect labelRect = new Rect(centerX - labelWidth * 0.5f, centerY - 43f, labelWidth, 86f);
+
+            const float outlineOffset = 2.5f;
+            GUI.Label(new Rect(labelRect.x - outlineOffset, labelRect.y, labelRect.width, labelRect.height),
+                warning, tutorialBulletWarningShadowStyle);
+            GUI.Label(new Rect(labelRect.x + outlineOffset, labelRect.y, labelRect.width, labelRect.height),
+                warning, tutorialBulletWarningShadowStyle);
+            GUI.Label(new Rect(labelRect.x, labelRect.y - outlineOffset, labelRect.width, labelRect.height),
+                warning, tutorialBulletWarningShadowStyle);
+            GUI.Label(new Rect(labelRect.x, labelRect.y + outlineOffset, labelRect.width, labelRect.height),
+                warning, tutorialBulletWarningShadowStyle);
+            GUI.Label(labelRect, warning, tutorialBulletWarningStyle);
+        }
+
         private void EnsureGuiStyles()
         {
+            if (tutorialBulletWarningStyle == null || tutorialBulletWarningShadowStyle == null)
+            {
+                tutorialBulletWarningStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 58,
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = new Color(1f, 0.06f, 0.025f) }
+                };
+                tutorialBulletWarningShadowStyle = new GUIStyle(tutorialBulletWarningStyle)
+                {
+                    normal = { textColor = new Color(0.22f, 0f, 0f, 0.96f) }
+                };
+            }
+
             if (titleStyle != null)
             {
                 return;

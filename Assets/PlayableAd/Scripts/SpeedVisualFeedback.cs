@@ -19,12 +19,9 @@ namespace PlayableAd
         private float afterimageSpawnTimer;
         private ParticleSystem levelBurstParticles;
         private GameObject externalWindTrailRoot;
-        private GameObject externalSmokeTrailRoot;
         private GameObject accelerationAuraRoot;
         private ParticleSystem[] externalWindTrailParticles;
-        private ParticleSystem[] externalSmokeTrailParticles;
         private ParticleSystem[] accelerationAuraParticles;
-        private float[] externalSmokeBaseEmissionMultipliers;
         private bool[] accelerationAuraOriginalLoops;
         private float[] accelerationAuraReverseStartTimes;
         private bool accelerationAuraReversing;
@@ -90,11 +87,11 @@ namespace PlayableAd
 
         public void Initialize(SpeedVisualProfile visualProfile, VisualPerformanceSettings performanceSettings)
         {
-            Initialize(visualProfile, performanceSettings, null, null, null);
+            Initialize(visualProfile, performanceSettings, null, null);
         }
 
         public void Initialize(SpeedVisualProfile visualProfile, VisualPerformanceSettings performanceSettings,
-            GameObject windTrailPrefab, GameObject smokeTrailPrefab, GameObject accelerationAuraPrefab)
+            GameObject windTrailPrefab, GameObject accelerationAuraPrefab)
         {
             profile = visualProfile;
             performance = performanceSettings ?? new VisualPerformanceSettings();
@@ -140,7 +137,7 @@ namespace PlayableAd
             BuildAfterimagePool();
             BuildEdgeLinePool();
             BuildLevelUpPool();
-            BuildExternalSpeedVfx(windTrailPrefab, smokeTrailPrefab, accelerationAuraPrefab);
+            BuildExternalSpeedVfx(windTrailPrefab, accelerationAuraPrefab);
         }
 
         // Compatibility overload used by the pre-animation local gameplay controller.
@@ -186,14 +183,17 @@ namespace PlayableAd
             currentChargeLean = Mathf.Lerp(currentChargeLean, target.chargeLean, response);
             temporaryBoost = Mathf.MoveTowards(temporaryBoost, 0f, worldDeltaTime * 3.4f);
 
+            float worldScale = BulletTimeManager.Instance != null
+                ? Mathf.Max(0.1f, BulletTimeManager.Instance.WorldTimeScale)
+                : 1f;
             float speedDelta = continuousSpeed - lastContinuousSpeed;
             if (speedDelta > 0.001f)
                 accelerationAuraTimer = Mathf.Clamp(accelerationAuraTimer + 0.42f + speedDelta * 0.18f, 0f, 1.2f);
             else
-                accelerationAuraTimer = Mathf.MoveTowards(accelerationAuraTimer, 0f, unscaledDeltaTime);
+                accelerationAuraTimer = Mathf.MoveTowards(accelerationAuraTimer, 0f, worldDeltaTime);
             lastContinuousSpeed = continuousSpeed;
 
-            mainTrail.time = currentTrailLength / Mathf.Max(1f, forwardSpeed);
+            mainTrail.time = currentTrailLength / Mathf.Max(1f, forwardSpeed * worldScale);
             mainTrail.startWidth = currentTrailWidth;
             Color trailColor = MultiplyRgb(currentPrimary, currentBrightness);
             mainTrail.startColor = new Color(trailColor.r, trailColor.g, trailColor.b, 0.92f);
@@ -215,8 +215,8 @@ namespace PlayableAd
             main.simulationSpeed = worldScale;
 
             UpdateLayeredAirflow(qualityMultiplier);
-            UpdateAfterimages(unscaledDeltaTime);
-            UpdateExternalSpeedVfx(forwardSpeed, continuousSpeed, unscaledDeltaTime);
+            UpdateAfterimages(worldDeltaTime);
+            UpdateExternalSpeedVfx(forwardSpeed, continuousSpeed, worldDeltaTime, worldScale);
 
             UpdateEdgeLines(forwardSpeed);
             UpdateLevelUpRings(worldDeltaTime);
@@ -280,22 +280,16 @@ namespace PlayableAd
             accelerationAuraTimer = Mathf.Max(accelerationAuraTimer, 0.72f);
         }
 
-        private void BuildExternalSpeedVfx(GameObject windTrailPrefab, GameObject smokeTrailPrefab,
-            GameObject auraPrefab)
+        private void BuildExternalSpeedVfx(GameObject windTrailPrefab, GameObject auraPrefab)
         {
             externalWindTrailRoot = InstantiateExternalVfx(windTrailPrefab, "CFXR_RunWindTrail",
                 new Vector3(0f, -0.35f, -0.75f), Quaternion.identity, Vector3.one * 0.72f,
                 out externalWindTrailParticles);
-            externalSmokeTrailRoot = InstantiateExternalVfx(smokeTrailPrefab, "CFXR_RunSmokeTrail",
-                new Vector3(0f, -0.72f, -1.2f), Quaternion.identity, Vector3.one * 0.55f,
-                out externalSmokeTrailParticles);
             accelerationAuraRoot = InstantiateExternalVfx(auraPrefab, "CFXR_AccelerationRunicAura",
                 new Vector3(0f, -0.96f, 0f), Quaternion.identity, Vector3.one,
                 out accelerationAuraParticles);
 
-            externalSmokeBaseEmissionMultipliers = CaptureEmissionMultipliers(externalSmokeTrailParticles);
             SetExternalVfxActive(externalWindTrailRoot, externalWindTrailParticles, false);
-            SetExternalVfxActive(externalSmokeTrailRoot, externalSmokeTrailParticles, false);
             SetExternalVfxActive(accelerationAuraRoot, accelerationAuraParticles, false);
             accelerationAuraOriginalLoops = new bool[accelerationAuraParticles.Length];
             accelerationAuraReverseStartTimes = new float[accelerationAuraParticles.Length];
@@ -311,12 +305,12 @@ namespace PlayableAd
             }
         }
 
-        private void UpdateExternalSpeedVfx(float forwardSpeed, float continuousSpeed, float unscaledDeltaTime)
+        private void UpdateExternalSpeedVfx(float forwardSpeed, float continuousSpeed,
+            float worldDeltaTime, float worldScale)
         {
             float normalizedSpeed = Mathf.InverseLerp(1f, 10f, continuousSpeed);
             bool running = forwardSpeed > 0.1f;
             SetExternalVfxActive(externalWindTrailRoot, externalWindTrailParticles, running);
-            SetExternalVfxActive(externalSmokeTrailRoot, externalSmokeTrailParticles, running);
 
             bool accelerating = running && accelerationAuraTimer > 0.001f;
             if (accelerating)
@@ -326,47 +320,13 @@ namespace PlayableAd
             }
             else
             {
-                UpdateAccelerationAuraReverse(unscaledDeltaTime);
+                UpdateAccelerationAuraReverse(worldDeltaTime);
             }
 
             float windSimulationSpeed = Mathf.Lerp(0.8f, 1.65f, normalizedSpeed);
-            float smokeSimulationSpeed = Mathf.Lerp(0.62f, 1.75f, normalizedSpeed);
-            SetParticleSimulationSpeed(externalWindTrailParticles, windSimulationSpeed);
-            UpdateSmokeTrailMotion(smokeSimulationSpeed, normalizedSpeed);
-            SetParticleSimulationSpeed(accelerationAuraParticles, Mathf.Lerp(0.9f, 1.35f, normalizedSpeed));
-        }
-
-        private void UpdateSmokeTrailMotion(float simulationSpeed, float normalizedSpeed)
-        {
-            float driftSpeed = Mathf.Lerp(0.45f, 7.2f, normalizedSpeed);
-            float startSpeedMultiplier = Mathf.Lerp(0.65f, 2.4f, normalizedSpeed);
-            float lifetimeMultiplier = Mathf.Lerp(0.75f, 1.65f, normalizedSpeed);
-            float emissionMultiplier = Mathf.Lerp(0.6f, 2f, normalizedSpeed);
-            if (externalSmokeTrailRoot != null)
-                externalSmokeTrailRoot.transform.localScale = Vector3.one * Mathf.Lerp(0.42f, 0.9f, normalizedSpeed);
-
-            for (int i = 0; i < externalSmokeTrailParticles.Length; i++)
-            {
-                ParticleSystem particle = externalSmokeTrailParticles[i];
-                ParticleSystem.MainModule main = particle.main;
-                main.simulationSpeed = simulationSpeed;
-                main.startSpeedMultiplier = startSpeedMultiplier;
-                main.startLifetimeMultiplier = lifetimeMultiplier;
-
-                ParticleSystem.EmissionModule emission = particle.emission;
-                float baseEmission = externalSmokeBaseEmissionMultipliers != null &&
-                                     i < externalSmokeBaseEmissionMultipliers.Length
-                    ? externalSmokeBaseEmissionMultipliers[i]
-                    : 1f;
-                emission.rateOverTimeMultiplier = baseEmission * emissionMultiplier;
-
-                ParticleSystem.VelocityOverLifetimeModule velocity = particle.velocityOverLifetime;
-                velocity.enabled = true;
-                velocity.space = ParticleSystemSimulationSpace.World;
-                velocity.x = new ParticleSystem.MinMaxCurve(0f);
-                velocity.y = new ParticleSystem.MinMaxCurve(0f);
-                velocity.z = -driftSpeed;
-            }
+            SetParticleSimulationSpeed(externalWindTrailParticles, windSimulationSpeed * worldScale);
+            SetParticleSimulationSpeed(accelerationAuraParticles,
+                Mathf.Lerp(0.9f, 1.35f, normalizedSpeed) * worldScale);
         }
 
         private void RestartAccelerationAuraIfReversing()
@@ -383,7 +343,7 @@ namespace PlayableAd
             }
         }
 
-        private void UpdateAccelerationAuraReverse(float unscaledDeltaTime)
+        private void UpdateAccelerationAuraReverse(float worldDeltaTime)
         {
             if (accelerationAuraRoot == null || !accelerationAuraRoot.activeSelf) return;
             if (!accelerationAuraReversing)
@@ -407,7 +367,7 @@ namespace PlayableAd
                 }
             }
 
-            accelerationAuraReverseElapsed += unscaledDeltaTime;
+            accelerationAuraReverseElapsed += worldDeltaTime;
             float reverseProgress = Mathf.Clamp01(accelerationAuraReverseElapsed / Mathf.Max(0.1f, accelerationAuraReverseDuration));
             float reverseTime = 1f - reverseProgress;
             for (int i = 0; i < accelerationAuraParticles.Length; i++)
@@ -469,14 +429,6 @@ namespace PlayableAd
                 ParticleSystem.MainModule main = particles[i].main;
                 main.simulationSpeed = speed;
             }
-        }
-
-        private static float[] CaptureEmissionMultipliers(ParticleSystem[] particles)
-        {
-            float[] multipliers = new float[particles.Length];
-            for (int i = 0; i < particles.Length; i++)
-                multipliers[i] = particles[i].emission.rateOverTimeMultiplier;
-            return multipliers;
         }
 
         private void BuildAuraParticles()
@@ -626,11 +578,11 @@ namespace PlayableAd
             }
         }
 
-        private void UpdateAfterimages(float unscaledDeltaTime)
+        private void UpdateAfterimages(float worldDeltaTime)
         {
             if (afterimages == null) return;
             bool allowed = !performance.lowQualityMode && currentAfterimageRate > 0.01f;
-            afterimageSpawnTimer -= unscaledDeltaTime;
+            afterimageSpawnTimer -= worldDeltaTime;
             if (allowed && afterimageSpawnTimer <= 0f)
             {
                 afterimageSpawnTimer = 1f / Mathf.Max(0.1f, currentAfterimageRate);
@@ -647,7 +599,7 @@ namespace PlayableAd
             for (int i = 0; i < afterimages.Length; i++)
             {
                 if (afterimageTimers[i] <= 0f) continue;
-                afterimageTimers[i] = Mathf.Max(0f, afterimageTimers[i] - unscaledDeltaTime);
+                afterimageTimers[i] = Mathf.Max(0f, afterimageTimers[i] - worldDeltaTime);
                 float alpha = afterimageTimers[i] / Mathf.Max(0.05f, currentAfterimageLifetime) * 0.28f;
                 Color color = currentPrimary;
                 color.a = alpha;

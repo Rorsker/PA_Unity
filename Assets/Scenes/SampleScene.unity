@@ -359,22 +359,23 @@ MonoBehaviour:
     tutorialWallBlockingMode: 1
     tutorialWallBulletTime:
       enabled: 1
-      triggerDistance: 3
-      duration: 0.55
+      triggerDistance: 6
+      duration: 1.5
       worldTimeScale: 0.25
       enterDuration: 0.2
       exitDuration: 0.15
+    tutorialExitSpeedLevel: 1
+    stoneWallSafeSpeedLevel: 7
+    stoneWallSpeedPenaltyLevels: 0.5
     forwardSpeedLossEnabled: 1
-    forwardSpeedLossPerSecond: 0.2
+    firstSectionSpeedLossPerSecond: 0.1
+    secondSectionSpeedLossPerSecond: 0.05
+    thirdSectionSpeedLossPerSecond: 0
     minimumSpeedAfterLoss: 1
-    bossSpeedProtectionDistance: 150
-    bossDistance: 800
-    maintenanceRewardSpacing: 135.3846
-    maintenanceRewardLevel: 4
-    specialRewardSpacing: 166.1538
-    bossApproachPadding: 21.53846
+    bossDistance: 500
+    bossMaxSpeedElixirDistance: 30
+    bossApproachPadding: 13.46154
     proceduralSeed: 41723
-    specialRewardLevels: 0700000008000000090000000a000000
     recycleDistance: 18
     enemyPreloadTime: 5
     enemyVisiblePreviewTime: 3.2
@@ -387,8 +388,6 @@ MonoBehaviour:
     maximumEnemyActiveDistance: 52
     maxPreloadedEnemies: 80
     maxDistantVisibleEnemies: 48
-    fallbackBoostMagnetDistance: 7
-    fallbackBoostMagnetSpeed: 12
     laneHalfWidth: 3.2
     dragFollowRatio: 1
     dragFollowSharpness: 45
@@ -399,177 +398,181 @@ MonoBehaviour:
   prefab:
     soldierSections:
     - sectionName: 1
-      startOffsetFromTutorial: 23
+      startOffsetFromTutorial: 4.02886
       soldierCount: 5
-      placementMode: 1
-      minimumForwardSpacing: 1.002
+      placementMode: 3
+      minimumForwardSpacing: 0.62625
       horizontalCoverage: 1
       forwardRandomness: 0.9
     - sectionName: 2
-      startOffsetFromTutorial: 33
+      startOffsetFromTutorial: 12.371259
       soldierCount: 5
-      placementMode: 1
-      minimumForwardSpacing: 0.8
+      placementMode: 2
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 3
-      startOffsetFromTutorial: 46
+      startOffsetFromTutorial: 21.27115
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 4
-      startOffsetFromTutorial: 53
+      startOffsetFromTutorial: 29.847754
       soldierCount: 5
-      placementMode: 1
-      minimumForwardSpacing: 0.8
+      placementMode: 3
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 5
-      startOffsetFromTutorial: 81
+      startOffsetFromTutorial: 37.365128
       soldierCount: 5
-      placementMode: 3
-      minimumForwardSpacing: 0.8
+      placementMode: 2
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 6
-      startOffsetFromTutorial: 98
+      startOffsetFromTutorial: 45.81682
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 7
-      startOffsetFromTutorial: 114
+      startOffsetFromTutorial: 54.462433
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 8
-      startOffsetFromTutorial: 120
+      startOffsetFromTutorial: 63.595905
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 9
-      startOffsetFromTutorial: 127
+      startOffsetFromTutorial: 72.173904
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 10
-      startOffsetFromTutorial: 152
+      startOffsetFromTutorial: 79.4416
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 11
-      startOffsetFromTutorial: 163
+      startOffsetFromTutorial: 88.97094
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 12
-      startOffsetFromTutorial: 186
+      startOffsetFromTutorial: 97.64801
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 13
-      startOffsetFromTutorial: 204
+      startOffsetFromTutorial: 106.11186
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 14
-      startOffsetFromTutorial: 220
+      startOffsetFromTutorial: 114.477715
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 15
-      startOffsetFromTutorial: 227
+      startOffsetFromTutorial: 122.77312
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 16
-      startOffsetFromTutorial: 238
+      startOffsetFromTutorial: 148.75
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 17
-      startOffsetFromTutorial: 250
+      startOffsetFromTutorial: 139.11539
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 18
-      startOffsetFromTutorial: 270
+      startOffsetFromTutorial: 164.11539
       soldierCount: 5
-      placementMode: 2
-      minimumForwardSpacing: 0.8
+      placementMode: 1
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 19
-      startOffsetFromTutorial: 276
+      startOffsetFromTutorial: 189.11539
       soldierCount: 5
-      placementMode: 2
-      minimumForwardSpacing: 0.8
+      placementMode: 3
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 20
-      startOffsetFromTutorial: 296
+      startOffsetFromTutorial: 214.11539
       soldierCount: 5
-      placementMode: 3
-      minimumForwardSpacing: 0.8
+      placementMode: 1
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 21
-      startOffsetFromTutorial: 646.8
+      startOffsetFromTutorial: 239.11539
       soldierCount: 6
-      placementMode: 1
-      minimumForwardSpacing: 0.8
+      placementMode: 3
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 22
-      startOffsetFromTutorial: 665.79
-      soldierCount: 50
-      placementMode: 0
-      minimumForwardSpacing: 0.8
+      startOffsetFromTutorial: 264.1154
+      soldierCount: 5
+      placementMode: 3
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 23
-      startOffsetFromTutorial: 721.46
+      startOffsetFromTutorial: 289.1154
       soldierCount: 6
-      placementMode: 2
-      minimumForwardSpacing: 0.8
+      placementMode: 3
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 24
-      startOffsetFromTutorial: 727.46
+      startOffsetFromTutorial: 314.1154
       soldierCount: 6
       placementMode: 1
-      minimumForwardSpacing: 0.8
+      minimumForwardSpacing: 0.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
+    openingElixirLeftPrefab: {fileID: 1151182611365112421, guid: 0e49f95b60b380e49948d35af3ce12ac, type: 3}
+    openingElixirCenterPrefab: {fileID: 8845805036743922893, guid: 98fb66b9a8fefa849b72a5d26234df8d, type: 3}
+    openingElixirRightPrefab: {fileID: 3063697393485650908, guid: 63be2ee730e8ee9408a653d747662e65, type: 3}
+    bossMaxSpeedElixirPrefab: {fileID: 5026541447367235291, guid: 25a2198feda15374f95449c0bcfc5fe2, type: 3}
     stoneWallPrefab: {fileID: 3591384800296594540, guid: f2bbdaf3c4f0ea7429c22cf3770c71f3, type: 3}
     additionalStoneWalls:
     - sectionName: StoneWall_1
-      startOffsetFromTutorial: 108
+      startOffsetFromTutorial: 133.28206
       blockingMode: 1
       bulletTime:
         enabled: 0
@@ -579,8 +582,8 @@ MonoBehaviour:
         enterDuration: 0.2
         exitDuration: 0.15
     - sectionName: StoneWall_2
-      startOffsetFromTutorial: 226
-      blockingMode: 2
+      startOffsetFromTutorial: 144.6154
+      blockingMode: 1
       bulletTime:
         enabled: 0
         triggerDistance: 3
@@ -589,7 +592,7 @@ MonoBehaviour:
         enterDuration: 0.2
         exitDuration: 0.15
     - sectionName: StoneWall_3
-      startOffsetFromTutorial: 365
+      startOffsetFromTutorial: 165.9487
       blockingMode: 2
       bulletTime:
         enabled: 0
@@ -599,17 +602,7 @@ MonoBehaviour:
         enterDuration: 0.2
         exitDuration: 0.15
     - sectionName: StoneWall_4
-      startOffsetFromTutorial: 580
-      blockingMode: 1
-      bulletTime:
-        enabled: 0
-        triggerDistance: 3
-        duration: 0.55
-        worldTimeScale: 0.25
-        enterDuration: 0.2
-        exitDuration: 0.15
-    - sectionName: StoneWall_5
-      startOffsetFromTutorial: 695
+      startOffsetFromTutorial: 173.28206
       blockingMode: 2
       bulletTime:
         enabled: 0
@@ -618,6 +611,190 @@ MonoBehaviour:
         worldTimeScale: 0.25
         enterDuration: 0.2
         exitDuration: 0.15
+    - sectionName: StoneWall_5
+      startOffsetFromTutorial: 190.6154
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_6
+      startOffsetFromTutorial: 215
+      blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_7
+      startOffsetFromTutorial: 223
+      blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_8
+      startOffsetFromTutorial: 237
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_9
+      startOffsetFromTutorial: 239
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_10
+      startOffsetFromTutorial: 241
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_11
+      startOffsetFromTutorial: 259
+      blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_12
+      startOffsetFromTutorial: 279.94873
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_13
+      startOffsetFromTutorial: 289
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_14
+      startOffsetFromTutorial: 306.6154
+      blockingMode: 2
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+    - sectionName: StoneWall_15
+      startOffsetFromTutorial: 319.94873
+      blockingMode: 1
+      bulletTime:
+        enabled: 0
+        triggerDistance: 3
+        duration: 0.55
+        worldTimeScale: 0.25
+        enterDuration: 0.2
+        exitDuration: 0.15
+  gameplayCombo:
+    enabled: 1
+    firstMilestone: 10
+    secondMilestone: 20
+    thirdMilestone: 50
+    fourthMilestone: 100
+    presentation:
+      screenAnchor: {x: 0.78, y: 0.72}
+      screenOffset: {x: -48, y: 0}
+      textAngle: 9
+      fontSize: 72
+      finalFontSize: 92
+      zeroHoldDuration: 0.55
+      zeroFadeDuration: 0.2
+      riseDuration: 0.09
+      settleDuration: 0.11
+      overshootScale: 1.2
+      comboPunchGrowth: 0.12
+      maximumIdlePulse: 0.035
+      oldNumberExitDuration: 0.1
+      lightShakeMaxCombo: 9
+      mediumShakeMaxCombo: 19
+      strongShakeMaxCombo: 49
+      lightShakeStrength: 3
+      mediumShakeStrength: 7
+      strongShakeStrength: 12
+      eliteShakeStrength: 15
+      finalShakeStrength: 18
+      shakeDuration: 0.16
+      shakeFrequency: 58
+      finalEffectStart: 100
+      comboColorGradient:
+        serializedVersion: 2
+        key0: {r: 0.95, g: 0.98, b: 1, a: 1}
+        key1: {r: 0.24, g: 0.68, b: 1, a: 1}
+        key2: {r: 0.08, g: 0.9, b: 0.94, a: 0}
+        key3: {r: 0.22, g: 0.96, b: 0.42, a: 0}
+        key4: {r: 1, g: 0.9, b: 0.16, a: 0}
+        key5: {r: 1, g: 0.5, b: 0.06, a: 0}
+        key6: {r: 1, g: 0.12, b: 0.04, a: 0}
+        key7: {r: 0, g: 0, b: 0, a: 0}
+        ctime0: 0
+        ctime1: 6554
+        ctime2: 13107
+        ctime3: 26214
+        ctime4: 39321
+        ctime5: 53739
+        ctime6: 65535
+        ctime7: 0
+        atime0: 0
+        atime1: 65535
+        atime2: 0
+        atime3: 0
+        atime4: 0
+        atime5: 0
+        atime6: 0
+        atime7: 0
+        m_Mode: 0
+        m_ColorSpace: -1
+        m_NumColorKeys: 7
+        m_NumAlphaKeys: 2
+      legendaryRedColor: {r: 1, g: 0.12, b: 0.04, a: 1}
+      legendaryGoldColor: {r: 1, g: 0.82, b: 0.16, a: 1}
+      colorResponse: 18
+      legendaryColorPulseSpeed: 2.2
+      finalColorBlendDuration: 0.65
+      milestoneScale: 1.42
+      milestoneShakeMultiplier: 1.55
+      haloDuration: 0.46
+      haloMaximumScale: 3.2
+      haloAlpha: 0.62
+      particleCount: 12
+      particleTravelDistance: 180
+      particleDuration: 0.44
   playerSpeed:
     minimumSpeed: 1
     maximumSpeed: 10
@@ -648,9 +825,9 @@ MonoBehaviour:
     naturalDeceleration: 14
     penaltyDeceleration: 32
     startingLevel: 1
-    tutorialElixirTargetLevel: 4
+    tutorialElixirTargetLevel: 5
     logSpeedChanges: 0
-    levelOneSoldierBoost: 0.06
+    levelOneSoldierBoost: 0.08
     normalImpactBoost: 0.9
     bossVictoryLevel: 10
   autoBeginGameplay: 1
@@ -664,7 +841,7 @@ MonoBehaviour:
     cameraFollowSharpness: 10
     highSpeedPullback: 0.8
     highSpeedLookAheadBonus: 1.2
-    environmentReferenceSpacing: 7.384615
+    environmentReferenceSpacing: 4.615384
     roadBoundaryThickness: 0.35
     roadBoundaryHeight: 5.5
     skyFogColor: {r: 0.24, g: 0.32, b: 0.39, a: 1}
@@ -683,8 +860,8 @@ MonoBehaviour:
     fogEnd: 125
   portraitCamera:
     fieldOfView: 52
-    cameraHeight: 5
-    cameraBackDistance: 9.95
+    cameraHeight: 10
+    cameraBackDistance: 16
     cameraLookAhead: 18
     maxSpeedFovBonus: 4
   targetShapes:
@@ -707,8 +884,11 @@ MonoBehaviour:
     lowQualitySpeedLineCount: 6
     lowQualityEnergyShardLimit: 12
     lowQualityWallChunkCount: 6
+  speedBarHintFrame: {fileID: 21300000, guid: 0f645746c82be354e8fb9ecb0efc4cf7, type: 3}
+  speedBarSoldierHintIcon: {fileID: 21300000, guid: cb8c0e6a15d20424fb0e3d193035eb7f, type: 3}
+  speedBarStoneWallHintIcon: {fileID: 21300000, guid: 11caa1edbf255de4e82d558e411f65b6, type: 3}
+  speedBarStoneWallLockedHintIcon: {fileID: 21300000, guid: 89322afc324999c49bcfd9c96ce7debb, type: 3}
   runningWindTrailPrefab: {fileID: 3696007233179127096, guid: c248f95ffea8b8543bc7ad0fffe0216d, type: 3}
-  runningSmokeTrailPrefab: {fileID: 8656522925564163052, guid: e509867be4f82f246a95eca1ee5a2d61, type: 3}
   accelerationAuraPrefab: {fileID: 3280519133390621005, guid: a71be3e7990efb040a07565c43cbb198, type: 3}
   elixirPresentation:
     hoverHeight: 0.18
@@ -744,19 +924,19 @@ MonoBehaviour:
     maxEnergyShardsPerHit: 6
     energyReturnDuration: 0.38
     scatterRadius: 0.62
-  enemyBreakPresentation:
-    maxActiveFragments: 56
-    fragmentsPerEnemy: 5
-    fragmentLifetime: 1.35
-    minFragmentForce: 4.5
-    maxFragmentForce: 10.5
-    forwardSpeedMultiplier: 1.25
+  soldierKnockbackPresentation:
+    maxActiveSoldiers: 24
+    flightLifetime: 1.6
+    minimumForwardSpeed: 8
+    maximumAuthoredForwardSpeed: 16
+    impactSpeedMultiplier: 1.25
     highSpeedMultiplierBonus: 0.85
-    lateralRangePerSpeedLevel: 0.5
-    upwardForce: 4.2
-    minAngularVelocity: 4
-    maxAngularVelocity: 14
-    lowQualityFragmentMultiplier: 0.55
+    lateralRangePerSpeedLevel: 1
+    upwardSpeed: 6.2
+    gravityMultiplier: 1.15
+    belowRoadRecycleDepth: 3
+    minimumRotationSpeed: 240
+    maximumRotationSpeed: 720
   wallBreakPresentation:
     anticipationDuration: 0.2
     totalDuration: 0.82
@@ -769,18 +949,6 @@ MonoBehaviour:
     chunkSideSpeed: 6
     chunkLifetime: 0.9
     dustAmount: 16
-  outlinePresentation:
-    enabled: 1
-    gainColor: {r: 0.04, g: 1, b: 0.48, a: 0.92}
-    neutralColor: {r: 0.68, g: 0.86, b: 1, a: 0.84}
-    dangerColor: {r: 0.82, g: 0.035, b: 0.025, a: 0.76}
-    baseWidth: 0.045
-    transitionDuration: 0.15
-    dangerPulseSpeed: 1.8
-    dangerPulseAmount: 0.16
-    maxSceneBrightness: 0.78
-    enhancedOutcomeCues: 0
-    outlineMaterial: {fileID: 2100000, guid: 625156dea1b9dbd4f8afd10d0ae8904a, type: 2}
   speedLevelFeedbackConfig: {fileID: 11400000, guid: abb605bf325454240a997ba6ac79f5f8, type: 2}
   bossClashPresentation:
     approachDuration: 0.5
@@ -822,7 +990,6 @@ MonoBehaviour:
     speedGainImpact: {fileID: 8300000, guid: 373ffbb6a1e19d991b8715f9fe884199, type: 3}
     neutralImpact: {fileID: 8300000, guid: e598316f463da93ff0d10a327cdbc5fd, type: 3}
     speedLossImpact: {fileID: 8300000, guid: a621ddf8a8e47521cf2b460f87b70307, type: 3}
-    dangerPreview: {fileID: 8300000, guid: 55192db76c0b938f8be46d6bed33fbb1, type: 3}
     soldierImpactVariants:
     - {fileID: 8300000, guid: e598316f463da93ff0d10a327cdbc5fd, type: 3}
     - {fileID: 8300000, guid: 04aea703142bb3e1a1b5ee2b047c354e, type: 3}
@@ -852,15 +1019,12 @@ MonoBehaviour:
     actionVoiceCount: 5
     normalImpactMinInterval: 0.07
     energyReturnMinInterval: 0.08
-    dangerPreviewGlobalCooldown: 0.65
     movementSmoothing: 12
   playerVisualPrefab: {fileID: 8725690435934047917, guid: 1d58f706c1a9cae41a4cc87807e6067d, type: 3}
   playerAnimator: {fileID: 9100000, guid: 29c6e402430dee7459a1e92c833f3f01, type: 2}
   tier1SoldierPrefab: {fileID: 7456086963729349228, guid: b9ec7e44c7039c54bb05fb06a812a4ce, type: 3}
   tier4SoldierPrefab: {fileID: 3356697127791251490, guid: 9482cbbdf3aae5c4e9ae23fc7e8bd1e5, type: 3}
-  tier1SoldierBreakPrefab: {fileID: 4526551921959352974, guid: 18edcb8c064de434891c2decf873a8d5, type: 3}
-  tier4SoldierBreakPrefab: {fileID: 1671299715108195538, guid: 51f09c8ff4131184c8abd600096af8d0, type: 3}
-  tier1TargetHeight: 1.6
+  tier1TargetHeight: 2.2
   tier4TargetHeight: 2.2
   bossVisualPrefab: {fileID: 149562205207687934, guid: 057acc745e872a147bae28cce3392f7f, type: 3}
   bossAnimator: {fileID: 9100000, guid: 22ad2da203527ab4bb0f0626944cf1cc, type: 2}
