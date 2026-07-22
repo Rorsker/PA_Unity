@@ -20,6 +20,16 @@ namespace PlayableAd
         [Range(0f, 2f), InspectorName("Normal FOV Punch（普通视场角冲击）")] public float normalFovPunch = 0.8f;
         [Range(0.08f, 0.4f), InspectorName("Normal Shake Cooldown（普通抖动冷却）")] public float normalShakeCooldown = 0.2f;
 
+        [Header("Penalty Screen Feedback（受罚屏幕反馈）")]
+        [InspectorName("Penalty Edge Color（受罚红边颜色）")]
+        public Color penaltyEdgeColor = new Color(0.92f, 0.02f, 0.015f, 1f);
+        [Range(0.1f, 1f), InspectorName("Penalty Edge Opacity（受罚红边透明度）")]
+        public float penaltyEdgeOpacity = 0.62f;
+        [Range(0.08f, 0.32f), InspectorName("Penalty Edge Width（受罚红边宽度）")]
+        public float penaltyEdgeWidth = 0.18f;
+        [Range(0.15f, 1.5f), InspectorName("Penalty Edge Fade Duration（受罚红边淡出时长）")]
+        public float penaltyEdgeFadeDuration = 0.65f;
+
         [Header("Combo Rhythm（连击节奏）")]
         [Range(0.2f, 1f), InspectorName("Combo Window（连击窗口）")] public float comboWindow = 0.65f;
         [Range(0f, 0.12f), InspectorName("Combo Pitch Step（连击音调步进）")] public float comboPitchStep = 0.045f;

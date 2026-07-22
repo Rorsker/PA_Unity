@@ -10456,12 +10456,12 @@ MonoBehaviour:
       worldTimeScale: 0.25
       enterDuration: 0.2
       exitDuration: 0.15
-    tutorialExitSpeedLevel: 1
+    tutorialExitSpeedLevel: 2
     stoneWallSafeSpeedLevel: 7
     stoneWallSpeedPenaltyLevels: 0.5
     forwardSpeedLossEnabled: 1
-    firstSectionSpeedLossPerSecond: 0.1
-    secondSectionSpeedLossPerSecond: 0.05
+    firstSectionSpeedLossPerSecond: 0.05
+    secondSectionSpeedLossPerSecond: 0.08
     thirdSectionSpeedLossPerSecond: 0
     minimumSpeedAfterLoss: 1
     bossDistance: 500
@@ -10813,6 +10813,14 @@ MonoBehaviour:
         worldTimeScale: 0.25
         enterDuration: 0.2
         exitDuration: 0.15
+  rewardRun:
+    enabled: 1
+    length: 200
+    soldierSectionCount: 10
+    soldiersPerSection: 40
+    stoneWallCount: 10
+    startOffsetAfterBoss: 14
+    soldierSpacing: 0.22
   gameplayCombo:
     enabled: 1
     firstMilestone: 10
@@ -10887,6 +10895,24 @@ MonoBehaviour:
       particleCount: 12
       particleTravelDistance: 180
       particleDuration: 0.44
+  numberCombat:
+    enabled: 1
+    playerColor: {r: 0.08, g: 0.5, b: 1, a: 1}
+    beatableTargetColor: {r: 0.86, g: 0.86, b: 0.86, a: 1}
+    strongerColor: {r: 1, g: 0.08, b: 0.08, a: 1}
+    outlineColor: {r: 0.01, g: 0.015, b: 0.025, a: 0.96}
+    playerFontSize: 64
+    targetFontSize: 56
+    levelTenFontScale: 1.35
+    outlineThickness: 3
+    labelWidth: 320
+    labelHeight: 96
+    playerHeadClearance: 0.42
+    soldierHeadClearance: 0.32
+    stoneWallHeadClearance: 0.45
+    bossHeadClearance: 0.55
+    canvasSortingOrder: 54
+    targetLabelPreviewDistance: 45
   playerSpeed:
     minimumSpeed: 1
     maximumSpeed: 10
@@ -10919,8 +10945,8 @@ MonoBehaviour:
     startingLevel: 1
     tutorialElixirTargetLevel: 5
     logSpeedChanges: 0
-    levelOneSoldierBoost: 0.08
-    normalImpactBoost: 0.9
+    levelOneSoldierBoost: 0.1
+    normalImpactBoost: 0.08
     bossVictoryLevel: 10
   autoBeginGameplay: 1
   environment:
@@ -11010,6 +11036,10 @@ MonoBehaviour:
     normalCameraShake: 0.065
     normalFovPunch: 0.8
     normalShakeCooldown: 0.2
+    penaltyEdgeColor: {r: 0.92, g: 0.02, b: 0.015, a: 1}
+    penaltyEdgeOpacity: 0.62
+    penaltyEdgeWidth: 0.18
+    penaltyEdgeFadeDuration: 0.65
     comboWindow: 0.65
     comboPitchStep: 0.045
     comboPitchSteps: 5
@@ -11030,6 +11060,13 @@ MonoBehaviour:
     belowRoadRecycleDepth: 3
     minimumRotationSpeed: 240
     maximumRotationSpeed: 720
+    impactFlashEnabled: 1
+    impactFlashDuration: 0.28
+    impactFlashCycles: 3
+    impactFlashRed: {r: 0.64, g: 0.018, b: 0.14, a: 1}
+    impactFlashWhite: {r: 0.92, g: 0.92, b: 0.92, a: 1}
+    impactFlashWhiteOpacity: 0.95
+    impactFlashEmissionIntensity: 0.35
   wallBreakPresentation:
     anticipationDuration: 0.2
     totalDuration: 0.82
@@ -11049,6 +11086,20 @@ MonoBehaviour:
     struggleDuration: 1.25
     staggerDuration: 0.4
     finishDuration: 0.4
+    requiredTapCount: 8
+    zAxisTugAmplitude: 0.24
+    zAxisTugFrequency: 2.4
+    tapPushDistance: 0.18
+    tapPushReturnDuration: 0.12
+    tapHintScreenAnchor: {x: 0.72, y: 0.34}
+    tapHintScreenOffset: {x: 0, y: 0}
+    tapHintSize: {x: 170, y: 255}
+    tapHintBobDistance: 12
+    tapHintPulseSpeed: 2.8
+    tapHintPulseScale: 0.055
+    tapHintTapCompression: 0.18
+    tapHintTapDrop: 16
+    tapHintTapResponse: 0.12
     contactShake: 0.3
     struggleShake: 0.065
     finishShake: 0.62
@@ -11058,7 +11109,13 @@ MonoBehaviour:
     bossEnergy: {r: 0.38, g: 0.03, b: 0.24, a: 0.86}
     beamWidth: 0.28
     centerBrightness: 0.78
-    pressureTravel: 2.8
+  bossTapHintSprite: {fileID: 21300000, guid: dc6073559c7248fb8a36a1848f1819d2, type: 3}
+  tutorialBulletWarningArrow: {fileID: 2800000, guid: 69b1253416f71f64cba07fd24aef9515, type: 3}
+  endCardGameLogo: {fileID: 2800000, guid: 00b0d4e9cd7f28444b0c6c55900cbefc, type: 3}
+  endCardVictoryLogo: {fileID: 2800000, guid: b96387e66b637114a9e207ba5d3b1975, type: 3}
+  endCardPlayNowImage: {fileID: 2800000, guid: a2bdd2458453d084f9d08df8ce53fce0, type: 3}
+  endCardTapHand: {fileID: 2800000, guid: 276f1153ed65550498d0f9e41fb274d4, type: 3}
+  endCardStoreUrl:
   audioPresentation:
     audioEnabled: 1
     hapticsEnabled: 1

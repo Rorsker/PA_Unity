@@ -31,6 +31,7 @@ namespace PlayableAd
         [SerializeField] private FallShadowMode fallShadowMode = FallShadowMode.Expand;
 
         private float shieldChargeUntil;
+        private bool shieldHeld;
         private float speedNormalized;
         private bool movementActive;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -60,6 +61,14 @@ namespace PlayableAd
                 animator.SetBool(IsShieldCharging, true);
         }
 
+        public void SetShieldHeld(bool held)
+        {
+            shieldHeld = held;
+            if (!held) shieldChargeUntil = 0f;
+            if (animator != null)
+                animator.SetBool(IsShieldCharging, held);
+        }
+
         public void SetFallen(bool fallen)
         {
             if (animator != null)
@@ -75,6 +84,7 @@ namespace PlayableAd
         public void ResetVisualState()
         {
             shieldChargeUntil = 0f;
+            shieldHeld = false;
             if (animator == null) return;
             animator.SetFloat(HorizontalInput, 0f);
             animator.SetBool(IsShieldCharging, false);
@@ -95,8 +105,12 @@ namespace PlayableAd
 
         private void Update()
         {
-            if (animator != null && animator.GetBool(IsShieldCharging) && Time.unscaledTime >= shieldChargeUntil)
-                animator.SetBool(IsShieldCharging, false);
+            if (animator != null)
+            {
+                bool shouldCharge = shieldHeld || Time.unscaledTime < shieldChargeUntil;
+                if (animator.GetBool(IsShieldCharging) != shouldCharge)
+                    animator.SetBool(IsShieldCharging, shouldCharge);
+            }
 
             if (animator != null)
             {

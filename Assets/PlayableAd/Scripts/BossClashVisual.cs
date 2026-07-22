@@ -17,12 +17,30 @@ namespace PlayableAd
     [Serializable]
     public sealed class BossClashSettings
     {
-        [Header("Five Phase Timing（五阶段时序）")]
+        [Header("Boss Phase Timing（Boss 阶段时序）")]
         [Range(0.4f, 0.6f), InspectorName("Approach Duration（接近阶段时长）")] public float approachDuration = 0.5f;
         [Range(0.15f, 0.25f), InspectorName("Contact Duration（接触阶段时长）")] public float contactDuration = 0.2f;
-        [Range(1f, 1.5f), InspectorName("Struggle Duration（对抗阶段时长）")] public float struggleDuration = 1.25f;
+        [Range(1f, 1.5f), InspectorName("Low-Level Struggle Duration（未满10级角力时长）")] public float struggleDuration = 1.25f;
         [Range(0.3f, 0.5f), InspectorName("Stagger Duration（踉跄阶段时长）")] public float staggerDuration = 0.4f;
         [Range(0.3f, 0.5f), InspectorName("Finish Duration（终结阶段时长）")] public float finishDuration = 0.4f;
+
+        [Header("Interactive Tap Struggle（交互连点角力）")]
+        [Range(1, 20), InspectorName("Required Tap Count（胜利所需点击数）")] public int requiredTapCount = 8;
+        [Min(0f), InspectorName("Z-Axis Tug Amplitude（Z轴拉扯幅度）")] public float zAxisTugAmplitude = 0.24f;
+        [Min(0.1f), InspectorName("Z-Axis Tug Frequency（Z轴拉扯频率）")] public float zAxisTugFrequency = 2.4f;
+        [Min(0f), InspectorName("Z-Axis Tap Push Distance（Z轴单次点击推进距离）")] public float tapPushDistance = 0.18f;
+        [Min(0.02f), InspectorName("Tap Push Return Duration（点击推进回弹时长）")] public float tapPushReturnDuration = 0.12f;
+
+        [Header("Rapid Tap Hand Hint（快速连点手指提示）")]
+        [InspectorName("Hint Screen Anchor（提示屏幕锚点）")] public Vector2 tapHintScreenAnchor = new Vector2(0.72f, 0.34f);
+        [InspectorName("Hint Screen Offset（提示屏幕偏移）")] public Vector2 tapHintScreenOffset = Vector2.zero;
+        [InspectorName("Hint Size（提示尺寸）")] public Vector2 tapHintSize = new Vector2(170f, 255f);
+        [Min(0f), InspectorName("Hint Bob Distance（提示浮动距离）")] public float tapHintBobDistance = 12f;
+        [Min(0.1f), InspectorName("Hint Pulse Speed（提示脉冲速度）")] public float tapHintPulseSpeed = 2.8f;
+        [Range(0f, 0.25f), InspectorName("Hint Pulse Scale（提示脉冲幅度）")] public float tapHintPulseScale = 0.055f;
+        [Range(0f, 0.5f), InspectorName("Tap Compression（点击压缩幅度）")] public float tapHintTapCompression = 0.18f;
+        [Min(0f), InspectorName("Tap Drop Distance（点击下压距离）")] public float tapHintTapDrop = 16f;
+        [Min(0.02f), InspectorName("Tap Response Duration（点击回弹时长）")] public float tapHintTapResponse = 0.12f;
 
         [Header("Camera Hierarchy（镜头反馈层级）")]
         [Range(0.1f, 0.55f), InspectorName("Contact Shake（接触抖动）")] public float contactShake = 0.3f;
@@ -36,7 +54,6 @@ namespace PlayableAd
         [InspectorName("Boss Energy（Boss 能量颜色）")] public Color bossEnergy = new Color(0.38f, 0.03f, 0.24f, 0.86f);
         [Range(0.15f, 0.55f), InspectorName("Beam Width（光束宽度）")] public float beamWidth = 0.28f;
         [Range(0.3f, 1f), InspectorName("Center Brightness（中心亮度）")] public float centerBrightness = 0.78f;
-        [Range(1f, 5f), InspectorName("Pressure Travel（压力推进距离）")] public float pressureTravel = 2.8f;
     }
 
     public sealed class BossClashVisual : MonoBehaviour
@@ -77,8 +94,9 @@ namespace PlayableAd
         public void SetPhase(BossClashPhase nextPhase)
         {
             phase = nextPhase;
-            bool struggle = phase == BossClashPhase.Struggle || phase == BossClashPhase.Stagger || phase == BossClashPhase.Finish;
-            for (int i = 0; i < bossTracks.Length; i++) bossTracks[i].enabled = struggle;
+            bool showForwardTracks = phase == BossClashPhase.Struggle
+                || phase == BossClashPhase.Stagger || phase == BossClashPhase.Finish;
+            for (int i = 0; i < bossTracks.Length; i++) bossTracks[i].enabled = showForwardTracks;
             bool cracked = phase == BossClashPhase.Stagger || phase == BossClashPhase.Finish;
             for (int i = 0; i < cracks.Length; i++) cracks[i].enabled = cracked;
         }

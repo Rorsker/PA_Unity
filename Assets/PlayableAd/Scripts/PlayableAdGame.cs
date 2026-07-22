@@ -12,7 +12,9 @@ namespace PlayableAd
         private const float WallCollisionDistance = 1.3f;
         private const float FirstSpeedLossSectionEndZ = 150f;
         private const float SecondSpeedLossSectionEndZ = 350f;
+        private const int SoldierDisplayLevel = 1;
         private const int OpeningElixirGroupId = 1;
+        private const float NaturalSpeedLossProtectionDuration = 3f;
         private const int MainRunLowSpeedRecoveryLevel = 4;
         private const float ElixirVisualTargetHeight = 1.45f;
         private const float ElixirVisualBottomOffset = -0.72f;
@@ -27,11 +29,12 @@ namespace PlayableAd
         private const float BossDeathFlightDistance = 9f;
         private const float BossDeathFlightHeight = 2.4f;
         private const float BossDeathAnimationDuration = 1.05f;
-        private const float BossStandingY = 2.3f;
+        private const float BossStandingY = 6.5f;
         private static readonly int BossDieHash = Animator.StringToHash("Die");
         private static readonly int BossClashHash = Animator.StringToHash("boss3");
         private static readonly int PrincessIdleHash = Animator.StringToHash("gongzhu");
         private static readonly int PrincessWalkHash = Animator.StringToHash("gongzhu2");
+        private static readonly int BossAttackingHash = Animator.StringToHash("IsAttacking");
 
         public enum SoldierPlacementMode
         {
@@ -74,6 +77,18 @@ namespace PlayableAd
             [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 62.5f;
             [InspectorName("Blocking Mode（阻挡模式）")] public StoneWallBlockingMode blockingMode = StoneWallBlockingMode.AllThreeLanes;
             [InspectorName("Bullet Time（子弹时间）")] public BulletTimeSettings bulletTime = new BulletTimeSettings { enabled = false };
+        }
+
+        [Serializable]
+        public sealed class BossRewardRunSettings
+        {
+            [InspectorName("Enabled（启用奖励关）")] public bool enabled = true;
+            [Min(20f), InspectorName("Reward Run Length（奖励关长度）")] public float length = 200f;
+            [Range(1, 20), InspectorName("Soldier Section Count（士兵区段数量）")] public int soldierSectionCount = 10;
+            [Range(1, 50), InspectorName("Soldiers Per Section（每区段士兵数量）")] public int soldiersPerSection = 40;
+            [Range(1, 20), InspectorName("Stone Wall Count（石墙数量）")] public int stoneWallCount = 10;
+            [Min(0f), InspectorName("Start Offset After Boss（Boss后起始偏移）")] public float startOffsetAfterBoss = 14f;
+            [Range(0.1f, 1.2f), InspectorName("Dense Soldier Spacing（密集士兵间距）")] public float soldierSpacing = 0.22f;
         }
 
         [Serializable]
@@ -253,6 +268,7 @@ namespace PlayableAd
             public bool anticipated;
             public BreakableWallVisual wall;
             public ObstacleController obstacle;
+            public NumberCombatTarget numberTarget;
             public EnemyVisibilityController visibility;
             public SoldierKnockbackEffect soldierKnockback;
             public ElixirPickup elixir;
@@ -271,8 +287,16 @@ namespace PlayableAd
         [Header("Reusable gameplay prefabs（可复用玩法预制体）")]
         [SerializeField, InspectorName("Prefab（可复用预制体）")] private PrefabModules prefab = new PrefabModules();
 
+        [Header("Boss reward run（Boss奖励关）")]
+        [SerializeField, InspectorName("Boss Reward Run（Boss奖励关设置）")]
+        private BossRewardRunSettings rewardRun = new BossRewardRunSettings();
+
         [SerializeField, InspectorName("Gameplay Combo（玩法连击）")]
         private GameplayComboSettings gameplayCombo = new GameplayComboSettings();
+
+        [Header("Number combat system（数值对抗系统）")]
+        [SerializeField, InspectorName("Number Combat（数值对抗）")]
+        private NumberCombatSettings numberCombat = new NumberCombatSettings();
 
         [Header("Authoritative player speed（权威玩家速度）")]
         [SerializeField, InspectorName("Player Speed（玩家速度设置）")] private PlayerSpeedSettings playerSpeed = new PlayerSpeedSettings();
@@ -315,12 +339,22 @@ namespace PlayableAd
 
         [Header("Tutorial wall presentation（教学墙体表现）")]
         [SerializeField, InspectorName("Wall Break Presentation（墙体破碎表现设置）")] private WallBreakSettings wallBreakPresentation = new WallBreakSettings();
+        [SerializeField, InspectorName("Bullet Time Warning Arrow（子弹时间警告右箭头）")]
+        private Texture2D tutorialBulletWarningArrow;
 
         [Header("Authoritative level-up feedback（权威升级反馈）")]
         [SerializeField, InspectorName("Speed Level Feedback Config（速度等级反馈配置）")] private SpeedLevelFeedbackConfig speedLevelFeedbackConfig;
 
-        [Header("Boss five-phase presentation（Boss 五阶段表现）")]
+        [Header("Boss battle presentation（Boss 战斗表现）")]
         [SerializeField, InspectorName("Boss Clash Presentation（Boss 对抗表现设置）")] private BossClashSettings bossClashPresentation = new BossClashSettings();
+        [SerializeField, InspectorName("Boss Rapid Tap Hand（Boss 连点手指提示）")] private Sprite bossTapHintSprite;
+
+        [Header("End card presentation（结算页面表现）")]
+        [SerializeField, InspectorName("Game Logo（游戏Logo）")] private Texture2D endCardGameLogo;
+        [SerializeField, InspectorName("Victory Logo（胜利Logo）")] private Texture2D endCardVictoryLogo;
+        [SerializeField, InspectorName("Play Now Image（立即游玩图片）")] private Texture2D endCardPlayNowImage;
+        [SerializeField, InspectorName("Tap Hand（点击手指）")] private Texture2D endCardTapHand;
+        [SerializeField, InspectorName("Store URL（商店链接）")] private string endCardStoreUrl = string.Empty;
 
         [Header("Audio clips and mobile haptics（音频片段与移动触觉）")]
         [SerializeField, InspectorName("Audio Presentation（音频表现设置）")] private AudioFeedbackSettings audioPresentation = new AudioFeedbackSettings();
@@ -349,6 +383,7 @@ namespace PlayableAd
         [SerializeField, Min(20f), InspectorName("Debug Test Segment Length（调试测试区段长度）")] private float debugTestSegmentLength = 100f;
 
         private readonly List<Encounter> encounters = new List<Encounter>();
+        private readonly List<GameObject> rewardStageWallRoots = new List<GameObject>();
         private readonly HashSet<int> targetVisualFallbackWarnings = new HashSet<int>();
         private Transform worldRoot;
         private Transform runner;
@@ -364,9 +399,12 @@ namespace PlayableAd
         private SpeedVisualFeedback speedFeedback;
         private ImpactEffectPool effectPool;
         private BossClashVisual bossClashVisual;
+        private BossTapPromptView bossTapPromptView;
         private SpeedBarView speedBarView;
         private ComboManager comboManager;
         private ComboUIController comboUIController;
+        private NumberCombatSystem numberCombatSystem;
+        private NumberCombatTarget bossNumberTarget;
         private VisualTimeScaleController visualTimeScale;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
@@ -383,6 +421,7 @@ namespace PlayableAd
         private float shakeStrength;
         private Vector3 directionalShake;
         private float flashAlpha;
+        private float penaltyEdgeIntensity;
         private float fovPunchOffset;
         private float baseFov = 58f;
         private bool dragging;
@@ -393,11 +432,20 @@ namespace PlayableAd
         private int lastScreenWidth;
         private int lastScreenHeight;
         private bool bossSequence;
+        private bool bossTapInputActive;
+        private bool bossSupportsAttackAnimation;
+        private int bossTapCount;
+        private bool bossDefeated;
+        private bool rewardStageActive;
+        private bool rewardStageBuilt;
+        private bool rewardStageCompleted;
+        private float rewardStageEndZ;
         private bool ending;
         private BossClashPhase currentBossPhase;
         private string callout = string.Empty;
         private float calloutUntil;
         private Texture2D whiteTexture;
+        private Texture2D penaltyEdgeTexture;
         private GUIStyle titleStyle;
         private GUIStyle bodyStyle;
         private GUIStyle smallStyle;
@@ -425,6 +473,8 @@ namespace PlayableAd
         private Texture2D buttonActiveTexture;
         private bool ownsSpeedVisualProfile;
         private bool ownsSpeedLevelFeedbackConfig;
+        private float naturalSpeedLossProtectedUntil;
+        private int naturalSpeedLossProtectedLevel;
 
         public PlayerSpeedController SpeedController => speedController;
         public RunFlowState CurrentFlowState => flowController != null ? flowController.CurrentState : RunFlowState.Intro;
@@ -434,6 +484,13 @@ namespace PlayableAd
         public int CurrentCombo => comboManager != null ? comboManager.GetCombo() : 0;
         private int CurrentTier => speedController != null ? speedController.GetCurrentLevel() : 1;
         private bool FormalStarted => flowController != null && flowController.CurrentState == RunFlowState.MainRun;
+        private bool RewardRunEnabled => rewardRun != null && rewardRun.enabled;
+        private float RewardRunStartZ => tuning != null
+            ? tuning.bossDistance + (RewardRunEnabled ? Mathf.Max(0f, rewardRun.startOffsetAfterBoss) : 0f)
+            : 0f;
+        private float CourseEndZ => RewardRunEnabled
+            ? RewardRunStartZ + Mathf.Max(20f, rewardRun.length)
+            : tuning != null ? tuning.bossDistance : 0f;
         private float CourseDistanceScale => tuning != null ? Mathf.Max(0.1f, tuning.bossDistance / 1300f) : 1f;
         private float OpeningElixirZ => tuning.openingElixirTime * playerSpeed.forwardSpeeds[0];
 
@@ -441,6 +498,8 @@ namespace PlayableAd
         {
             if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
             gameplayCombo.UpgradeLegacyDefaults();
+            if (numberCombat == null) numberCombat = new NumberCombatSettings();
+            if (rewardRun == null) rewardRun = new BossRewardRunSettings();
         }
 
         private void Awake()
@@ -458,6 +517,7 @@ namespace PlayableAd
                 return;
             }
             if (playerSpeed == null) playerSpeed = new PlayerSpeedSettings();
+            if (rewardRun == null) rewardRun = new BossRewardRunSettings();
             if (speedVisualProfile == null)
             {
                 speedVisualProfile = ScriptableObject.CreateInstance<SpeedVisualProfile>();
@@ -485,15 +545,27 @@ namespace PlayableAd
         public void BeginIntro()
         {
             gameplayStarted = false;
+            bossDefeated = false;
+            rewardStageActive = false;
+            rewardStageBuilt = false;
+            rewardStageCompleted = false;
+            rewardStageEndZ = 0f;
+            rewardStageWallRoots.Clear();
+            naturalSpeedLossProtectedUntil = 0f;
+            naturalSpeedLossProtectedLevel = 0;
             flowController?.ResetToIntro();
             comboManager?.ResetCombo();
+            numberCombatSystem?.RefreshPlayerLevel();
             forwardMotion?.Tick(0f, false);
             CancelDrag();
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
+            penaltyEdgeIntensity = 0f;
             tutorialBulletTimeWarningActive = false;
             runnerSpriteVisual?.ResetVisualState();
+            ResetBossTapInteraction(true);
+            SetGameplayHudVisible(true);
         }
 
         public void BeginGameplay()
@@ -505,14 +577,24 @@ namespace PlayableAd
 
             gameplayStarted = true;
             elapsed = 0f;
+            bossDefeated = false;
+            rewardStageActive = false;
+            rewardStageBuilt = false;
+            rewardStageCompleted = false;
+            rewardStageEndZ = 0f;
+            rewardStageWallRoots.Clear();
             comboManager?.ResetCombo();
+            numberCombatSystem?.RefreshPlayerLevel();
             speedController.SetLevel(playerSpeed.startingLevel, SpeedChangeReason.InitialSetup, this);
             forwardMotion?.SnapToTarget();
             targetX = 0f;
             flowController.StartTutorial();
             CancelDrag();
+            penaltyEdgeIntensity = 0f;
             tutorialBulletTimeWarningActive = false;
             runnerSpriteVisual?.ResetVisualState();
+            ResetBossTapInteraction(true);
+            SetGameplayHudVisible(true);
         }
 
         public void StartTutorial()
@@ -526,6 +608,11 @@ namespace PlayableAd
             HandleSpeedDebugInput();
 #endif
             flashAlpha = Mathf.MoveTowards(flashAlpha, 0f, Time.unscaledDeltaTime * 3.8f);
+            float penaltyFadeDuration = impactPresentation != null
+                ? Mathf.Max(0.01f, impactPresentation.penaltyEdgeFadeDuration)
+                : 0.65f;
+            penaltyEdgeIntensity = Mathf.MoveTowards(penaltyEdgeIntensity, 0f,
+                Time.unscaledDeltaTime / penaltyFadeDuration);
             UpdateTutorialBulletTimeWarningState();
             bool movementActive = gameplayStarted && !ending && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
             if (!movementActive)
@@ -552,8 +639,11 @@ namespace PlayableAd
             {
                 MoveRunner();
                 ProcessEncounters();
-                RecoverFromLevelOneAfterTutorial();
-                CheckBossEntry();
+                RecoverAtMinimumSpeedAfterTutorial();
+                if (rewardStageActive)
+                    CheckRewardStageCompletion();
+                else
+                    CheckBossEntry();
             }
 
         }
@@ -750,6 +840,14 @@ namespace PlayableAd
 
         private void MoveRunner()
         {
+            if (rewardStageActive && speedController != null
+                && speedController.GetCurrentLevel() < speedController.MaxLevel)
+            {
+                // The reward run is a fixed max-level sequence, independent of collision or decay tuning.
+                speedController.SetLevel(speedController.MaxLevel, SpeedChangeReason.BossEvent, this);
+                forwardMotion?.SnapToTarget();
+            }
+
             float worldDeltaTime = BulletTimeManager.Instance != null
                 ? BulletTimeManager.Instance.GetWorldDeltaTime()
                 : Time.deltaTime;
@@ -783,11 +881,22 @@ namespace PlayableAd
                 : 0f;
             runnerSpriteVisual?.SetHorizontalInput(lateralInput);
 
-            if (FormalStarted && !bossSequence && tuning.forwardSpeedLossEnabled)
+            if (FormalStarted && !bossSequence && !rewardStageActive && tuning.forwardSpeedLossEnabled)
             {
+                float minimumRetainedSpeed = tuning.minimumSpeedAfterLoss;
+                // After a level-up, natural decay may reach the new tier's floor for 3s,
+                // while collision penalties continue to use their normal direct path.
+                if (Time.unscaledTime < naturalSpeedLossProtectedUntil
+                    && naturalSpeedLossProtectedLevel > 1
+                    && speedController.GetCurrentLevel() >= naturalSpeedLossProtectedLevel)
+                {
+                    minimumRetainedSpeed = Mathf.Max(minimumRetainedSpeed,
+                        speedController.GetLevelStartSpeed(naturalSpeedLossProtectedLevel));
+                }
+
                 speedController.ApplyContinuousSpeedLoss(worldDeltaTime,
                     GetSpeedLossPerSecond(runner.position.z),
-                    tuning.minimumSpeedAfterLoss, this);
+                    minimumRetainedSpeed, this);
             }
 
             UpdateRunnerFeedback(forwardSpeed, true);
@@ -807,9 +916,14 @@ namespace PlayableAd
             return Mathf.Max(0f, tuning.thirdSectionSpeedLossPerSecond);
         }
 
-        private void RecoverFromLevelOneAfterTutorial()
+        private void RecoverAtMinimumSpeedAfterTutorial()
         {
-            if (!FormalStarted || speedController == null || speedController.GetCurrentLevel() > 1) return;
+            if (!FormalStarted || rewardStageActive || speedController == null) return;
+
+            float minimumSpeed = speedController.Settings != null
+                ? speedController.Settings.minimumSpeed
+                : speedController.GetLevelStartSpeed(1);
+            if (speedController.CurrentSpeed > minimumSpeed + 0.001f) return;
 
             int recoveryLevel = Mathf.Min(MainRunLowSpeedRecoveryLevel, speedController.MaxLevel);
             if (recoveryLevel <= 1) return;
@@ -1344,6 +1458,8 @@ namespace PlayableAd
         {
             if (encounter.obstacle == null || encounter.obstacle.HasResolved)
                 return ObstacleResolutionType.Equal;
+            numberCombatSystem?.ResolveTarget(encounter.numberTarget);
+            float speedBeforeResolution = speedController.CurrentSpeed;
             int levelBeforeImpact = speedController.GetCurrentLevel();
             float boost = encounter.obstacle.Type == ObstacleType.Soldier && encounter.tier == 1
                 ? playerSpeed.levelOneSoldierBoost
@@ -1352,6 +1468,11 @@ namespace PlayableAd
             ObstacleResolutionType resolution = isStoneWall
                 ? encounter.obstacle.Resolve(speedController, boost, tuning.stoneWallSpeedPenaltyLevels)
                 : encounter.obstacle.Resolve(speedController, boost);
+            if (resolution == ObstacleResolutionType.Dropped
+                && speedController.CurrentSpeed < speedBeforeResolution - 0.001f)
+            {
+                penaltyEdgeIntensity = 1f;
+            }
             int levelAfterImpact = speedController.GetCurrentLevel();
             if (levelBeforeImpact >= 9 && levelAfterImpact <= levelBeforeImpact)
             {
@@ -1420,10 +1541,63 @@ namespace PlayableAd
 
         private void CheckBossEntry()
         {
-            if (boss != null && runner.position.z >= tuning.bossDistance - 3.1f)
+            if (!bossDefeated && !rewardStageActive && boss != null
+                && runner.position.z >= tuning.bossDistance - 3.1f)
             {
                 StartCoroutine(BossClash());
             }
+        }
+
+        private void CheckRewardStageCompletion()
+        {
+            if (!rewardStageActive || rewardStageCompleted || runner == null
+                || runner.position.z < rewardStageEndZ)
+                return;
+
+            rewardStageCompleted = true;
+            rewardStageActive = false;
+            ending = true;
+            SetGameplayHudVisible(false);
+            flowController.EnterResult();
+        }
+
+        private static bool HasAnimatorParameter(Animator animator, int parameterHash)
+        {
+            if (animator == null) return false;
+            AnimatorControllerParameter[] parameters = animator.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+                if (parameters[i].nameHash == parameterHash) return true;
+            return false;
+        }
+
+        private void SetBossAttacking(bool attacking)
+        {
+            if (bossRuntimeAnimator != null && bossSupportsAttackAnimation)
+                bossRuntimeAnimator.SetBool(BossAttackingHash, attacking);
+        }
+
+        private void ResetBossTapInteraction(bool immediatePromptHide)
+        {
+            bossTapInputActive = false;
+            bossTapCount = 0;
+            bossTapPromptView?.Hide(immediatePromptHide);
+            SetBossAttacking(false);
+            runnerSpriteVisual?.SetShieldHeld(false);
+            audioFeedback?.StopBossStruggle();
+        }
+
+        private bool ReadBossTapDown()
+        {
+            if (!bossTapInputActive) return false;
+
+            if (Input.touchCount > 0)
+            {
+                for (int i = 0; i < Input.touchCount; i++)
+                    if (Input.GetTouch(i).phase == TouchPhase.Began) return true;
+                return false;
+            }
+
+            return Input.GetMouseButtonDown(0);
         }
 
         private IEnumerator BossClash()
@@ -1431,20 +1605,21 @@ namespace PlayableAd
             bossSequence = true;
             speedFeedback?.SetRunningTrailsVisible(false);
             flowController.EnterBoss();
+            CancelDrag();
+            ResetBossTapInteraction(true);
             targetX = 0f;
-            bool wins = CurrentTier >= playerSpeed.bossVictoryLevel;
+            bool speedQualified = CurrentTier >= playerSpeed.bossVictoryLevel;
             callout = string.Empty;
             calloutUntil = elapsed;
-            bossClashVisual.Begin(wins);
-            runnerSpriteVisual?.PlayShieldCharge(
-                bossClashPresentation.approachDuration +
-                bossClashPresentation.contactDuration +
-                bossClashPresentation.struggleDuration);
+            bossClashVisual.Begin(speedQualified);
+            runnerSpriteVisual?.SetShieldHeld(true);
 
             Vector3 runnerStart = runner.position;
             Vector3 bossStart = boss.position;
-            Vector3 runnerContact = new Vector3(0f, runnerStart.y, tuning.bossDistance - 1.1f);
-            Vector3 bossContact = new Vector3(0f, bossStart.y, tuning.bossDistance + 1.1f);
+            Vector3 runnerContact = new Vector3(0f, runnerStart.y,
+                tuning.bossDistance - 1.1f);
+            Vector3 bossContact = new Vector3(0f, bossStart.y,
+                tuning.bossDistance + 1.1f);
 
             currentBossPhase = BossClashPhase.Approach;
             bossClashVisual.SetPhase(currentBossPhase);
@@ -1463,13 +1638,14 @@ namespace PlayableAd
             bossClashVisual.SetPhase(currentBossPhase);
             if (bossRuntimeAnimator != null)
                 bossRuntimeAnimator.Play(BossClashHash, 0, 0f);
+            numberCombatSystem?.ResolveTarget(bossNumberTarget);
             audioFeedback?.PlayBossContact();
             speedFeedback?.PlayHighSpeedImpactSonicBoom(CurrentTier, 1.2f,
                 speedLevelFeedbackConfig != null && speedLevelFeedbackConfig.accessibilityReducedFlash);
             flashAlpha = Mathf.Max(flashAlpha, 0.48f);
             PunchCamera(bossClashPresentation.contactDuration, bossClashPresentation.contactShake, bossClashPresentation.contactFovPunch);
             effectPool?.PlayImpact(Vector3.Lerp(runner.position, boss.position, 0.5f) + Vector3.up,
-                wins ? bossClashPresentation.playerEnergy : bossClashPresentation.bossEnergy,
+                speedQualified ? bossClashPresentation.playerEnergy : bossClashPresentation.bossEnergy,
                 1.65f, CurrentTier);
             timer = 0f;
             while (timer < bossClashPresentation.contactDuration)
@@ -1482,30 +1658,65 @@ namespace PlayableAd
             currentBossPhase = BossClashPhase.Struggle;
             bossClashVisual.SetPhase(currentBossPhase);
             audioFeedback?.BeginBossStruggle();
-            shakeStrength = bossClashPresentation.struggleShake;
-            shakeUntil = Time.unscaledTime + bossClashPresentation.struggleDuration;
-            directionalShake = new Vector3(0.35f, 0.15f, 0f);
-            Vector3 runnerPressure = runnerContact + Vector3.forward * (wins ? 0.85f : -bossClashPresentation.pressureTravel);
-            Vector3 bossPressure = bossContact + Vector3.forward * (wins ? bossClashPresentation.pressureTravel : -0.85f);
+            SetBossAttacking(true);
+            bossTapCount = 0;
+            bossTapInputActive = speedQualified;
+            if (speedQualified) bossTapPromptView?.Show();
+            else bossTapPromptView?.Hide(true);
+
+            int requiredTaps = Mathf.Max(1, bossClashPresentation.requiredTapCount);
+            float failureDuration = Mathf.Max(0.1f, bossClashPresentation.struggleDuration);
+            float tapPush = 0f;
             timer = 0f;
-            while (timer < bossClashPresentation.struggleDuration)
+            while ((speedQualified && bossTapCount < requiredTaps)
+                   || (!speedQualified && timer < failureDuration))
             {
-                timer += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(timer / bossClashPresentation.struggleDuration);
-                float pressure = Mathf.SmoothStep(0f, 1f, t);
-                runner.position = Vector3.Lerp(runnerContact, runnerPressure, pressure);
-                boss.position = Vector3.Lerp(bossContact, bossPressure, pressure);
-                Vector3 center = Vector3.Lerp(runner.position, boss.position, wins ? 0.6f : 0.4f) + Vector3.up;
-                bossClashVisual.UpdatePresentation(t, center);
+                float deltaTime = Time.unscaledDeltaTime;
+                timer += deltaTime;
+                if (speedQualified && ReadBossTapDown())
+                {
+                    bossTapCount = Mathf.Min(requiredTaps, bossTapCount + 1);
+                    tapPush = 1f;
+                    bossTapPromptView?.RegisterTap();
+                }
+
+                float progress = speedQualified
+                    ? bossTapCount / (float)requiredTaps
+                    : Mathf.Clamp01(timer / failureDuration);
+                float tugFrequency = Mathf.Max(0.1f, bossClashPresentation.zAxisTugFrequency);
+                float tug = Mathf.Sin(timer * tugFrequency * Mathf.PI * 2f)
+                    * Mathf.Max(0f, bossClashPresentation.zAxisTugAmplitude);
+                float pushDistance = Mathf.Max(0f, bossClashPresentation.tapPushDistance);
+                float push = (progress * 0.55f + tapPush * 0.45f) * pushDistance;
+
+                runner.position = runnerContact + Vector3.forward * (tug + push * 0.22f);
+                boss.position = bossContact + Vector3.back * tug + Vector3.forward * push;
+                float returnDuration = Mathf.Max(0.02f,
+                    bossClashPresentation.tapPushReturnDuration);
+                tapPush = Mathf.MoveTowards(tapPush, 0f, deltaTime / returnDuration);
+
+                shakeStrength = bossClashPresentation.struggleShake;
+                shakeUntil = Time.unscaledTime + 0.08f;
+                directionalShake = new Vector3(0f, 0.15f, Mathf.Sign(tug)).normalized;
+                Vector3 center = Vector3.Lerp(runner.position, boss.position,
+                    speedQualified ? 0.6f : 0.4f) + Vector3.up;
+                bossClashVisual.UpdatePresentation(progress, center);
                 yield return null;
             }
+
+            bool wins = speedQualified && bossTapCount >= requiredTaps;
+            bossTapInputActive = false;
+            bossTapPromptView?.Hide();
+            SetBossAttacking(false);
 
             currentBossPhase = BossClashPhase.Stagger;
             bossClashVisual.SetPhase(currentBossPhase);
             Vector3 staggerStartRunner = runner.position;
             Vector3 staggerStartBoss = boss.position;
-            Vector3 staggerRunner = staggerStartRunner + Vector3.back * (wins ? 0f : 1.2f);
-            Vector3 staggerBoss = staggerStartBoss + Vector3.forward * (wins ? 1.4f : 0f);
+            Vector3 staggerRunner = new Vector3(0f, staggerStartRunner.y,
+                staggerStartRunner.z - (wins ? 0f : 1.2f));
+            Vector3 staggerBoss = new Vector3(0f, staggerStartBoss.y,
+                staggerStartBoss.z + (wins ? 1.4f : 0f));
             timer = 0f;
             while (timer < bossClashPresentation.staggerDuration)
             {
@@ -1518,6 +1729,7 @@ namespace PlayableAd
                 yield return null;
             }
 
+            runnerSpriteVisual?.SetShieldHeld(false);
             currentBossPhase = BossClashPhase.Finish;
             bossClashVisual.SetPhase(currentBossPhase);
             if (wins)
@@ -1532,6 +1744,9 @@ namespace PlayableAd
 
         private IEnumerator BossFinishWin()
         {
+            Coroutine rewardBuildCoroutine = RewardRunEnabled
+                ? StartCoroutine(BuildRewardStage())
+                : null;
             if (bossRuntimeAnimator != null)
             {
                 bossRuntimeAnimator.ResetTrigger(BossDieHash);
@@ -1569,9 +1784,58 @@ namespace PlayableAd
             BreakCage();
             currentBossPhase = BossClashPhase.None;
             yield return StartCoroutine(PrincessWalkToPlayer());
+            yield return new WaitForSecondsRealtime(0.55f);
+
+            if (rewardBuildCoroutine != null)
+                yield return rewardBuildCoroutine;
+            if (RewardRunEnabled)
+            {
+                EnterRewardStage();
+                yield break;
+            }
+
+            bossDefeated = true;
             ending = true;
             bossSequence = false;
+            SetGameplayHudVisible(false);
             flowController.EnterResult();
+        }
+
+        private void EnterRewardStage()
+        {
+            if (rewardStageActive || rewardStageCompleted) return;
+
+            bossDefeated = true;
+            rewardStageActive = true;
+            rewardStageCompleted = false;
+            rewardStageEndZ = CourseEndZ;
+            bossSequence = false;
+            ending = false;
+            targetX = 0f;
+            CancelDrag();
+            if (boss != null)
+            {
+                DisableColliders(boss);
+                boss.gameObject.SetActive(false);
+            }
+            if (princess != null)
+                DisableColliders(princess);
+            for (int i = 0; i < rewardStageWallRoots.Count; i++)
+            {
+                GameObject wallRoot = rewardStageWallRoots[i];
+                if (wallRoot != null) wallRoot.SetActive(true);
+            }
+            speedController?.SetLevel(speedController.MaxLevel, SpeedChangeReason.BossEvent, this);
+            forwardMotion?.SnapToTarget();
+            flowController.EnterMainRun();
+        }
+
+        private static void DisableColliders(Transform root)
+        {
+            if (root == null) return;
+            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+                if (colliders[i] != null) colliders[i].enabled = false;
         }
 
         private IEnumerator BossFinishFailure()
@@ -1613,6 +1877,7 @@ namespace PlayableAd
             forwardMotion?.SnapToTarget();
             boss.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
             boss.rotation = Quaternion.identity;
+            numberCombatSystem?.ResetTarget(bossNumberTarget);
             callout = "TRY AGAIN!";
             calloutUntil = elapsed + 2f;
             bossSequence = false;
@@ -1699,6 +1964,8 @@ namespace PlayableAd
             whiteTexture = new Texture2D(1, 1);
             whiteTexture.SetPixel(0, 0, Color.white);
             whiteTexture.Apply();
+            penaltyEdgeTexture = CreatePenaltyEdgeTexture(64,
+                impactPresentation != null ? impactPresentation.penaltyEdgeWidth : 0.18f);
 
             worldRoot = new GameObject("GeneratedWorld").transform;
             worldRoot.SetParent(transform, false);
@@ -1707,10 +1974,27 @@ namespace PlayableAd
             BuildCameraAndLight();
             BuildRoad();
             BuildRunner();
+            BuildNumberCombatSystem();
             BuildEffectPool();
             BuildSpeedBar();
             BuildSpeedLevelFeedback();
             BuildBossArea();
+        }
+
+        private void BuildNumberCombatSystem()
+        {
+            if (numberCombat == null) numberCombat = new NumberCombatSettings();
+            if (!numberCombat.enabled)
+            {
+                numberCombatSystem = null;
+                return;
+            }
+
+            numberCombatSystem = GetComponent<NumberCombatSystem>();
+            if (numberCombatSystem == null) numberCombatSystem = gameObject.AddComponent<NumberCombatSystem>();
+            numberCombatSystem.Initialize(numberCombat, gameCamera, runner,
+                runner != null ? runner.GetComponentsInChildren<Renderer>(true) : Array.Empty<Renderer>(),
+                speedController);
         }
 
         private void BuildEffectPool()
@@ -1730,7 +2014,8 @@ namespace PlayableAd
             speedBarView.Initialize(speedController, speedVisualProfile,
                 speedBarHintFrame, speedBarSoldierHintIcon, speedBarStoneWallHintIcon,
                 speedBarStoneWallLockedHintIcon,
-                Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel));
+                Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel),
+                runner, gameCamera);
             BuildComboSystem(canvasRoot);
         }
 
@@ -1832,19 +2117,21 @@ namespace PlayableAd
 
         private void BuildRoad()
         {
-            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, tuning.bossDistance * 0.5f), new Vector3(8.5f, 0.5f, tuning.bossDistance + 28f), environment.roadColor, worldRoot);
+            float courseEndZ = CourseEndZ;
+            float roadLength = courseEndZ + 28f;
+            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, courseEndZ * 0.5f), new Vector3(8.5f, 0.5f, roadLength), environment.roadColor, worldRoot);
             if (roadSurfaceMaterial != null)
                 road.GetComponent<Renderer>().sharedMaterial = roadSurfaceMaterial;
-            GameObject leftWall = CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
-            GameObject rightWall = CreateBox("RightWall", new Vector3(4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
+            GameObject leftWall = CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, courseEndZ * 0.5f), new Vector3(1.1f, 1.1f, roadLength), environment.wallColor, worldRoot);
+            GameObject rightWall = CreateBox("RightWall", new Vector3(4.7f, 0.25f, courseEndZ * 0.5f), new Vector3(1.1f, 1.1f, roadLength), environment.wallColor, worldRoot);
             bool hasAuthoredRoadBorders = BuildRoadBorderVisuals(leftWall, rightWall);
             CreateRoadBoundary("LeftRoadBoundary", -4.12f);
             CreateRoadBoundary("RightRoadBoundary", 4.12f);
 
-            CreateDecorationBox("LeftRouteGuide", new Vector3(-1.35f, -0.015f, tuning.bossDistance * 0.5f), new Vector3(0.055f, 0.025f, tuning.bossDistance + 20f), environment.routeMarkColor, worldRoot);
-            CreateDecorationBox("RightRouteGuide", new Vector3(1.35f, -0.015f, tuning.bossDistance * 0.5f), new Vector3(0.055f, 0.025f, tuning.bossDistance + 20f), environment.routeMarkColor, worldRoot);
+            CreateDecorationBox("LeftRouteGuide", new Vector3(-1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
+            CreateDecorationBox("RightRouteGuide", new Vector3(1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
 
-            for (float z = 0f; z < tuning.bossDistance; z += environment.environmentReferenceSpacing)
+            for (float z = 0f; z < courseEndZ; z += environment.environmentReferenceSpacing)
             {
                 CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
                 if (!hasAuthoredRoadBorders)
@@ -1871,8 +2158,9 @@ namespace PlayableAd
             leftWall.GetComponent<Renderer>().enabled = false;
             rightWall.GetComponent<Renderer>().enabled = false;
 
-            float roadLength = tuning.bossDistance + 28f;
-            float roadStart = tuning.bossDistance * 0.5f - roadLength * 0.5f;
+            float courseEndZ = CourseEndZ;
+            float roadLength = courseEndZ + 28f;
+            float roadStart = courseEndZ * 0.5f - roadLength * 0.5f;
             int segmentCount = Mathf.CeilToInt(roadLength / RoadBorderSegmentLength);
             BuildRoadBorderSide(-1f, roadStart, segmentCount, straightFilter, pedestalFilter);
             BuildRoadBorderSide(1f, roadStart, segmentCount, straightFilter, pedestalFilter);
@@ -1960,7 +2248,8 @@ namespace PlayableAd
         {
             Transform castle = new GameObject("DistantCastle").transform;
             castle.SetParent(worldRoot, false);
-            castle.position = new Vector3(0f, 0f, tuning.bossDistance + 19f);
+            float castleZ = RewardRunEnabled ? CourseEndZ + 19f : tuning.bossDistance + 19f;
+            castle.position = new Vector3(0f, 0f, castleZ);
 
             CreateDecorationBox("CastleKeep", new Vector3(0f, 3.1f, 0f), new Vector3(5.2f, 6.2f, 3.2f), environment.castleColor, castle);
             CreateDecorationBox("CastleTowerLeft", new Vector3(-4.2f, 3.8f, 0.6f), new Vector3(2.3f, 7.6f, 2.8f), environment.castleColor, castle);
@@ -2011,6 +2300,15 @@ namespace PlayableAd
 
         private void OnPlayerSpeedChanged(SpeedChangedEvent change)
         {
+            if (change.NewLevel > change.OldLevel
+                && change.Reason != SpeedChangeReason.InitialSetup
+                && change.Reason != SpeedChangeReason.Initialization)
+            {
+                naturalSpeedLossProtectedLevel = change.NewLevel;
+                naturalSpeedLossProtectedUntil = Mathf.Max(naturalSpeedLossProtectedUntil,
+                    Time.unscaledTime + NaturalSpeedLossProtectionDuration);
+            }
+
             audioFeedback?.HandleSpeedChanged(change);
             if (change.NewLevel > change.OldLevel)
                 speedFeedback?.PulseLevelUp();
@@ -2025,6 +2323,7 @@ namespace PlayableAd
             if (ownsSpeedVisualProfile) DestroyOwnedObject(speedVisualProfile);
             if (ownsSpeedLevelFeedbackConfig) DestroyOwnedObject(speedLevelFeedbackConfig);
             DestroyOwnedObject(whiteTexture);
+            DestroyOwnedObject(penaltyEdgeTexture);
             DestroyOwnedObject(buttonNormalTexture);
             DestroyOwnedObject(buttonActiveTexture);
             DestroyOwnedObject(upgradeMagicCircleSprite);
@@ -2047,6 +2346,11 @@ namespace PlayableAd
             bossReplaceable.Build(bossVisualPrefab, bossAnimator, PrimitiveType.Cylinder, new Color(0.58f, 0.08f, 0.06f), new Vector3(1.75f, 3f, 1.75f));
             bossVisual = bossReplaceable.VisualRoot;
             bossRuntimeAnimator = bossReplaceable.Animator;
+            bossSupportsAttackAnimation = HasAnimatorParameter(bossRuntimeAnimator, BossAttackingHash);
+            int bossLabelLevel = Mathf.Clamp(playerSpeed.bossVictoryLevel, 1, 10);
+            bossNumberTarget = numberCombatSystem?.RegisterTarget(boss,
+                bossRoot.GetComponentsInChildren<Renderer>(true), bossLabelLevel,
+                numberCombat.bossHeadClearance);
 
             GameObject princessRoot = new GameObject("Princess");
             princessRoot.transform.SetParent(worldRoot, false);
@@ -2073,6 +2377,11 @@ namespace PlayableAd
             clashVisualRoot.transform.SetParent(worldRoot, false);
             bossClashVisual = clashVisualRoot.AddComponent<BossClashVisual>();
             bossClashVisual.Initialize(runner, boss, bossClashPresentation);
+
+            GameObject tapPromptRoot = new GameObject("BossTapPromptCanvas", typeof(RectTransform));
+            tapPromptRoot.transform.SetParent(transform, false);
+            bossTapPromptView = tapPromptRoot.AddComponent<BossTapPromptView>();
+            bossTapPromptView.Initialize(bossTapHintSprite, bossClashPresentation);
         }
 
         private void BuildLevel()
@@ -2094,7 +2403,8 @@ namespace PlayableAd
             int soldierCount = Mathf.Clamp(tuning.tutorialSoldierCount, 3, 5);
             for (int i = 0; i < soldierCount; i++)
             {
-                CreateTarget(0f, firstSoldierZ + i * tuning.tutorialSoldierSpacing, 1);
+                CreateTarget(0f, firstSoldierZ + i * tuning.tutorialSoldierSpacing, 1,
+                    showLevelLabel: i == 0);
             }
 
             float wallZ = firstSoldierZ + (soldierCount - 1) * tuning.tutorialSoldierSpacing + tuning.tutorialWallGap;
@@ -2107,6 +2417,88 @@ namespace PlayableAd
             CreateElixir(0f, bossElixirZ, speedController.MaxLevel, 0,
                 prefab != null ? prefab.bossMaxSpeedElixirPrefab : null,
                 "BossMaxSpeedElixir");
+        }
+
+        // The main RandomDense setting counts rows and expands across lanes; this reward path
+        // intentionally uses the configured exact total count per section.
+        private IEnumerator BuildRewardStage()
+        {
+            if (rewardStageBuilt) yield break;
+            rewardStageBuilt = true;
+
+            int sectionCount = Mathf.Clamp(
+                rewardRun != null ? rewardRun.soldierSectionCount : 10, 1, 20);
+            int wallCount = Mathf.Clamp(
+                rewardRun != null ? rewardRun.stoneWallCount : 10, 1, 20);
+            int soldiersPerSection = Mathf.Clamp(
+                rewardRun != null ? rewardRun.soldiersPerSection : 40, 1, 50);
+            float rewardLength = Mathf.Max(20f, rewardRun != null ? rewardRun.length : 200f);
+            float soldierInterval = rewardLength / sectionCount;
+            float wallInterval = rewardLength / wallCount;
+
+            int totalSteps = Mathf.Max(sectionCount, wallCount);
+            for (int i = 0; i < totalSteps; i++)
+            {
+                if (i < sectionCount)
+                {
+                    float sectionStart = RewardRunStartZ + soldierInterval * (i + 0.04f);
+                    yield return StartCoroutine(CreateRewardSoldierSection(i, sectionStart,
+                        soldiersPerSection, soldierInterval * 0.46f));
+                    yield return null;
+                }
+
+                if (i < wallCount)
+                {
+                    float wallZ = RewardRunStartZ + wallInterval * (i + 0.72f);
+                    CreateRewardStoneWall(wallZ, i + 1);
+                    yield return null;
+                }
+            }
+        }
+
+        private void CreateRewardStoneWall(float z, int index)
+        {
+            int encounterCountBeforeCreate = encounters.Count;
+            CreateBreakableWall(z, "RewardStoneWall_" + index,
+                StoneWallBlockingMode.AllThreeLanes);
+            if (encounters.Count <= encounterCountBeforeCreate) return;
+
+            GameObject root = encounters[encounterCountBeforeCreate].root;
+            if (root == null) return;
+            root.SetActive(false);
+            rewardStageWallRoots.Add(root);
+        }
+
+        private IEnumerator CreateRewardSoldierSection(int sectionIndex, float startZ,
+            int totalSoldiers, float maximumSectionLength)
+        {
+            int count = Mathf.Clamp(totalSoldiers, 1, 50);
+            GameObject sectionObject = new GameObject("RewardSoldierSection_" + (sectionIndex + 1));
+            sectionObject.transform.SetParent(worldRoot, false);
+
+            float safeHalfWidth = Mathf.Max(0.5f, tuning.laneHalfWidth - 0.35f);
+            float requestedSpacing = rewardRun != null ? Mathf.Max(0.02f, rewardRun.soldierSpacing) : 0.22f;
+            float spacing = count > 1
+                ? Mathf.Min(requestedSpacing, Mathf.Max(0.02f, maximumSectionLength / (count - 1)))
+                : requestedSpacing;
+            float sectionLength = count > 1 ? spacing * (count - 1) : 0f;
+            System.Random random = new System.Random(
+                GetSoldierSectionSeed(tuning.proceduralSeed, 1000 + sectionIndex));
+
+            for (int soldierIndex = 0; soldierIndex < count; soldierIndex++)
+            {
+                float normalizedX = (float)random.NextDouble();
+                float x = Mathf.Lerp(-safeHalfWidth, safeHalfWidth, normalizedX);
+                float jitter = soldierIndex == 0 || soldierIndex == count - 1
+                    ? 0f
+                    : ((float)random.NextDouble() * 2f - 1f) * spacing * 0.24f;
+                float z = startZ + Mathf.Clamp(soldierIndex * spacing + jitter, 0f, sectionLength);
+                CreateTarget(x, z, 1, sectionObject.transform,
+                    "RewardSoldier_" + (sectionIndex + 1) + "_" + (soldierIndex + 1),
+                    soldierIndex == 0);
+                if ((soldierIndex + 1) % 8 == 0)
+                    yield return null;
+            }
         }
 
         private void BuildConfiguredMainRun(float tutorialEndZ)
@@ -2167,7 +2559,8 @@ namespace PlayableAd
                 }
 
                 CreateTarget(x, startZ + z, 1, sectionObject.transform,
-                    "Soldier_L1_" + section.placementMode + "_" + (soldierIndex + 1));
+                    "Soldier_L1_" + section.placementMode + "_" + (soldierIndex + 1),
+                    soldierIndex == 0);
             }
         }
 
@@ -2198,7 +2591,8 @@ namespace PlayableAd
             return Mathf.Max(0.1f, section.minimumForwardSpacing);
         }
 
-        private void CreateTarget(float x, float z, int tier, Transform parent = null, string objectName = "Target")
+        private void CreateTarget(float x, float z, int tier, Transform parent = null,
+            string objectName = "Target", bool showLevelLabel = true)
         {
             Vector3 dimensions = targetShapes.Get(tier);
             Color color = speedVisualProfile.Get(tier).primaryColor;
@@ -2250,6 +2644,11 @@ namespace PlayableAd
 
             EnemyVisibilityController visibility = root.AddComponent<EnemyVisibilityController>();
             SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
+            soldierKnockback.Initialize(visibilityRenderers);
+            NumberCombatTarget numberTarget = showLevelLabel
+                ? numberCombatSystem?.RegisterTarget(root.transform, visibilityRenderers,
+                    SoldierDisplayLevel, numberCombat.soldierHeadClearance, visibility)
+                : null;
             visibility.Initialize(visibilityRenderers, colliders);
             encounters.Add(new Encounter
             {
@@ -2257,6 +2656,7 @@ namespace PlayableAd
                 type = EncounterType.Target,
                 tier = tier,
                 obstacle = obstacle,
+                numberTarget = numberTarget,
                 visibility = visibility,
                 soldierKnockback = soldierKnockback
             });
@@ -2340,14 +2740,15 @@ namespace PlayableAd
 
         private void CreateRoadBoundary(string name, float x)
         {
+            float courseEndZ = CourseEndZ;
             GameObject boundary = new GameObject(name);
             boundary.transform.SetParent(worldRoot, false);
-            boundary.transform.position = new Vector3(x, environment.roadBoundaryHeight * 0.5f, tuning.bossDistance * 0.5f);
+            boundary.transform.position = new Vector3(x, environment.roadBoundaryHeight * 0.5f, courseEndZ * 0.5f);
             BoxCollider collider = boundary.AddComponent<BoxCollider>();
             collider.size = new Vector3(
                 environment.roadBoundaryThickness,
                 environment.roadBoundaryHeight,
-                tuning.bossDistance + 28f);
+                courseEndZ + 28f);
         }
 
         private void CreateElixir(float x, float z, int targetLevel = 0,
@@ -2475,6 +2876,9 @@ namespace PlayableAd
             int requiredSpeedLevel = Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel);
             obstacle.Initialize(requiredSpeedLevel, ObstacleType.StoneWall,
                 root.GetComponentsInChildren<Collider>(true));
+            NumberCombatTarget numberTarget = numberCombatSystem?.RegisterTarget(root.transform,
+                root.GetComponentsInChildren<Renderer>(true), requiredSpeedLevel,
+                numberCombat.stoneWallHeadClearance);
             encounters.Add(new Encounter
             {
                 root = root,
@@ -2482,6 +2886,7 @@ namespace PlayableAd
                 tier = requiredSpeedLevel,
                 wall = wall,
                 obstacle = obstacle,
+                numberTarget = numberTarget,
                 wallCenterX = centerX,
                 wallHalfWidth = halfWidth,
                 bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null,
@@ -2638,19 +3043,146 @@ namespace PlayableAd
 
             if (ending)
             {
-                DrawRect(new Rect(0f, 0f, width, height), new Color(0.02f, 0.03f, 0.04f, 0.72f));
-                GUI.Label(new Rect(25f, height * 0.28f, width - 50f, 72f), "PRINCESS RESCUED!", titleStyle);
-                GUI.Label(new Rect(25f, height * 0.38f, width - 50f, 52f), "THE KINGDOM NEEDS YOU", bodyStyle);
-                if (GUI.Button(new Rect(72f, height * 0.56f, width - 144f, 72f), "PLAY NOW", buttonStyle))
-                {
-                    Debug.Log("PlayableAd CTA clicked. Store URL is not configured yet.");
-                }
+                DrawEndCard(width, height);
             }
 
             if (flashAlpha > 0.001f)
             {
                 DrawRect(new Rect(0f, 0f, width, height), new Color(1f, 0.86f, 0.4f, flashAlpha));
             }
+
+            DrawPenaltyEdgeFeedback(width, height);
+        }
+
+        private void DrawEndCard(float width, float height)
+        {
+            DrawRect(new Rect(0f, 0f, width, height), new Color(0.02f, 0.03f, 0.04f, 0.82f));
+
+            if (endCardGameLogo != null)
+            {
+                Rect logoBounds = new Rect(width * 0.07f, height * 0.035f,
+                    width * 0.86f, height * 0.27f);
+                Rect logoRect = FitTextureInBounds(endCardGameLogo, logoBounds);
+                GUI.DrawTexture(logoRect, endCardGameLogo, ScaleMode.StretchToFill, true);
+
+                if (endCardVictoryLogo != null)
+                {
+                    float victorySize = Mathf.Min(width * 0.3f, height * 0.16f);
+                    float victoryY = Mathf.Min(logoRect.yMax + height * 0.01f,
+                        height * 0.49f - victorySize);
+                    Rect victoryRect = new Rect((width - victorySize) * 0.5f,
+                        victoryY, victorySize, victorySize);
+                    GUI.DrawTexture(victoryRect, endCardVictoryLogo,
+                        ScaleMode.StretchToFill, true);
+                }
+            }
+            else if (endCardVictoryLogo != null)
+            {
+                float victorySize = Mathf.Min(width * 0.34f, height * 0.18f);
+                Rect victoryRect = new Rect((width - victorySize) * 0.5f,
+                    height * 0.16f, victorySize, victorySize);
+                GUI.DrawTexture(victoryRect, endCardVictoryLogo,
+                    ScaleMode.StretchToFill, true);
+            }
+
+            if (endCardPlayNowImage == null) return;
+
+            Rect ctaBounds = new Rect(width * 0.045f, height * 0.55f,
+                width * 0.91f, height * 0.4f);
+            Rect ctaBaseRect = FitTextureInBounds(endCardPlayNowImage, ctaBounds);
+            float ctaPulse = 1f + Mathf.Sin(Time.unscaledTime * 3.8f) * 0.055f;
+            Rect ctaRect = ScaleRectFromCenter(ctaBaseRect, ctaPulse);
+            GUI.DrawTexture(ctaRect, endCardPlayNowImage,
+                ScaleMode.StretchToFill, true);
+
+            if (endCardTapHand != null)
+            {
+                float tapPhase = (Mathf.Sin(Time.unscaledTime * 6.4f) + 1f) * 0.5f;
+                float handHeight = Mathf.Min(height * 0.15f, 142f);
+                float handAspect = endCardTapHand.width / (float)Mathf.Max(1, endCardTapHand.height);
+                float handWidth = handHeight * handAspect;
+                float handScale = 1f - tapPhase * 0.055f;
+                handWidth *= handScale;
+                handHeight *= handScale;
+                Rect handRect = new Rect(
+                    ctaRect.x + ctaRect.width * 0.69f - handWidth * 0.5f,
+                    ctaRect.y + ctaRect.height * 0.42f + tapPhase * 9f,
+                    handWidth,
+                    handHeight);
+                GUI.DrawTexture(handRect, endCardTapHand,
+                    ScaleMode.StretchToFill, true);
+            }
+
+            Rect clickRect = new Rect(
+                ctaRect.x + ctaRect.width * 0.16f,
+                ctaRect.y + ctaRect.height * 0.36f,
+                ctaRect.width * 0.68f,
+                ctaRect.height * 0.26f);
+            if (GUI.Button(clickRect, GUIContent.none, GUIStyle.none))
+                HandleEndCardClick();
+        }
+
+        private void HandleEndCardClick()
+        {
+            if (!string.IsNullOrWhiteSpace(endCardStoreUrl))
+            {
+                Application.OpenURL(endCardStoreUrl);
+                return;
+            }
+
+            Debug.Log("PlayableAd CTA clicked. Store URL is not configured yet.");
+        }
+
+        private void SetGameplayHudVisible(bool visible)
+        {
+            if (speedBarView != null)
+                speedBarView.gameObject.SetActive(visible);
+            numberCombatSystem?.SetVisible(visible);
+            if (!visible)
+                bossTapPromptView?.Hide(true);
+        }
+
+        private static Rect FitTextureInBounds(Texture texture, Rect bounds)
+        {
+            if (texture == null || texture.width <= 0 || texture.height <= 0)
+                return bounds;
+
+            float textureAspect = texture.width / (float)texture.height;
+            float boundsAspect = bounds.width / Mathf.Max(0.001f, bounds.height);
+            if (textureAspect >= boundsAspect)
+            {
+                float fittedHeight = bounds.width / textureAspect;
+                return new Rect(bounds.x, bounds.center.y - fittedHeight * 0.5f,
+                    bounds.width, fittedHeight);
+            }
+
+            float fittedWidth = bounds.height * textureAspect;
+            return new Rect(bounds.center.x - fittedWidth * 0.5f, bounds.y,
+                fittedWidth, bounds.height);
+        }
+
+        private static Rect ScaleRectFromCenter(Rect rect, float scale)
+        {
+            float scaledWidth = rect.width * scale;
+            float scaledHeight = rect.height * scale;
+            return new Rect(rect.center.x - scaledWidth * 0.5f,
+                rect.center.y - scaledHeight * 0.5f, scaledWidth, scaledHeight);
+        }
+
+        private void DrawPenaltyEdgeFeedback(float width, float height)
+        {
+            if (penaltyEdgeIntensity <= 0.001f || penaltyEdgeTexture == null) return;
+
+            Color previous = GUI.color;
+            Color edgeColor = impactPresentation != null
+                ? impactPresentation.penaltyEdgeColor
+                : new Color(0.92f, 0.02f, 0.015f, 1f);
+            float opacity = impactPresentation != null ? impactPresentation.penaltyEdgeOpacity : 0.62f;
+            edgeColor.a *= Mathf.Clamp01(opacity * penaltyEdgeIntensity);
+            GUI.color = edgeColor;
+            GUI.DrawTexture(new Rect(0f, 0f, width, height), penaltyEdgeTexture,
+                ScaleMode.StretchToFill, true);
+            GUI.color = previous;
         }
 
         private void DrawSmashCallout(float width, float height)
@@ -2711,6 +3243,18 @@ namespace PlayableAd
             GUI.Label(new Rect(labelRect.x, labelRect.y + outlineOffset, labelRect.width, labelRect.height),
                 warning, tutorialBulletWarningShadowStyle);
             GUI.Label(labelRect, warning, tutorialBulletWarningStyle);
+
+            if (tutorialBulletWarningArrow != null)
+            {
+                float arrowHeight = 64f * pulse;
+                float arrowAspect = tutorialBulletWarningArrow.width
+                    / (float)Mathf.Max(1, tutorialBulletWarningArrow.height);
+                float arrowWidth = arrowHeight * arrowAspect;
+                Rect arrowRect = new Rect(centerX - arrowWidth * 0.5f,
+                    labelRect.yMax + 4f, arrowWidth, arrowHeight);
+                GUI.DrawTextureWithTexCoords(arrowRect, tutorialBulletWarningArrow,
+                    new Rect(1f, 0f, -1f, 1f), true);
+            }
         }
 
         private void EnsureGuiStyles()
@@ -2787,6 +3331,37 @@ namespace PlayableAd
             Texture2D texture = new Texture2D(1, 1);
             texture.SetPixel(0, 0, color);
             texture.Apply();
+            return texture;
+        }
+
+        private static Texture2D CreatePenaltyEdgeTexture(int size, float normalizedWidth)
+        {
+            int textureSize = Mathf.Max(8, size);
+            float edgeWidth = Mathf.Clamp(normalizedWidth, 0.02f, 0.48f);
+            Texture2D texture = new Texture2D(textureSize, textureSize, TextureFormat.RGBA32, false, true)
+            {
+                name = "Runtime Penalty Edge Overlay",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            Color32[] pixels = new Color32[textureSize * textureSize];
+            for (int y = 0; y < textureSize; y++)
+            {
+                float normalizedY = (y + 0.5f) / textureSize;
+                for (int x = 0; x < textureSize; x++)
+                {
+                    float normalizedX = (x + 0.5f) / textureSize;
+                    float horizontalEdgeDistance = Mathf.Min(normalizedX, 1f - normalizedX);
+                    float verticalEdgeDistance = Mathf.Min(normalizedY, 1f - normalizedY);
+                    float distanceToEdge = Mathf.Min(horizontalEdgeDistance, verticalEdgeDistance);
+                    float alpha = 1f - Mathf.SmoothStep(0f, edgeWidth, distanceToEdge);
+                    pixels[y * textureSize + x] = new Color32(255, 255, 255,
+                        (byte)Mathf.RoundToInt(alpha * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
             return texture;
         }
 

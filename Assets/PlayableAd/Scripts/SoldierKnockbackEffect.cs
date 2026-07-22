@@ -22,14 +22,32 @@ namespace PlayableAd
         [Header("Whole Model Rotation（整模型旋转）")]
         [Min(0f), InspectorName("Minimum Rotation Speed（最低旋转速度，度/秒）")] public float minimumRotationSpeed = 240f;
         [Min(0f), InspectorName("Maximum Rotation Speed（最高旋转速度，度/秒）")] public float maximumRotationSpeed = 720f;
+
+        [Header("Impact Flash（撞击闪烁）")]
+        [InspectorName("Enable Impact Flash（启用撞击闪烁）")] public bool impactFlashEnabled = true;
+        [Min(0.02f), InspectorName("Flash Duration（闪烁持续时间）")] public float impactFlashDuration = 0.28f;
+        [Min(1), InspectorName("Red White Cycles（红白切换循环数）")] public int impactFlashCycles = 3;
+        [ColorUsage(false, true), InspectorName("Flash Red（闪烁红色）")]
+        public Color impactFlashRed = new Color(0.64f, 0.018f, 0.14f, 1f);
+        [ColorUsage(false, true), InspectorName("Flash White（闪烁白色）")]
+        public Color impactFlashWhite = new Color(0.92f, 0.92f, 0.92f, 1f);
+        [Range(0f, 1f), InspectorName("White Opacity（白色不透明度）")] public float impactFlashWhiteOpacity = 0.95f;
+        [Min(0f), InspectorName("Emission Intensity（发光强度）")] public float impactFlashEmissionIntensity = 0.35f;
     }
 
     [DisallowMultipleComponent]
     public sealed class SoldierKnockbackEffect : MonoBehaviour
     {
         private static readonly List<SoldierKnockbackEffect> ActiveEffects = new List<SoldierKnockbackEffect>();
+        private static readonly int HitFlashColorProperty = Shader.PropertyToID("_HitFlashColor");
+        private static readonly int HitFlashActiveProperty = Shader.PropertyToID("_HitFlashActive");
+        private static readonly int HitFlashOpacityProperty = Shader.PropertyToID("_HitFlashOpacity");
+        private static readonly int HitFlashEmissionProperty = Shader.PropertyToID("_HitFlashEmission");
 
         private Animator[] animators = Array.Empty<Animator>();
+        private Renderer[] flashRenderers = Array.Empty<Renderer>();
+        private MaterialPropertyBlock[] originalPropertyBlocks = Array.Empty<MaterialPropertyBlock>();
+        private MaterialPropertyBlock[] flashPropertyBlocks = Array.Empty<MaterialPropertyBlock>();
         private EnemyVisibilityController visibility;
         private Vector3 velocity;
         private Vector3 rotationAxis = Vector3.right;
@@ -38,6 +56,14 @@ namespace PlayableAd
         private float recycleHeight;
         private float remaining;
         private bool playing;
+        private bool flashPlaying;
+        private float flashRemaining;
+        private float flashDuration;
+        private int flashCycles;
+        private Color flashRed;
+        private Color flashWhite;
+        private float flashWhiteOpacity;
+        private float flashEmissionIntensity;
 
         public bool IsPlaying => playing;
 
@@ -50,6 +76,11 @@ namespace PlayableAd
         private void Awake()
         {
             animators = GetComponentsInChildren<Animator>(true);
+        }
+
+        public void Initialize(Renderer[] renderers)
+        {
+            flashRenderers = renderers ?? Array.Empty<Renderer>();
         }
 
         public bool Launch(SoldierKnockbackSettings settings, float normalizedSpeed,
@@ -101,11 +132,14 @@ namespace PlayableAd
             remaining = Mathf.Max(0.1f, settings.flightLifetime);
             playing = true;
             ActiveEffects.Add(this);
+            StartImpactFlash(settings);
             return true;
         }
 
         private void Update()
         {
+            if (!playing) return;
+            UpdateImpactFlash(Time.unscaledDeltaTime);
             if (!playing) return;
             float worldDeltaTime = BulletTimeManager.Instance != null
                 ? BulletTimeManager.Instance.GetWorldDeltaTime()
@@ -122,9 +156,111 @@ namespace PlayableAd
                 Finish();
         }
 
+        private void StartImpactFlash(SoldierKnockbackSettings settings)
+        {
+            RestoreImpactFlash();
+            if (!settings.impactFlashEnabled) return;
+
+            if (flashRenderers.Length == 0)
+                flashRenderers = GetComponentsInChildren<Renderer>(true);
+            if (flashRenderers.Length == 0) return;
+
+            EnsurePropertyBlockBuffers(flashRenderers.Length);
+            CapturePropertyBlocks();
+
+            flashDuration = Mathf.Max(0.02f, settings.impactFlashDuration);
+            flashRemaining = flashDuration;
+            flashCycles = Mathf.Max(1, settings.impactFlashCycles);
+            flashRed = settings.impactFlashRed;
+            flashWhite = settings.impactFlashWhite;
+            flashWhiteOpacity = Mathf.Clamp01(settings.impactFlashWhiteOpacity);
+            flashEmissionIntensity = Mathf.Max(0f, settings.impactFlashEmissionIntensity);
+            flashPlaying = true;
+            ApplyImpactFlash(flashWhite, flashWhiteOpacity);
+        }
+
+        private void UpdateImpactFlash(float unscaledDeltaTime)
+        {
+            if (!flashPlaying) return;
+
+            flashRemaining = Mathf.Max(0f, flashRemaining - Mathf.Max(0f, unscaledDeltaTime));
+            if (flashRemaining <= 0f)
+            {
+                Finish();
+                return;
+            }
+
+            float progress = 1f - flashRemaining / flashDuration;
+            int phaseCount = flashCycles * 2;
+            int phase = Mathf.Min(phaseCount - 1, Mathf.FloorToInt(progress * phaseCount));
+            bool whitePhase = (phase & 1) == 0;
+            ApplyImpactFlash(whitePhase ? flashWhite : flashRed,
+                whitePhase ? flashWhiteOpacity : 0f);
+        }
+
+        private void EnsurePropertyBlockBuffers(int count)
+        {
+            if (originalPropertyBlocks.Length == count && flashPropertyBlocks.Length == count)
+                return;
+
+            originalPropertyBlocks = new MaterialPropertyBlock[count];
+            flashPropertyBlocks = new MaterialPropertyBlock[count];
+            for (int i = 0; i < count; i++)
+            {
+                originalPropertyBlocks[i] = new MaterialPropertyBlock();
+                flashPropertyBlocks[i] = new MaterialPropertyBlock();
+            }
+        }
+
+        private void CapturePropertyBlocks()
+        {
+            for (int i = 0; i < flashRenderers.Length; i++)
+            {
+                Renderer targetRenderer = flashRenderers[i];
+                if (targetRenderer == null) continue;
+
+                originalPropertyBlocks[i].Clear();
+                flashPropertyBlocks[i].Clear();
+                targetRenderer.GetPropertyBlock(originalPropertyBlocks[i]);
+                targetRenderer.GetPropertyBlock(flashPropertyBlocks[i]);
+            }
+        }
+
+        private void ApplyImpactFlash(Color flashColor, float opacity)
+        {
+            for (int i = 0; i < flashRenderers.Length; i++)
+            {
+                Renderer targetRenderer = flashRenderers[i];
+                if (targetRenderer == null) continue;
+
+                MaterialPropertyBlock block = flashPropertyBlocks[i];
+                block.SetColor(HitFlashColorProperty, flashColor);
+                block.SetFloat(HitFlashActiveProperty, 1f);
+                block.SetFloat(HitFlashOpacityProperty, Mathf.Clamp01(opacity));
+                block.SetFloat(HitFlashEmissionProperty, flashEmissionIntensity);
+                targetRenderer.SetPropertyBlock(block);
+            }
+        }
+
+        private void RestoreImpactFlash()
+        {
+            if (!flashPlaying) return;
+
+            flashPlaying = false;
+            flashRemaining = 0f;
+            int count = Mathf.Min(flashRenderers.Length, originalPropertyBlocks.Length);
+            for (int i = 0; i < count; i++)
+            {
+                Renderer targetRenderer = flashRenderers[i];
+                if (targetRenderer != null)
+                    targetRenderer.SetPropertyBlock(originalPropertyBlocks[i]);
+            }
+        }
+
         private void Finish()
         {
             if (!playing) return;
+            RestoreImpactFlash();
             playing = false;
             ActiveEffects.Remove(this);
             velocity = Vector3.zero;
@@ -139,6 +275,7 @@ namespace PlayableAd
 
         private void OnDisable()
         {
+            RestoreImpactFlash();
             playing = false;
             ActiveEffects.Remove(this);
             velocity = Vector3.zero;

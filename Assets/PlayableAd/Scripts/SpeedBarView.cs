@@ -39,7 +39,11 @@ namespace PlayableAd
         private Image continuousFillImage;
         private Image pulseOverlay;
         private Text currentLevelLabel;
-        private Text levelUpBadge;
+        private RawImage levelUpBadge;
+        private RectTransform canvasRect;
+        private Texture2D[] levelUpTextures;
+        private Transform levelUpTarget;
+        private Camera levelUpCamera;
         private Rect lastSafeArea;
         private int currentLevel = 1;
         private float targetFill;
@@ -48,7 +52,11 @@ namespace PlayableAd
         private float badgeTimer;
         private float badgeDuration;
         private float badgeScale = 1f;
-        private Color badgeColor;
+        private float badgeRise;
+
+        private const float LevelUpBadgeRiseDistance = 54f;
+        private const float LevelUpBadgeWorldDownOffset = 0.65f;
+        private const float LevelUpBadgeScreenDownOffset = 40f;
 
         public void Initialize(PlayerSpeedController controller, SpeedVisualProfile visualProfile)
         {
@@ -57,15 +65,19 @@ namespace PlayableAd
 
         public void Initialize(PlayerSpeedController controller, SpeedVisualProfile visualProfile,
             Sprite frameSprite, Sprite soldierIcon, Sprite stoneWallIcon,
-            Sprite lockedStoneWallIcon, int wallHintLevel)
+            Sprite lockedStoneWallIcon, int wallHintLevel,
+            Transform levelUpTargetTransform = null, Camera targetCamera = null)
         {
             speedController = controller;
             profile = visualProfile;
+            levelUpTarget = levelUpTargetTransform;
+            levelUpCamera = targetCamera;
             hintFrameSprite = frameSprite;
             soldierHintIcon = soldierIcon;
             stoneWallHintIcon = stoneWallIcon;
             stoneWallLockedHintIcon = lockedStoneWallIcon;
             stoneWallHintLevel = Mathf.Clamp(wallHintLevel, 1, speedController.LevelCount);
+            levelUpTextures = LoadLevelUpTextures();
             tickMarkers = new Image[speedController.LevelCount];
             tickHighlights = new Image[speedController.LevelCount];
             tickLabels = new Text[speedController.LevelCount];
@@ -82,6 +94,7 @@ namespace PlayableAd
             Canvas canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 50;
+            canvasRect = GetComponent<RectTransform>();
 
             CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -272,16 +285,28 @@ namespace PlayableAd
         private void BuildLevelUpBadge()
         {
             RectTransform badgeRect = CreateRect("LevelUpBadge", transform);
-            badgeRect.anchorMin = badgeRect.anchorMax = new Vector2(0.5f, 0.36f);
+            badgeRect.anchorMin = badgeRect.anchorMax = new Vector2(0.5f, 0.5f);
             badgeRect.pivot = new Vector2(0.5f, 0.5f);
-            badgeRect.sizeDelta = new Vector2(240f, 150f);
-            levelUpBadge = badgeRect.gameObject.AddComponent<Text>();
-            levelUpBadge.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            levelUpBadge.fontSize = 74;
-            levelUpBadge.fontStyle = FontStyle.Bold;
-            levelUpBadge.alignment = TextAnchor.MiddleCenter;
+            badgeRect.sizeDelta = new Vector2(300f, 75f);
+            levelUpBadge = badgeRect.gameObject.AddComponent<RawImage>();
             levelUpBadge.raycastTarget = false;
             levelUpBadge.enabled = false;
+        }
+
+        private static Texture2D[] LoadLevelUpTextures()
+        {
+            Texture2D[] textures = new Texture2D[PlayerSpeedSettings.RequiredLevelCount];
+            for (int level = 1; level <= textures.Length; level++)
+            {
+                string resourcePath = "PlayableAd/LevelUp/level" + level;
+                textures[level - 1] = Resources.Load<Texture2D>(resourcePath);
+                if (textures[level - 1] == null)
+                {
+                    Sprite sprite = Resources.Load<Sprite>(resourcePath);
+                    textures[level - 1] = sprite != null ? sprite.texture : null;
+                }
+            }
+            return textures;
         }
 
         private void OnSpeedChanged(SpeedChangedEvent change)
@@ -311,12 +336,23 @@ namespace PlayableAd
             targetFill = speedController.GetNormalizedOverallProgress();
             pulse = Mathf.Max(pulse, profile.levelUpPulse);
             if (!showBadge || levelUpBadge == null || feedback == null) return;
-            levelUpBadge.text = "^  " + level;
-            badgeColor = color;
+            int textureIndex = Mathf.Clamp(level, 1, PlayerSpeedSettings.RequiredLevelCount) - 1;
+            if (levelUpTextures == null || textureIndex >= levelUpTextures.Length
+                || levelUpTextures[textureIndex] == null)
+            {
+                levelUpBadge.enabled = false;
+                return;
+            }
+
+            levelUpBadge.texture = levelUpTextures[textureIndex];
             badgeDuration = feedback.levelBadgeDuration;
             badgeTimer = badgeDuration;
             badgeScale = feedback.levelBadgeScale;
+            badgeRise = 0f;
+            levelUpBadge.color = new Color(1f, 1f, 1f, 0f);
+            levelUpBadge.rectTransform.localScale = Vector3.one * badgeScale * 1.12f;
             levelUpBadge.enabled = true;
+            UpdateLevelUpBadgePosition(0f);
         }
 
         private void RefreshLevel(int level)
@@ -400,14 +436,38 @@ namespace PlayableAd
             {
                 badgeTimer = Mathf.Max(0f, badgeTimer - Time.unscaledDeltaTime);
                 float normalized = 1f - badgeTimer / Mathf.Max(0.01f, badgeDuration);
-                float alpha = Mathf.SmoothStep(0f, 1f, Mathf.Min(1f, normalized * 5f)) *
-                    Mathf.SmoothStep(0f, 1f, Mathf.Min(1f, (1f - normalized) * 4f));
-                Color color = badgeColor;
-                color.a = alpha;
-                levelUpBadge.color = color;
+                float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(normalized / 0.12f));
+                float fadeOut = 1f - Mathf.SmoothStep(0f, 1f,
+                    Mathf.Clamp01((normalized - 0.32f) / 0.68f));
+                float alpha = fadeIn * fadeOut;
+                levelUpBadge.color = new Color(1f, 1f, 1f, alpha);
+                badgeRise = Mathf.SmoothStep(0f, LevelUpBadgeRiseDistance, normalized);
                 levelUpBadge.rectTransform.localScale = Vector3.one * badgeScale * Mathf.Lerp(1.12f, 1f, normalized);
+                UpdateLevelUpBadgePosition(badgeRise);
                 if (badgeTimer <= 0f) levelUpBadge.enabled = false;
             }
+        }
+
+        private void UpdateLevelUpBadgePosition(float rise)
+        {
+            if (levelUpBadge == null || levelUpBadge.rectTransform == null) return;
+
+            if (levelUpTarget != null && levelUpCamera != null && canvasRect != null)
+            {
+                Vector3 screenPoint = levelUpCamera.WorldToScreenPoint(
+                    levelUpTarget.position + Vector3.down * LevelUpBadgeWorldDownOffset);
+                if (screenPoint.z > 0f
+                    && RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        canvasRect, screenPoint, null, out Vector2 localPoint))
+                {
+                    localPoint += Vector2.down * LevelUpBadgeScreenDownOffset;
+                    localPoint += Vector2.up * rise;
+                    levelUpBadge.rectTransform.anchoredPosition = localPoint;
+                    return;
+                }
+            }
+
+            levelUpBadge.rectTransform.anchoredPosition = Vector2.up * rise;
         }
 
         private static void UpdateEncounterHintAnimation(EncounterHintView hint)
