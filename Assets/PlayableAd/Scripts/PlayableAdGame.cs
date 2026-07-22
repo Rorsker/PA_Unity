@@ -9,6 +9,18 @@ namespace PlayableAd
     public sealed class PlayableAdGame : MonoBehaviour
     {
         private const float WallCollisionDistance = 1.3f;
+        private const float RoadBorderSourceSegmentLength = 6.012f;
+        private const float RoadBorderSegmentScale = 4f;
+        private const float RoadBorderSegmentLength = RoadBorderSourceSegmentLength * RoadBorderSegmentScale;
+        private const float RoadBorderCenterX = 4.4f;
+        private const float RoadBorderCenterY = 0.25f;
+        private const int RoadBorderSegmentsPerChunk = 5;
+        private const int RoadBorderPedestalInterval = 2;
+        private const float BossDeathFlightDistance = 9f;
+        private const float BossDeathFlightHeight = 2.4f;
+        private const float BossDeathAnimationDuration = 1.05f;
+        private const float BossStandingY = 2.3f;
+        private static readonly int BossDieHash = Animator.StringToHash("Die");
 
         public enum SoldierPlacementMode
         {
@@ -294,6 +306,13 @@ namespace PlayableAd
         [SerializeField, InspectorName("Princess Visual Prefab（公主视觉预制体）")] private GameObject princessVisualPrefab;
         [SerializeField, InspectorName("Princess Animator（公主动画控制器）")] private RuntimeAnimatorController princessAnimator;
 
+        [Header("Environment visual assets（环境视觉资源）")]
+        [SerializeField, InspectorName("Road Surface Material（路面材质）")] private Material roadSurfaceMaterial;
+        [SerializeField, InspectorName("Road Border Straight Model（路缘直线模型）")] private GameObject roadBorderStraightPrefab;
+        [SerializeField, InspectorName("Road Border Pedestal Model（路缘基座模型）")] private GameObject roadBorderPedestalPrefab;
+        [SerializeField, InspectorName("Road Border Material（路缘材质）")] private Material roadBorderMaterial;
+        [SerializeField, InspectorName("Road Border Flame Prefab（路缘火焰预制体）")] private GameObject roadBorderFlamePrefab;
+
         [Header("Development-only speed diagnostics（仅开发用速度诊断）")]
         [SerializeField, InspectorName("Show Speed Debug Overlay（显示速度调试覆盖层）")] private bool showSpeedDebugOverlay;
         [SerializeField, Min(20f), InspectorName("Debug Test Segment Length（调试测试区段长度）")] private float debugTestSegmentLength = 100f;
@@ -305,6 +324,7 @@ namespace PlayableAd
         private Transform runnerVisual;
         private Transform boss;
         private Transform bossVisual;
+        private Animator bossRuntimeAnimator;
         private Transform princess;
         private Transform cage;
         private Camera gameCamera;
@@ -1298,6 +1318,12 @@ namespace PlayableAd
 
         private IEnumerator BossFinishWin()
         {
+            if (bossRuntimeAnimator != null)
+            {
+                bossRuntimeAnimator.ResetTrigger(BossDieHash);
+                bossRuntimeAnimator.SetTrigger(BossDieHash);
+            }
+
             audioFeedback?.PlayBossFinish();
             speedFeedback?.PlayHighSpeedImpactSonicBoom(CurrentTier, 1.35f,
                 speedLevelFeedbackConfig != null && speedLevelFeedbackConfig.accessibilityReducedFlash);
@@ -1305,18 +1331,24 @@ namespace PlayableAd
             PunchCamera(bossClashPresentation.finishDuration, bossClashPresentation.finishShake, bossClashPresentation.finishFovPunch);
             effectPool?.PlayImpact(Vector3.Lerp(runner.position, boss.position, 0.55f) + Vector3.up, bossClashPresentation.playerEnergy, 2f);
             Vector3 bossStart = boss.position;
-            Vector3 velocity = new Vector3(0f, 10f, 24f);
+            Vector3 bossEnd = bossStart + Vector3.forward * BossDeathFlightDistance;
+            Quaternion bossStartRotation = boss.rotation;
+            float deathDuration = Mathf.Max(BossDeathAnimationDuration, bossClashPresentation.finishDuration);
             float timer = 0f;
-            while (timer < bossClashPresentation.finishDuration)
+            while (timer < deathDuration)
             {
-                float dt = Time.unscaledDeltaTime;
-                timer += dt;
-                velocity += Vector3.down * 7f * dt;
-                boss.position += velocity * dt;
-                boss.Rotate(520f * dt, 340f * dt, 240f * dt, Space.Self);
-                bossClashVisual.UpdatePresentation(timer / bossClashPresentation.finishDuration, bossStart + Vector3.up);
+                timer += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(timer / deathDuration);
+                float flightT = Mathf.SmoothStep(0f, 1f, t);
+                float arc = Mathf.Sin(t * Mathf.PI) * BossDeathFlightHeight;
+                boss.position = Vector3.Lerp(bossStart, bossEnd, flightT) + Vector3.up * arc;
+                boss.rotation = Quaternion.Slerp(bossStartRotation, Quaternion.identity, flightT);
+                bossClashVisual.UpdatePresentation(t, boss.position + Vector3.up);
                 yield return null;
             }
+
+            boss.position = bossEnd;
+            boss.rotation = Quaternion.identity;
 
             bossClashVisual.SetVisible(false);
             BreakCage();
@@ -1364,7 +1396,7 @@ namespace PlayableAd
 
             runnerVisual.localRotation = Quaternion.identity;
             runnerSpriteVisual?.SetFallen(false);
-            boss.position = new Vector3(0f, 1.5f, tuning.bossDistance + 2.5f);
+            boss.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
             boss.rotation = Quaternion.identity;
             fallbackActive = true;
             callout = "BOOST ROUTE UNLOCKED!";
@@ -1561,9 +1593,12 @@ namespace PlayableAd
 
         private void BuildRoad()
         {
-            CreateBox("Road", new Vector3(0f, -0.3f, tuning.bossDistance * 0.5f), new Vector3(8.5f, 0.5f, tuning.bossDistance + 28f), environment.roadColor, worldRoot);
-            CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
-            CreateBox("RightWall", new Vector3(4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
+            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, tuning.bossDistance * 0.5f), new Vector3(8.5f, 0.5f, tuning.bossDistance + 28f), environment.roadColor, worldRoot);
+            if (roadSurfaceMaterial != null)
+                road.GetComponent<Renderer>().sharedMaterial = roadSurfaceMaterial;
+            GameObject leftWall = CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
+            GameObject rightWall = CreateBox("RightWall", new Vector3(4.7f, 0.25f, tuning.bossDistance * 0.5f), new Vector3(1.1f, 1.1f, tuning.bossDistance + 28f), environment.wallColor, worldRoot);
+            bool hasAuthoredRoadBorders = BuildRoadBorderVisuals(leftWall, rightWall);
             CreateRoadBoundary("LeftRoadBoundary", -4.12f);
             CreateRoadBoundary("RightRoadBoundary", 4.12f);
 
@@ -1573,11 +1608,113 @@ namespace PlayableAd
             for (float z = 0f; z < tuning.bossDistance; z += environment.environmentReferenceSpacing)
             {
                 CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
-                CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
-                CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                if (!hasAuthoredRoadBorders)
+                {
+                    CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                    CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 4f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
+                }
             }
 
             BuildDistantCastle();
+        }
+
+        private bool BuildRoadBorderVisuals(GameObject leftWall, GameObject rightWall)
+        {
+            if (roadBorderStraightPrefab == null || roadBorderPedestalPrefab == null || roadBorderMaterial == null)
+                return false;
+
+            MeshFilter straightFilter = roadBorderStraightPrefab.GetComponentInChildren<MeshFilter>(true);
+            MeshFilter pedestalFilter = roadBorderPedestalPrefab.GetComponentInChildren<MeshFilter>(true);
+            if (straightFilter == null || straightFilter.sharedMesh == null
+                || pedestalFilter == null || pedestalFilter.sharedMesh == null)
+                return false;
+
+            leftWall.GetComponent<Renderer>().enabled = false;
+            rightWall.GetComponent<Renderer>().enabled = false;
+
+            float roadLength = tuning.bossDistance + 28f;
+            float roadStart = tuning.bossDistance * 0.5f - roadLength * 0.5f;
+            int segmentCount = Mathf.CeilToInt(roadLength / RoadBorderSegmentLength);
+            BuildRoadBorderSide(-1f, roadStart, segmentCount, straightFilter, pedestalFilter);
+            BuildRoadBorderSide(1f, roadStart, segmentCount, straightFilter, pedestalFilter);
+            return true;
+        }
+
+        private void BuildRoadBorderSide(float side, float roadStart, int segmentCount,
+            MeshFilter straightFilter, MeshFilter pedestalFilter)
+        {
+            Matrix4x4 straightAssetMatrix = Matrix4x4.TRS(straightFilter.transform.localPosition,
+                straightFilter.transform.localRotation, straightFilter.transform.localScale);
+            Matrix4x4 pedestalAssetMatrix = Matrix4x4.TRS(pedestalFilter.transform.localPosition,
+                pedestalFilter.transform.localRotation, pedestalFilter.transform.localScale);
+            Quaternion sideRotation = Quaternion.Euler(0f, side > 0f ? 180f : 0f, 0f);
+
+            for (int chunkStart = 0; chunkStart < segmentCount; chunkStart += RoadBorderSegmentsPerChunk)
+            {
+                int chunkEnd = Mathf.Min(segmentCount, chunkStart + RoadBorderSegmentsPerChunk);
+                int straightSubMeshCount = straightFilter.sharedMesh.subMeshCount;
+                int pedestalSubMeshCount = pedestalFilter.sharedMesh.subMeshCount;
+                var combines = new List<CombineInstance>(
+                    RoadBorderSegmentsPerChunk * straightSubMeshCount + pedestalSubMeshCount * 3);
+                for (int segmentIndex = chunkStart; segmentIndex < chunkEnd; segmentIndex++)
+                {
+                    float segmentZ = roadStart + (segmentIndex + 0.5f) * RoadBorderSegmentLength;
+                    Matrix4x4 placement = Matrix4x4.TRS(
+                        new Vector3(side * RoadBorderCenterX, RoadBorderCenterY, segmentZ),
+                        sideRotation, new Vector3(1f, 1f, RoadBorderSegmentScale));
+                    AddMeshSubmeshes(combines, straightFilter.sharedMesh, placement * straightAssetMatrix);
+
+                    if (segmentIndex % RoadBorderPedestalInterval == 0)
+                    {
+                        float pedestalZ = roadStart + segmentIndex * RoadBorderSegmentLength;
+                        Matrix4x4 pedestalPlacement = Matrix4x4.TRS(
+                            new Vector3(side * RoadBorderCenterX, RoadBorderCenterY, pedestalZ),
+                            sideRotation, Vector3.one);
+                        AddMeshSubmeshes(combines, pedestalFilter.sharedMesh,
+                            pedestalPlacement * pedestalAssetMatrix);
+                        CreateRoadBorderFlame(side, pedestalZ, segmentIndex);
+                    }
+                }
+
+                GameObject chunk = new GameObject((side < 0f ? "Left" : "Right")
+                    + "RoadBorderChunk_" + (chunkStart / RoadBorderSegmentsPerChunk));
+                chunk.transform.SetParent(worldRoot, false);
+                Mesh mesh = new Mesh
+                {
+                    name = chunk.name + "Mesh",
+                    indexFormat = UnityEngine.Rendering.IndexFormat.UInt32
+                };
+                mesh.CombineMeshes(combines.ToArray(), true, true, false);
+                mesh.RecalculateBounds();
+                chunk.AddComponent<MeshFilter>().sharedMesh = mesh;
+                MeshRenderer renderer = chunk.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = roadBorderMaterial;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = true;
+            }
+        }
+
+        private static void AddMeshSubmeshes(List<CombineInstance> combines, Mesh mesh,
+            Matrix4x4 transform)
+        {
+            for (int subMeshIndex = 0; subMeshIndex < mesh.subMeshCount; subMeshIndex++)
+            {
+                combines.Add(new CombineInstance
+                {
+                    mesh = mesh,
+                    subMeshIndex = subMeshIndex,
+                    transform = transform
+                });
+            }
+        }
+
+        private void CreateRoadBorderFlame(float side, float z, int segmentIndex)
+        {
+            if (roadBorderFlamePrefab == null) return;
+            GameObject flame = Instantiate(roadBorderFlamePrefab, worldRoot);
+            flame.name = (side < 0f ? "Left" : "Right") + "RoadBorderFlame_" + segmentIndex;
+            flame.transform.localPosition = new Vector3(side * RoadBorderCenterX, 0.72f, z);
+            flame.transform.localRotation = Quaternion.identity;
         }
 
         private void BuildDistantCastle()
@@ -1661,15 +1798,16 @@ namespace PlayableAd
 
         private void BuildBossArea()
         {
-            CreateBox("BossPlatform", new Vector3(0f, 0f, tuning.bossDistance + 5f), new Vector3(9f, 0.7f, 17f), new Color(0.42f, 0.34f, 0.26f), worldRoot);
+           
 
             GameObject bossRoot = new GameObject("Boss");
             bossRoot.transform.SetParent(worldRoot, false);
-            bossRoot.transform.position = new Vector3(0f, 1.5f, tuning.bossDistance + 2.5f);
+            bossRoot.transform.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
             boss = bossRoot.transform;
             ReplaceableVisual bossReplaceable = bossRoot.AddComponent<ReplaceableVisual>();
             bossReplaceable.Build(bossVisualPrefab, bossAnimator, PrimitiveType.Cylinder, new Color(0.58f, 0.08f, 0.06f), new Vector3(1.75f, 3f, 1.75f));
             bossVisual = bossReplaceable.VisualRoot;
+            bossRuntimeAnimator = bossReplaceable.Animator;
 
             GameObject princessRoot = new GameObject("Princess");
             princessRoot.transform.SetParent(worldRoot, false);
