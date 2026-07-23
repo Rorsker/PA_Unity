@@ -10443,7 +10443,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tuning:
-    gameplayLevelConfigurationVersion: 5
+    gameplayLevelConfigurationVersion: 10
     openingElixirTime: 1.230769
     tutorialSoldierCount: 5
     tutorialSoldierSpacing: 1.846154
@@ -10469,16 +10469,14 @@ MonoBehaviour:
     bossMaxSpeedElixirDistance: 30
     useDocumentMainRunLayout: 1
     documentMainRunStartOffset: 10
-    documentZoneGap: 5
+    documentZoneGap: 7
     documentSingleContentLength: 1
     documentEliteLevel: 8
     documentEliteSpeedPenalty: 0.5
     documentSmallPotionBoost: 1
-    documentSmallPotionHold: 1
-    documentSmallPotionReturn: 3
+    documentSmallPotionHold: 3
     documentLargePotionBoost: 2
     documentLargePotionHold: 1
-    documentLargePotionReturn: 4
     bossApproachPadding: 13.46154
     proceduralSeed: 41723
     recycleDistance: 18
@@ -10506,168 +10504,168 @@ MonoBehaviour:
       startOffsetFromTutorial: 10
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.9
     - sectionName: 2
       startOffsetFromTutorial: 16
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 3
       startOffsetFromTutorial: 22
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 4
       startOffsetFromTutorial: 28
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 5
       startOffsetFromTutorial: 34
       soldierCount: 3
       placementMode: 2
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 6
       startOffsetFromTutorial: 38
       soldierCount: 1
       placementMode: 1
-      minimumForwardSpacing: 1
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 7
       startOffsetFromTutorial: 54.462433
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 8
       startOffsetFromTutorial: 63.595905
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 9
       startOffsetFromTutorial: 72.173904
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 10
       startOffsetFromTutorial: 79.4416
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 11
       startOffsetFromTutorial: 88.97094
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 12
       startOffsetFromTutorial: 97.64801
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 13
       startOffsetFromTutorial: 106.11186
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 14
       startOffsetFromTutorial: 114.477715
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 15
       startOffsetFromTutorial: 122.77312
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 16
       startOffsetFromTutorial: 148.75
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 17
       startOffsetFromTutorial: 139.11539
       soldierCount: 5
       placementMode: 2
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 18
       startOffsetFromTutorial: 164.11539
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 19
       startOffsetFromTutorial: 189.11539
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 20
       startOffsetFromTutorial: 214.11539
       soldierCount: 5
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 21
       startOffsetFromTutorial: 239.11539
       soldierCount: 6
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 22
       startOffsetFromTutorial: 264.1154
       soldierCount: 5
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 23
       startOffsetFromTutorial: 289.1154
       soldierCount: 6
       placementMode: 3
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     - sectionName: 24
       startOffsetFromTutorial: 314.1154
       soldierCount: 6
       placementMode: 1
-      minimumForwardSpacing: 0.5
+      minimumForwardSpacing: 1.5
       horizontalCoverage: 1
       forwardRandomness: 0.8
     openingElixirLeftPrefab: {fileID: 1151182611365112421, guid: 0e49f95b60b380e49948d35af3ce12ac, type: 3}
@@ -10841,7 +10839,7 @@ MonoBehaviour:
     thirdMilestone: 50
     fourthMilestone: 100
     presentation:
-      screenAnchor: {x: 0.78, y: 0.72}
+      screenAnchor: {x: 0.78, y: 0.62}
       screenOffset: {x: -48, y: 0}
       textAngle: 9
       fontSize: 72

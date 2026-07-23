@@ -80,8 +80,7 @@ namespace PlayableAd
         private float currentAmbientShake;
         private float currentChargeLean;
         private float temporaryBoost;
-        private float accelerationAuraTimer;
-        private float lastContinuousSpeed = 1f;
+        private bool invulnerabilityAuraActive;
         private int currentLevel = 1;
         private float animationTime;
         private bool runningTrailsVisible = true;
@@ -133,7 +132,6 @@ namespace PlayableAd
             currentWindVolume = initial.windVolume;
             currentWindPitch = initial.windPitch;
             currentImpactMultiplier = initial.impactFeedbackMultiplier;
-            lastContinuousSpeed = 1f;
 
             mainTrail = gameObject.AddComponent<TrailRenderer>();
             mainTrail.sharedMaterial = profile.trailMaterial != null
@@ -206,13 +204,6 @@ namespace PlayableAd
             float worldScale = BulletTimeManager.Instance != null
                 ? Mathf.Max(0.1f, BulletTimeManager.Instance.WorldTimeScale)
                 : 1f;
-            float speedDelta = continuousSpeed - lastContinuousSpeed;
-            if (speedDelta > 0.001f)
-                accelerationAuraTimer = Mathf.Clamp(accelerationAuraTimer + 0.42f + speedDelta * 0.18f, 0f, 1.2f);
-            else
-                accelerationAuraTimer = Mathf.MoveTowards(accelerationAuraTimer, 0f, worldDeltaTime);
-            lastContinuousSpeed = continuousSpeed;
-
             float levelStrength = Mathf.InverseLerp(1f, 10f, currentLevel);
             float stageIntensity = GetImpactStageIntensity(currentLevel);
 
@@ -305,7 +296,11 @@ namespace PlayableAd
         public void PulseLevelUp()
         {
             Pulse(profile != null ? profile.levelUpPulse : 1f);
-            accelerationAuraTimer = Mathf.Max(accelerationAuraTimer, 0.72f);
+        }
+
+        public void SetInvulnerabilityAuraActive(bool active)
+        {
+            invulnerabilityAuraActive = active;
         }
 
 public void SetRunningTrailsVisible(bool visible)
@@ -372,6 +367,7 @@ public void SetRunningTrailsVisible(bool visible)
             accelerationAuraRoot = InstantiateExternalVfx(auraPrefab, "CFXR_AccelerationRunicAura",
                 new Vector3(0f, -0.96f, 0f), Quaternion.identity, Vector3.one,
                 out accelerationAuraParticles);
+            DisableAuraRayArtifact(accelerationAuraParticles);
 
             SetExternalVfxActive(externalWindTrailRoot, externalWindTrailParticles, false);
             SetExternalVfxActive(accelerationAuraRoot, accelerationAuraParticles, false);
@@ -389,6 +385,21 @@ public void SetRunningTrailsVisible(bool visible)
             }
         }
 
+        // The authored Aura prefab's billboard Rays layer renders as a solid rectangle
+        // in the current player render path. Keep the rune layers and disable only that artifact.
+        private static void DisableAuraRayArtifact(ParticleSystem[] particles)
+        {
+            if (particles == null) return;
+            for (int i = 0; i < particles.Length; i++)
+            {
+                ParticleSystem particle = particles[i];
+                if (particle == null || particle.gameObject.name != "Rays") continue;
+                ParticleSystemRenderer renderer = particle.GetComponent<ParticleSystemRenderer>();
+                if (renderer != null) renderer.enabled = false;
+                particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+
         private void UpdateExternalSpeedVfx(float forwardSpeed, float continuousSpeed,
             float worldDeltaTime, float worldScale)
         {
@@ -403,8 +414,8 @@ public void SetRunningTrailsVisible(bool visible)
             bool running = forwardSpeed > 0.1f;
             SetExternalVfxActive(externalWindTrailRoot, externalWindTrailParticles, running);
 
-            bool accelerating = running && accelerationAuraTimer > 0.001f;
-            if (accelerating)
+            bool showInvulnerabilityAura = running && invulnerabilityAuraActive;
+            if (showInvulnerabilityAura)
             {
                 RestartAccelerationAuraIfReversing();
                 SetExternalVfxActive(accelerationAuraRoot, accelerationAuraParticles, true);

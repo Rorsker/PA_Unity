@@ -261,8 +261,7 @@ namespace PlayableAd
             float distanceAhead = playerOwner != null
                 ? target.Owner.position.z - playerOwner.position.z
                 : float.MaxValue;
-            bool visible = distanceAhead >= 0f
-                && distanceAhead <= settings.targetLabelPreviewDistance
+            bool visible = distanceAhead <= settings.targetLabelPreviewDistance
                 && target.Owner.gameObject.activeInHierarchy
                 && IsVisibilityStateRenderable(target.Visibility);
             if (visible)

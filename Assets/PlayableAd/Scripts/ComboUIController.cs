@@ -9,7 +9,7 @@ namespace PlayableAd
     {
         [Header("Layout（布局）")]
         [InspectorName("Screen Anchor（屏幕锚点）")]
-        public Vector2 screenAnchor = new Vector2(0.78f, 0.72f);
+        public Vector2 screenAnchor = new Vector2(0.78f, 0.62f);
         [InspectorName("Screen Offset（屏幕偏移）")]
         public Vector2 screenOffset = new Vector2(-48f, 0f);
         [Range(-25f, 25f), InspectorName("Text Angle（文字倾斜角度）")]
@@ -99,7 +99,7 @@ namespace PlayableAd
             if ((screenAnchor - previousAnchor).sqrMagnitude < 0.0001f
                 && screenOffset.sqrMagnitude < 0.0001f)
             {
-                screenAnchor = new Vector2(0.78f, 0.72f);
+                screenAnchor = new Vector2(0.78f, 0.62f);
                 screenOffset = new Vector2(-48f, 0f);
                 textAngle = 9f;
             }
@@ -673,7 +673,7 @@ namespace PlayableAd
 
         private static string FormatCombo(int combo)
         {
-            return "连击 X" + Mathf.Max(0, combo);
+            return "COMBO X" + Mathf.Max(0, combo);
         }
 
         private static float EaseOutCubic(float value)
