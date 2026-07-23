@@ -52,6 +52,7 @@ namespace PlayableAd
             Assign(ref settings.wallImpactTail, MakeChirp("PA_WallTail", 0.58f, 130f, 48f, 0.26f), owned);
             Assign(ref settings.bossContact, MakeImpact("PA_BossContact", 0.42f, 46f, 0.64f, 0.22f, 601), owned);
             Assign(ref settings.bossStruggleLoop, MakeLoop("PA_BossStruggle", 0.8f, 60f, 0.17f), owned);
+            Assign(ref settings.bossGroundSlam, MakeImpact("PA_BossGroundSlam", 0.48f, 38f, 0.7f, 0.24f, 653), owned);
             Assign(ref settings.bossFinishImpact, MakeImpact("PA_BossFinish", 0.62f, 42f, 0.72f, 0.26f, 701), owned);
             Assign(ref settings.cageBreak, MakeImpact("PA_CageBreak", 0.48f, 156f, 0.32f, 0.42f, 809), owned);
         }

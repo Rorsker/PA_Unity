@@ -62,6 +62,7 @@ namespace PlayableAd
         [Header("Boss Layers（Boss 音层）")]
         [InspectorName("Boss Contact（Boss 接触）")] public AudioClip bossContact;
         [InspectorName("Boss Struggle Loop（Boss 对抗循环）")] public AudioClip bossStruggleLoop;
+        [InspectorName("Boss Ground Slam（Boss 砸地）")] public AudioClip bossGroundSlam;
         [InspectorName("Boss Finish Impact（Boss 终结冲击）")] public AudioClip bossFinishImpact;
         [InspectorName("Cage Break（牢笼破碎）")] public AudioClip cageBreak;
 
@@ -313,6 +314,11 @@ namespace PlayableAd
         public void StopBossStruggle()
         {
             if (bossLoop != null && bossLoop.isPlaying) bossLoop.Stop();
+        }
+
+        public void PlayBossGroundSlam()
+        {
+            PlayVoice(settings.bossGroundSlam, settings.bossVolume * 0.9f, 1f, 5);
         }
 
         public void PlayBossFinish()

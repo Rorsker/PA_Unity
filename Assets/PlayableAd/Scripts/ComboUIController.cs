@@ -564,10 +564,11 @@ namespace PlayableAd
 
         private void UpdateParticles(float deltaTime)
         {
+            if (particles == null) return;
             for (int i = 0; i < particles.Length; i++)
             {
                 ParticleState particle = particles[i];
-                if (!particle.active) continue;
+                if (particle == null || !particle.active) continue;
 
                 particle.age += deltaTime;
                 float t = Mathf.Clamp01(particle.age / Mathf.Max(0.01f, particle.lifetime));

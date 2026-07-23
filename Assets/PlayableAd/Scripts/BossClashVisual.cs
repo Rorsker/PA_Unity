@@ -24,6 +24,14 @@ namespace PlayableAd
         [Range(0.3f, 0.5f), InspectorName("Stagger Duration（踉跄阶段时长）")] public float staggerDuration = 0.4f;
         [Range(0.3f, 0.5f), InspectorName("Finish Duration（终结阶段时长）")] public float finishDuration = 0.4f;
 
+        [Header("Failure Recovery（失败后卷土重来）")]
+        [Range(4.5f, 6f), InspectorName("Knockback Distance（失败击退距离）")] public float failureKnockbackDistance = 4.5f;
+        [Range(0.65f, 0.85f), InspectorName("Knockback Duration（失败击退时长）")] public float failureKnockbackDuration = 0.65f;
+        [Range(0.05f, 0.3f), InspectorName("Knockback Hold Duration（最远点停顿时长）")] public float failureKnockbackHoldDuration = 0.14f;
+        [Range(0.6f, 1.1f), InspectorName("Reverse Recovery Duration（倒放恢复时长）")] public float failureReverseDuration = 0.85f;
+        [Range(0.15f, 0.5f), InspectorName("Retry Charge Duration（再次冲撞蓄力时长）")] public float retryChargeDuration = 0.3f;
+        [Range(3f, 5f), InspectorName("Retry Approach Distance（再次冲撞起始距离）")] public float retryApproachDistance = 4f;
+
         [Header("Interactive Tap Struggle（交互连点角力）")]
         [Range(1, 20), InspectorName("Required Tap Count（胜利所需点击数）")] public int requiredTapCount = 8;
         [Min(0f), InspectorName("Z-Axis Tug Amplitude（Z轴拉扯幅度）")] public float zAxisTugAmplitude = 0.24f;
