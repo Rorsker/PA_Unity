@@ -542,6 +542,8 @@ namespace PlayableAd
         [SerializeField, InspectorName("Boss Animator（Boss 动画控制器）")] private RuntimeAnimatorController bossAnimator;
         [SerializeField, InspectorName("Princess Visual Prefab（公主视觉预制体）")] private GameObject princessVisualPrefab;
         [SerializeField, InspectorName("Princess Animator（公主动画控制器）")] private RuntimeAnimatorController princessAnimator;
+        [SerializeField, InspectorName("Reward Guide Object（奖励关引导主体）")] private Sprite rewardGuideObjectSprite;
+        [SerializeField, InspectorName("Reward Guide Halo（奖励关引导光环）")] private Sprite rewardGuideHaloSprite;
 
         [Header("Environment visual assets（环境视觉资源）")]
         [SerializeField, InspectorName("Road Surface Material（路面材质）")] private Material roadSurfaceMaterial;
@@ -567,6 +569,11 @@ namespace PlayableAd
         private Animator bossRuntimeAnimator;
         private Animator princessRuntimeAnimator;
         private Transform princess;
+        private Transform rewardGuideBubble;
+        private SpriteRenderer rewardGuideBubbleCore;
+        private SpriteRenderer rewardGuideBubbleInnerGlow;
+        private SpriteRenderer rewardGuideBubbleOuterGlow;
+        private Light rewardGuideBubbleLight;
         private Transform cage;
         private Camera gameCamera;
         private AudioFeedbackController audioFeedback;
@@ -608,6 +615,12 @@ namespace PlayableAd
         private int lastScreenWidth;
         private int lastScreenHeight;
         private bool bossSequence;
+        private bool bossRecoverySequence;
+        private bool bossVictoryFraming;
+        private float bossVictoryFramingElapsed;
+        private Vector3 victoryCameraVelocity;
+        private Vector3 victoryLookTarget;
+        private Vector3 victoryLookVelocity;
         private bool bossTapInputActive;
         private bool bossSupportsAttackAnimation;
         private int bossTapCount;
@@ -754,6 +767,8 @@ namespace PlayableAd
         {
             gameplayStarted = false;
             bossDefeated = false;
+            bossVictoryFraming = false;
+            DestroyRewardGuideBubble();
             rewardStageActive = false;
             rewardStageBuilt = false;
             rewardStageCompleted = false;
@@ -791,6 +806,8 @@ namespace PlayableAd
             gameplayStarted = true;
             elapsed = 0f;
             bossDefeated = false;
+            bossVictoryFraming = false;
+            DestroyRewardGuideBubble();
             rewardStageActive = false;
             rewardStageBuilt = false;
             rewardStageCompleted = false;
@@ -892,10 +909,25 @@ namespace PlayableAd
             Vector3 desired = environment.cameraFollowsPlayer
                 ? new Vector3(cameraTargetX, runner.position.y + cameraHeight, runner.position.z - dynamicBackDistance)
                 : new Vector3(0f, cameraHeight, -cameraBackDistance);
-            if (bossSequence && boss != null)
+            if (bossVictoryFraming && princess != null)
+            {
+                Vector3 victoryCenter = Vector3.Lerp(runner.position, princess.position, 0.5f);
+                float victorySpread = Mathf.Abs(princess.position.z - runner.position.z);
+                float victoryBackDistance = Mathf.Max(cameraBackDistance * 1.05f,
+                    victorySpread * 2f);
+                desired = victoryCenter + new Vector3(0f, cameraHeight * 0.9f, -victoryBackDistance);
+            }
+            else if (bossSequence && boss != null)
             {
                 Vector3 clashCenter = Vector3.Lerp(runner.position, boss.position, 0.5f);
-                desired = clashCenter + new Vector3(0f, cameraHeight * 0.9f, -cameraBackDistance * 0.72f);
+                float bossCameraBackDistance = cameraBackDistance * 0.72f;
+                if (bossRecoverySequence)
+                {
+                    float encounterSpread = Mathf.Abs(boss.position.z - runner.position.z);
+                    bossCameraBackDistance = Mathf.Max(cameraBackDistance * 1.05f,
+                        encounterSpread * 2.2f);
+                }
+                desired = clashCenter + new Vector3(0f, cameraHeight * 0.9f, -bossCameraBackDistance);
             }
 
             if (Time.unscaledTime < shakeUntil)
@@ -910,16 +942,66 @@ namespace PlayableAd
                 desired += new Vector3(lowFrequency, lowFrequency * 0.35f, 0f);
             }
 
-            gameCamera.transform.position = Vector3.Lerp(gameCamera.transform.position, desired, 1f - Mathf.Exp(-environment.cameraFollowSharpness * Time.unscaledDeltaTime));
-            Vector3 lookTarget = bossSequence && boss != null
-                ? Vector3.Lerp(runner.position, boss.position, 0.55f) + Vector3.up * 1.1f
-                : environment.cameraFollowsPlayer
-                    ? new Vector3(cameraTargetX, runner.position.y + 1f, runner.position.z + cameraLookAhead + environment.highSpeedLookAheadBonus * actualNormalized)
+            float cameraDeltaTime = Time.unscaledDeltaTime;
+            float victoryPace = 0f;
+            if (bossVictoryFraming)
+            {
+                bossVictoryFramingElapsed += cameraDeltaTime;
+                victoryPace = Mathf.SmoothStep(0f, 1f,
+                    Mathf.Clamp01(bossVictoryFramingElapsed / 1.35f));
+                float positionSmoothTime = Mathf.Lerp(0.16f, 0.48f, victoryPace);
+                gameCamera.transform.position = Vector3.SmoothDamp(
+                    gameCamera.transform.position, desired, ref victoryCameraVelocity,
+                    positionSmoothTime, 80f, cameraDeltaTime);
+            }
+            else
+            {
+                victoryCameraVelocity = Vector3.zero;
+                float cameraFollowSharpness = bossRecoverySequence
+                    ? Mathf.Max(14f, environment.cameraFollowSharpness)
+                    : environment.cameraFollowSharpness;
+                gameCamera.transform.position = Vector3.Lerp(gameCamera.transform.position, desired,
+                    1f - Mathf.Exp(-cameraFollowSharpness * cameraDeltaTime));
+            }
+            Vector3 lookTarget;
+            if (bossVictoryFraming && princess != null)
+            {
+                lookTarget = Vector3.Lerp(runner.position, princess.position, 0.5f) + Vector3.up * 0.8f;
+            }
+            else if (bossSequence && boss != null)
+            {
+                lookTarget = bossRecoverySequence
+                    ? Vector3.Lerp(runner.position, boss.position, 0.5f) + Vector3.up * 0.7f
+                    : Vector3.Lerp(runner.position, boss.position, 0.55f) + Vector3.up * 1.1f;
+            }
+            else
+            {
+                lookTarget = environment.cameraFollowsPlayer
+                    ? new Vector3(cameraTargetX, runner.position.y + 1f,
+                        runner.position.z + cameraLookAhead + environment.highSpeedLookAheadBonus * actualNormalized)
                     : new Vector3(0f, 1f, cameraLookAhead);
+            }
+
+            if (bossVictoryFraming)
+            {
+                float lookSmoothTime = Mathf.Lerp(0.14f, 0.52f, victoryPace);
+                victoryLookTarget = Vector3.SmoothDamp(victoryLookTarget, lookTarget,
+                    ref victoryLookVelocity, lookSmoothTime, 90f, cameraDeltaTime);
+                lookTarget = victoryLookTarget;
+            }
+            else
+            {
+                victoryLookTarget = lookTarget;
+                victoryLookVelocity = Vector3.zero;
+            }
+
+            float rotationSharpness = bossVictoryFraming
+                ? Mathf.Lerp(14f, 7f, victoryPace)
+                : 12f;
             gameCamera.transform.rotation = Quaternion.Slerp(
                 gameCamera.transform.rotation,
                 Quaternion.LookRotation(lookTarget - gameCamera.transform.position),
-                1f - Mathf.Exp(-12f * Time.unscaledDeltaTime));
+                1f - Mathf.Exp(-rotationSharpness * cameraDeltaTime));
             fovPunchOffset = Mathf.MoveTowards(fovPunchOffset, 0f, Time.unscaledDeltaTime * 18f);
             float speedFov = speedFeedback != null ? speedFeedback.CurrentFovBonus : 0f;
             float targetFov = baseFov + speedFov + fovPunchOffset;
@@ -1838,6 +1920,8 @@ namespace PlayableAd
         private IEnumerator BossClash()
         {
             bossSequence = true;
+            bossRecoverySequence = false;
+            bossVictoryFraming = false;
             speedFeedback?.SetRunningTrailsVisible(false);
             flowController.EnterBoss();
             CancelDrag();
@@ -1980,6 +2064,11 @@ namespace PlayableAd
 
         private IEnumerator BossFinishWin()
         {
+            bossVictoryFraming = true;
+            bossVictoryFramingElapsed = 0f;
+            victoryCameraVelocity = Vector3.zero;
+            victoryLookVelocity = Vector3.zero;
+            runnerSpriteVisual?.PlayVictoryIdle();
             Coroutine rewardBuildCoroutine = RewardRunEnabled
                 ? StartCoroutine(BuildRewardStage())
                 : null;
@@ -2020,13 +2109,15 @@ namespace PlayableAd
             BreakCage();
             currentBossPhase = BossClashPhase.None;
             yield return StartCoroutine(PrincessWalkToPlayer());
-            yield return new WaitForSecondsRealtime(0.55f);
+            yield return new WaitForSecondsRealtime(0.25f);
 
             if (rewardBuildCoroutine != null)
                 yield return rewardBuildCoroutine;
             if (RewardRunEnabled)
             {
+                yield return StartCoroutine(ReleaseRewardGuideBubble());
                 EnterRewardStage();
+                StartCoroutine(GuideBubbleIntoRewardStage());
                 yield break;
             }
 
@@ -2043,6 +2134,7 @@ namespace PlayableAd
 
             bossDefeated = true;
             rewardStageActive = true;
+            bossVictoryFraming = false;
             rewardStageCompleted = false;
             rewardStageEndZ = CourseEndZ;
             bossSequence = false;
@@ -2095,20 +2187,61 @@ namespace PlayableAd
 
         private IEnumerator FallbackSequence()
         {
-            Vector3 from = runner.position;
-            Vector3 to = new Vector3(0f, runner.position.y, tuning.bossDistance - 58f * CourseDistanceScale);
+            bossRecoverySequence = true;
+            Vector3 knockbackStart = runner.position;
+            float knockbackDistance = bossClashPresentation.failureKnockbackDistance > 0f
+                ? Mathf.Clamp(bossClashPresentation.failureKnockbackDistance, 4.5f, 6f)
+                : 4.5f;
+            Vector3 knockbackEnd = new Vector3(0f, knockbackStart.y,
+                knockbackStart.z - knockbackDistance);
+            float knockbackDuration = bossClashPresentation.failureKnockbackDuration > 0f
+                ? Mathf.Max(0.65f, bossClashPresentation.failureKnockbackDuration)
+                : 0.65f;
+            runnerVisual.localRotation = Quaternion.identity;
             float timer = 0f;
-            while (timer < 0.75f)
+            while (timer < knockbackDuration)
             {
                 timer += Time.unscaledDeltaTime;
-                float t = timer / 0.75f;
-                runner.position = Vector3.Lerp(from, to, Mathf.SmoothStep(0f, 1f, t));
-                runnerVisual.Rotate(0f, 0f, 600f * Time.unscaledDeltaTime, Space.Self);
+                float t = Mathf.Clamp01(timer / knockbackDuration);
+                runner.position = Vector3.Lerp(knockbackStart, knockbackEnd,
+                    Mathf.SmoothStep(0f, 1f, t));
                 yield return null;
             }
 
+            runner.position = knockbackEnd;
+            float knockbackHoldDuration = bossClashPresentation.failureKnockbackHoldDuration > 0f
+                ? bossClashPresentation.failureKnockbackHoldDuration
+                : 0.14f;
+            timer = 0f;
+            while (timer < knockbackHoldDuration)
+            {
+                timer += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            float retryApproachDistance = bossClashPresentation.retryApproachDistance > 0f
+                ? Mathf.Clamp(bossClashPresentation.retryApproachDistance, 3f, 5f)
+                : 4f;
+            Vector3 recoveryEnd = new Vector3(0f, knockbackStart.y,
+                tuning.bossDistance - retryApproachDistance);
+            float reverseDuration = bossClashPresentation.failureReverseDuration > 0f
+                ? Mathf.Max(0.1f, bossClashPresentation.failureReverseDuration)
+                : 0.85f;
+            runnerSpriteVisual?.BeginFallenRecovery();
+            timer = 0f;
+            while (timer < reverseDuration)
+            {
+                timer += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(timer / reverseDuration);
+                runner.position = Vector3.Lerp(knockbackEnd, recoveryEnd,
+                    Mathf.SmoothStep(0f, 1f, t));
+                runnerSpriteVisual?.SetFallenRecoveryProgress(t);
+                yield return null;
+            }
+
+            runner.position = recoveryEnd;
             runnerVisual.localRotation = Quaternion.identity;
-            runnerSpriteVisual?.SetFallen(false);
+            runnerSpriteVisual?.CompleteFallenRecoveryToShieldCharge();
             speedController.SetLevel(speedController.MaxLevel, SpeedChangeReason.BossEvent, this);
             forwardMotion?.SnapToTarget();
             boss.position = new Vector3(0f, BossStandingY, tuning.bossDistance + 2.5f);
@@ -2116,9 +2249,18 @@ namespace PlayableAd
             numberCombatSystem?.ResetTarget(bossNumberTarget);
             callout = "TRY AGAIN!";
             calloutUntil = elapsed + 2f;
-            bossSequence = false;
-            speedFeedback?.SetRunningTrailsVisible(true);
-            flowController.EnterMainRun();
+
+            float chargeDuration = bossClashPresentation.retryChargeDuration > 0f
+                ? Mathf.Max(0.1f, bossClashPresentation.retryChargeDuration)
+                : 0.3f;
+            timer = 0f;
+            while (timer < chargeDuration)
+            {
+                timer += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            StartCoroutine(BossClash());
         }
 
         private void BreakCage()
@@ -2159,10 +2301,12 @@ namespace PlayableAd
                 princessRuntimeAnimator.Play(PrincessWalkHash, 0, 0f);
 
             Vector3 start = princess.position;
+            float sideOffset = Mathf.Min(1.35f, Mathf.Max(0.75f, tuning.laneHalfWidth * 0.42f));
             Vector3 target = new Vector3(
-                runner.position.x,
+                Mathf.Clamp(runner.position.x + sideOffset,
+                    -tuning.laneHalfWidth + 0.4f, tuning.laneHalfWidth - 0.4f),
                 start.y,
-                runner.position.z + 1.4f);
+                runner.position.z + 2.2f);
             float distance = Vector3.Distance(start, target);
             float duration = Mathf.Clamp(distance / 3.6f, 1f, 2.4f);
             float timer = 0f;
@@ -2178,6 +2322,171 @@ namespace PlayableAd
             princess.position = target;
             if (princessRuntimeAnimator != null)
                 princessRuntimeAnimator.Play(PrincessIdleHash, 0, 0f);
+        }
+
+        private IEnumerator ReleaseRewardGuideBubble()
+        {
+            if (princess == null || runner == null) yield break;
+
+            Vector3 start = princess.position + new Vector3(-0.48f, 1.35f, 0.05f);
+            CreateRewardGuideBubble(start);
+            if (rewardGuideBubble == null) yield break;
+
+            const float duration = 1.15f;
+            float timer = 0f;
+            while (timer < duration && rewardGuideBubble != null)
+            {
+                timer += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(timer / duration);
+                float eased = Mathf.SmoothStep(0f, 1f, t);
+                Vector3 target = GetRewardGuideScreenAnchor();
+                Vector3 position = Vector3.Lerp(start, target, eased);
+                position.y += Mathf.Sin(t * Mathf.PI) * 1.15f;
+                position.x += Mathf.Sin(t * Mathf.PI * 2f) * 0.16f * (1f - t);
+                rewardGuideBubble.position = position;
+                FaceRewardGuideTowardCamera(true);
+                UpdateRewardGuideBubbleAppearance(timer, Mathf.SmoothStep(0f, 1f,
+                    Mathf.Clamp01(t / 0.22f)));
+                yield return null;
+            }
+
+            if (rewardGuideBubble != null)
+                rewardGuideBubble.position = GetRewardGuideScreenAnchor();
+            yield return new WaitForSecondsRealtime(0.18f);
+        }
+
+        private IEnumerator GuideBubbleIntoRewardStage()
+        {
+            if (rewardGuideBubble == null) yield break;
+
+            Vector3 velocity = Vector3.zero;
+            float timer = 0f;
+            while (rewardGuideBubble != null)
+            {
+                timer += Time.unscaledDeltaTime;
+                Vector3 target = GetRewardGuideScreenAnchor();
+                rewardGuideBubble.position = Vector3.SmoothDamp(
+                    rewardGuideBubble.position, target, ref velocity, 0.2f, 40f,
+                    Time.unscaledDeltaTime);
+                FaceRewardGuideTowardCamera(false);
+                UpdateRewardGuideBubbleAppearance(timer, 1f);
+                yield return null;
+            }
+        }
+
+        private void CreateRewardGuideBubble(Vector3 position)
+        {
+            DestroyRewardGuideBubble();
+            Sprite objectSprite = rewardGuideObjectSprite != null
+                ? rewardGuideObjectSprite
+                : Resources.Load<Sprite>("PlayableAd/RewardGuideAngel");
+            Sprite haloSprite = rewardGuideHaloSprite != null
+                ? rewardGuideHaloSprite
+                : Resources.Load<Sprite>("PlayableAd/RewardGuideWarmHalo");
+            if (objectSprite == null || haloSprite == null) return;
+
+            GameObject root = new GameObject("RewardGuideAngel");
+            root.transform.SetParent(worldRoot, false);
+            root.transform.position = position;
+            rewardGuideBubble = root.transform;
+            rewardGuideBubbleOuterGlow = BuildRewardGuideBubbleLayer(
+                rewardGuideBubble, "OuterWarmHalo", haloSprite, 11,
+                new Color(1f, 0.58f, 0.16f, 0.28f), 1.32f);
+            rewardGuideBubbleInnerGlow = BuildRewardGuideBubbleLayer(
+                rewardGuideBubble, "InnerWarmHalo", haloSprite, 12,
+                new Color(1f, 0.84f, 0.34f, 0.44f), 1.08f);
+            rewardGuideBubbleCore = BuildRewardGuideBubbleLayer(
+                rewardGuideBubble, "AngelCore", objectSprite, 14, Color.white, 0.88f);
+
+            rewardGuideBubbleLight = root.AddComponent<Light>();
+            rewardGuideBubbleLight.type = LightType.Point;
+            rewardGuideBubbleLight.color = new Color(1f, 0.68f, 0.22f);
+            rewardGuideBubbleLight.range = 3.8f;
+            rewardGuideBubbleLight.intensity = 1.15f;
+            rewardGuideBubbleLight.shadows = LightShadows.None;
+        }
+
+        private static SpriteRenderer BuildRewardGuideBubbleLayer(Transform parent,
+            string name, Sprite sprite, int sortingOrder, Color color, float scale)
+        {
+            GameObject layer = new GameObject(name);
+            layer.transform.SetParent(parent, false);
+            layer.transform.localScale = Vector3.one * scale;
+            SpriteRenderer renderer = layer.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+            return renderer;
+        }
+
+        private void UpdateRewardGuideBubbleAppearance(float time, float fade)
+        {
+            if (rewardGuideBubble == null) return;
+            float pulse = 1f + Mathf.Sin(time * 4.2f) * 0.04f;
+            rewardGuideBubble.localScale = Vector3.one * (0.42f * pulse);
+            SetRewardGuideBubbleAlpha(rewardGuideBubbleCore, fade);
+            SetRewardGuideBubbleAlpha(rewardGuideBubbleInnerGlow, fade * 0.44f);
+            SetRewardGuideBubbleAlpha(rewardGuideBubbleOuterGlow, fade * 0.28f);
+            if (rewardGuideBubbleInnerGlow != null)
+            {
+                rewardGuideBubbleInnerGlow.transform.localRotation =
+                    Quaternion.Euler(0f, 0f, time * 34f);
+                rewardGuideBubbleInnerGlow.transform.localScale = Vector3.one
+                    * (1.08f + Mathf.Sin(time * 3.7f) * 0.08f);
+            }
+            if (rewardGuideBubbleOuterGlow != null)
+            {
+                rewardGuideBubbleOuterGlow.transform.localRotation =
+                    Quaternion.Euler(0f, 0f, -time * 23f);
+                rewardGuideBubbleOuterGlow.transform.localScale = Vector3.one
+                    * (1.32f + Mathf.Cos(time * 3.1f) * 0.1f);
+            }
+            if (rewardGuideBubbleLight != null)
+                rewardGuideBubbleLight.intensity = fade * (1.1f + Mathf.Sin(time * 4.2f) * 0.2f);
+        }
+
+        private Vector3 GetRewardGuideScreenAnchor()
+        {
+            if (gameCamera == null)
+                return runner != null ? runner.position + new Vector3(0f, 3f, 6f) : Vector3.up * 3f;
+
+            float depth = 12f;
+            if (runner != null)
+            {
+                depth = Vector3.Dot(runner.position - gameCamera.transform.position,
+                    gameCamera.transform.forward);
+            }
+            depth = Mathf.Max(7f, depth);
+            return gameCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.78f, depth));
+        }
+
+        private void FaceRewardGuideTowardCamera(bool immediate)
+        {
+            if (rewardGuideBubble == null || gameCamera == null) return;
+            Quaternion targetRotation = gameCamera.transform.rotation;
+            rewardGuideBubble.rotation = immediate
+                ? targetRotation
+                : Quaternion.Slerp(rewardGuideBubble.rotation, targetRotation,
+                    1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
+        }
+
+        private static void SetRewardGuideBubbleAlpha(SpriteRenderer renderer, float alpha)
+        {
+            if (renderer == null) return;
+            Color color = renderer.color;
+            color.a = Mathf.Clamp01(alpha);
+            renderer.color = color;
+        }
+
+        private void DestroyRewardGuideBubble()
+        {
+            if (rewardGuideBubble != null)
+                Destroy(rewardGuideBubble.gameObject);
+            rewardGuideBubble = null;
+            rewardGuideBubbleCore = null;
+            rewardGuideBubbleInnerGlow = null;
+            rewardGuideBubbleOuterGlow = null;
+            rewardGuideBubbleLight = null;
         }
 
         private IEnumerator LaunchDebris(GameObject debris, int index)
@@ -2669,6 +2978,7 @@ namespace PlayableAd
             runnerAnimator = replaceable.Animator;
             runnerSpriteVisual = replaceable.GetComponentInChildren<PlayerSpriteVisualController>(true);
             runnerSpriteVisual?.ResetVisualState();
+            runnerSpriteVisual?.ConfigureGroundShadowLighting(environment.lightEuler, environment.shadowStrength);
 
             speedFeedback = root.AddComponent<SpeedVisualFeedback>();
             speedFeedback.Initialize(speedVisualProfile, visualPerformance, runningWindTrailPrefab,
@@ -2731,6 +3041,15 @@ namespace PlayableAd
             bossReplaceable.Build(bossVisualPrefab, bossAnimator, PrimitiveType.Cylinder, new Color(0.58f, 0.08f, 0.06f), new Vector3(1.75f, 3f, 1.75f));
             bossVisual = bossReplaceable.VisualRoot;
             bossRuntimeAnimator = bossReplaceable.Animator;
+            CharacterGroundShadow bossShadow = bossRoot.AddComponent<CharacterGroundShadow>();
+            bossShadow.Initialize(new Vector2(3.6f, 1.35f), environment.shadowStrength, environment.lightEuler);
+            if (bossRuntimeAnimator != null)
+            {
+                BossAnimationEvents animationEvents = bossRuntimeAnimator.GetComponent<BossAnimationEvents>();
+                if (animationEvents == null)
+                    animationEvents = bossRuntimeAnimator.gameObject.AddComponent<BossAnimationEvents>();
+                animationEvents.Initialize(audioFeedback);
+            }
             bossSupportsAttackAnimation = HasAnimatorParameter(bossRuntimeAnimator, BossAttackingHash);
             int bossLabelLevel = Mathf.Clamp(playerSpeed.bossVictoryLevel, 1, 10);
             bossNumberTarget = numberCombatSystem?.RegisterTarget(boss,
@@ -2744,6 +3063,8 @@ namespace PlayableAd
             ReplaceableVisual princessReplaceable = princessRoot.AddComponent<ReplaceableVisual>();
             princessReplaceable.Build(princessVisualPrefab, princessAnimator, PrimitiveType.Cylinder, new Color(1f, 0.45f, 0.7f), new Vector3(0.75f, 1.8f, 0.75f));
             princessRuntimeAnimator = princessReplaceable.Animator;
+            CharacterGroundShadow princessShadow = princessRoot.AddComponent<CharacterGroundShadow>();
+            princessShadow.Initialize(new Vector2(1.25f, 0.55f), environment.shadowStrength, environment.lightEuler);
             if (princessRuntimeAnimator != null)
                 princessRuntimeAnimator.Play(PrincessIdleHash, 0, 0f);
             princessRoot.SetActive(true);
@@ -3309,6 +3630,11 @@ namespace PlayableAd
             }
 
             EnemyVisibilityController visibility = root.AddComponent<EnemyVisibilityController>();
+            CharacterGroundShadow groundShadow = root.AddComponent<CharacterGroundShadow>();
+            groundShadow.Initialize(new Vector2(
+                Mathf.Max(0.85f, dimensions.x * 1.05f),
+                Mathf.Max(0.42f, dimensions.z * 0.72f)),
+                environment.shadowStrength, environment.lightEuler);
             SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
             if (pooledVisualRoot != null)
             {

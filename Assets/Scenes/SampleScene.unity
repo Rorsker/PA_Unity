@@ -905,6 +905,12 @@ MonoBehaviour:
     struggleDuration: 1.25
     staggerDuration: 0.4
     finishDuration: 0.4
+    failureKnockbackDistance: 4.5
+    failureKnockbackDuration: 0.65
+    failureKnockbackHoldDuration: 0.14
+    failureReverseDuration: 0.85
+    retryChargeDuration: 0.3
+    retryApproachDistance: 4
     requiredTapCount: 8
     zAxisTugAmplitude: 0.24
     zAxisTugFrequency: 2.4
@@ -970,12 +976,13 @@ MonoBehaviour:
     highSpeedWhoosh: {fileID: 8300000, guid: 9cfda63ba750b1b419ea15746d976b72, type: 3}
     soldierFlyAway: {fileID: 8300000, guid: 67d65c333da692e302e5b56601f7e48f, type: 3}
     energyReturn: {fileID: 8300000, guid: 5084ac04c156002daa58cee3c6bc067e, type: 3}
-    wallLowImpact: {fileID: 8300000, guid: f0ca0e3ce343e6710f8d068fedb0555b, type: 3}
-    wallStoneDebris: {fileID: 8300000, guid: 5736984dbe2c11bfd4f7bb3668f903b9, type: 3}
+    wallLowImpact: {fileID: 8300000, guid: 0ea9d48d7ae6e4244b97baab1a57c6d5, type: 3}
+    wallStoneDebris: {fileID: 8300000, guid: debb6da286521a142b65002eb87e1a84, type: 3}
     wallDust: {fileID: 8300000, guid: 75fa625d8ada9a710df5f176b1df0b86, type: 3}
     wallImpactTail: {fileID: 8300000, guid: a93d1d8a20c8e5fdd32f7f9fca723539, type: 3}
     bossContact: {fileID: 8300000, guid: a93d1d8a20c8e5fdd32f7f9fca723539, type: 3}
     bossStruggleLoop: {fileID: 8300000, guid: 888024e2976d3d3ecda2cbd343c062d9, type: 3}
+    bossGroundSlam: {fileID: 8300000, guid: 0ea9d48d7ae6e4244b97baab1a57c6d5, type: 3}
     bossFinishImpact: {fileID: 8300000, guid: 2660899f7b5f0de0e1b2cb8b4da05b8b, type: 3}
     cageBreak: {fileID: 8300000, guid: 5736984dbe2c11bfd4f7bb3668f903b9, type: 3}
     movementVolume: 0.22
@@ -998,6 +1005,8 @@ MonoBehaviour:
   bossAnimator: {fileID: 9100000, guid: 22ad2da203527ab4bb0f0626944cf1cc, type: 2}
   princessVisualPrefab: {fileID: 1075593810156689445, guid: f5aab69cd91e92f47821c17f2306f634, type: 3}
   princessAnimator: {fileID: 9100000, guid: 96bd88130d0a15b40ad68a48911c294e, type: 2}
+  rewardGuideObjectSprite: {fileID: 0}
+  rewardGuideHaloSprite: {fileID: 0}
   roadSurfaceMaterial: {fileID: 2100000, guid: 7d5d3c65ad62ae540a1e2c8b9fe25328, type: 2}
   roadBorderStraightPrefab: {fileID: 919132149155446097, guid: 20cfcf3090b8f11438803c909f2f1239, type: 3}
   roadBorderPedestalPrefab: {fileID: 919132149155446097, guid: 5af95374d8aa0504c932cf991d8036a2, type: 3}
@@ -1039,6 +1048,9 @@ MonoBehaviour:
   verticalOffset: 0.04
   brightness: 0.84
   fogHeightFraction: 0.48
+  enableForegroundFog: 1
+  foregroundFogOpacity: 0.48
+  foregroundFogDrift: 0.07
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
