@@ -367,7 +367,7 @@ public void SetRunningTrailsVisible(bool visible)
             accelerationAuraRoot = InstantiateExternalVfx(auraPrefab, "CFXR_AccelerationRunicAura",
                 new Vector3(0f, -0.96f, 0f), Quaternion.identity, Vector3.one,
                 out accelerationAuraParticles);
-            DisableAuraRayArtifact(accelerationAuraParticles);
+            accelerationAuraParticles = KeepSafeAuraLayers(accelerationAuraParticles);
 
             SetExternalVfxActive(externalWindTrailRoot, externalWindTrailParticles, false);
             SetExternalVfxActive(accelerationAuraRoot, accelerationAuraParticles, false);
@@ -385,19 +385,40 @@ public void SetRunningTrailsVisible(bool visible)
             }
         }
 
-        // The authored Aura prefab's billboard Rays layer renders as a solid rectangle
-        // in the current player render path. Keep the rune layers and disable only that artifact.
-        private static void DisableAuraRayArtifact(ParticleSystem[] particles)
+        // Only the two runic-ring layers are reliable in the player render path. The prefab's
+        // root mesh and stretched Rays layer can render as an opaque red rectangle on the road.
+        private static ParticleSystem[] KeepSafeAuraLayers(ParticleSystem[] particles)
         {
-            if (particles == null) return;
+            if (particles == null || particles.Length == 0) return new ParticleSystem[0];
+
+            int safeCount = 0;
             for (int i = 0; i < particles.Length; i++)
             {
                 ParticleSystem particle = particles[i];
-                if (particle == null || particle.gameObject.name != "Rays") continue;
+                if (IsSafeAuraLayer(particle))
+                {
+                    safeCount++;
+                    continue;
+                }
+
+                if (particle == null) continue;
                 ParticleSystemRenderer renderer = particle.GetComponent<ParticleSystemRenderer>();
                 if (renderer != null) renderer.enabled = false;
                 particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
+
+            ParticleSystem[] safeParticles = new ParticleSystem[safeCount];
+            int safeIndex = 0;
+            for (int i = 0; i < particles.Length; i++)
+                if (IsSafeAuraLayer(particles[i])) safeParticles[safeIndex++] = particles[i];
+            return safeParticles;
+        }
+
+        private static bool IsSafeAuraLayer(ParticleSystem particle)
+        {
+            if (particle == null) return false;
+            string layerName = particle.gameObject.name;
+            return layerName == "Runes" || layerName == "Runes small";
         }
 
         private void UpdateExternalSpeedVfx(float forwardSpeed, float continuousSpeed,
@@ -692,6 +713,7 @@ public void SetRunningTrailsVisible(bool visible)
             for (int i = 0; i < count; i++)
             {
                 GameObject root = new GameObject("Afterimage_" + i);
+                root.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
                 root.transform.SetParent(transform.parent, true);
                 LineRenderer line = root.AddComponent<LineRenderer>();
                 line.useWorldSpace = true;
@@ -904,6 +926,7 @@ public void SetRunningTrailsVisible(bool visible)
             }
 
             sonicBoomPoolRoot = new GameObject("SpeedLevelUpVFX_SonicBoomPool").transform;
+            sonicBoomPoolRoot.gameObject.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
             sonicBoomPoolRoot.SetParent(transform.parent, false);
             sonicBoomRings = new SpriteRenderer[count];
             sonicRingTimers = new float[count];
@@ -1055,6 +1078,15 @@ public void SetRunningTrailsVisible(bool visible)
         private void OnDestroy()
         {
             DestroyFrontAirflowSprites();
+            if (afterimages != null)
+            {
+                for (int i = 0; i < afterimages.Length; i++)
+                {
+                    if (afterimages[i] == null) continue;
+                    if (Application.isPlaying) Destroy(afterimages[i].gameObject);
+                    else DestroyImmediate(afterimages[i].gameObject);
+                }
+            }
             if (sonicBoomSprites != null)
             {
                 for (int i = 0; i < sonicBoomSprites.Length; i++)

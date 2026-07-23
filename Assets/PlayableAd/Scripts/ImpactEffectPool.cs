@@ -67,6 +67,7 @@ namespace PlayableAd
         private Material lineMaterial;
         private SpeedVisualProfile visualProfile;
         private VisualPerformanceSettings performance;
+        private float lastParticleSimulationScale = -1f;
 
         public Action EnergyShardAbsorbed;
         public int LastRequestedEnergyShardCount { get; private set; }
@@ -195,23 +196,27 @@ namespace PlayableAd
             float bulletTimeScale = BulletTimeManager.Instance != null
                 ? BulletTimeManager.Instance.WorldTimeScale
                 : 1f;
-            if (impactPool != null)
+            if (!Mathf.Approximately(lastParticleSimulationScale, bulletTimeScale))
             {
-                for (int i = 0; i < impactPool.Length; i++)
+                lastParticleSimulationScale = bulletTimeScale;
+                if (impactPool != null)
                 {
-                    if (impactPool[i] == null) continue;
-                    ParticleSystem.MainModule main = impactPool[i].main;
-                    main.simulationSpeed = bulletTimeScale;
+                    for (int i = 0; i < impactPool.Length; i++)
+                    {
+                        if (impactPool[i] == null) continue;
+                        ParticleSystem.MainModule main = impactPool[i].main;
+                        main.simulationSpeed = bulletTimeScale;
+                    }
                 }
-            }
 
-            if (highlightPool != null)
-            {
-                for (int i = 0; i < highlightPool.Length; i++)
+                if (highlightPool != null)
                 {
-                    if (highlightPool[i] == null) continue;
-                    ParticleSystem.MainModule main = highlightPool[i].main;
-                    main.simulationSpeed = bulletTimeScale;
+                    for (int i = 0; i < highlightPool.Length; i++)
+                    {
+                        if (highlightPool[i] == null) continue;
+                        ParticleSystem.MainModule main = highlightPool[i].main;
+                        main.simulationSpeed = bulletTimeScale;
+                    }
                 }
             }
 

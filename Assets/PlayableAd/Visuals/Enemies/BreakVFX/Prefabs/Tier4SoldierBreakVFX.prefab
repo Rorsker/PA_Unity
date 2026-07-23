@@ -169,42 +169,6 @@ Transform:
   - {fileID: 1810285739736522389}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7932682147885094830
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1671299715108195538}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e72f73ee7cfa8964da314535422eeb2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  fragmentCount: 6
-  fragments:
-  - {fileID: 3225249549604102879}
-  - {fileID: 1982368609768372596}
-  - {fileID: 3732446960000960132}
-  - {fileID: 8951803011163188534}
-  - {fileID: 2273561175135283268}
-  - {fileID: 6150763373286205994}
-  particles:
-  - {fileID: 1932589938830909862}
-  - {fileID: 8922088817150905851}
-  - {fileID: 8399804087358045223}
-  forwardForce: 5.8
-  speedForwardBonus: 6.5
-  forwardSpeedMultiplier: 1.25
-  highSpeedMultiplierBonus: 0.85
-  lateralRangePerSpeedLevel: 1
-  fallRecycleHeight: 3
-  upwardForce: 5.6
-  torque: 7
-  gravityMultiplier: 1.25
-  fragmentLifetime: 1.35
-  fadeDuration: 0.3
-  fragmentScaleRange: {x: 0.95, y: 1.12}
 --- !u!1 &2076818776739347928
 GameObject:
   m_ObjectHideFlags: 0

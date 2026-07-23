@@ -116,7 +116,7 @@ namespace PlayableAd
         }
 
         public NumberCombatTarget RegisterTarget(Transform owner, Renderer[] renderers, int fixedLevel,
-            float headClearance, EnemyVisibilityController visibility = null)
+            float headClearance, EnemyVisibilityController visibility = null, float fallbackHeight = 1.8f)
         {
             if (!initialized || owner == null) return null;
 
@@ -128,7 +128,8 @@ namespace PlayableAd
                     GetLevelFontSize(settings.targetFontSize, clampedLevel), settings.strongerColor),
                 Visibility = visibility,
                 FixedLevel = clampedLevel,
-                HeadOffset = CalculateHeadOffset(owner, renderers, headClearance, 1.8f)
+                HeadOffset = CalculateHeadOffset(owner, renderers, headClearance,
+                    Mathf.Max(0.1f, fallbackHeight))
             };
             target.Label.text = FormatLevel(target.FixedLevel);
             target.Label.gameObject.SetActive(false);
@@ -255,8 +256,6 @@ namespace PlayableAd
                 if (target != null) SetLabelActive(target.Label, false);
                 return;
             }
-
-            target.Label.fontSize = GetLevelFontSize(settings.targetFontSize, target.FixedLevel);
 
             float distanceAhead = playerOwner != null
                 ? target.Owner.position.z - playerOwner.position.z

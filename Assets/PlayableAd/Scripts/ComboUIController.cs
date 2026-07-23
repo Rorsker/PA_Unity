@@ -564,6 +564,7 @@ namespace PlayableAd
 
         private void UpdateParticles(float deltaTime)
         {
+            if (particles == null) return;
             for (int i = 0; i < particles.Length; i++)
             {
                 ParticleState particle = particles[i];

@@ -204,6 +204,8 @@ namespace PlayableAd
             [Range(8f, 24f), InspectorName("Minimum Enemy Active Distance（最小敌人活动距离）")] public float minimumEnemyActiveDistance = 10f;
             [Range(30f, 70f), InspectorName("Maximum Enemy Active Distance（最大敌人活动距离）")] public float maximumEnemyActiveDistance = 52f;
             [Range(48, 96), InspectorName("Max Preloaded Enemies（最大预加载敌人数）")] public int maxPreloadedEnemies = 80;
+            [Range(12, 48), InspectorName("Max Animated Enemies（最大动画敌人数）")]
+            public int maxAnimatedEnemies = 28;
 
             public void UpgradeGameplayLevelConfiguration(PlayerSpeedSettings speedSettings,
                 PrefabModules prefabModules)
@@ -290,6 +292,10 @@ namespace PlayableAd
             [Header("Road Collision Boundaries（道路碰撞边界）")]
             [Min(0.1f), InspectorName("Road Boundary Thickness（道路边界厚度）")] public float roadBoundaryThickness = 0.35f;
             [Min(2f), InspectorName("Road Boundary Height（道路边界高度）")] public float roadBoundaryHeight = 5.5f;
+
+            [Header("Lane Dividers（分路线）")]
+            [Range(0.03f, 0.16f), InspectorName("Lane Divider Width（分路线宽度）")] public float laneDividerWidth = 0.08f;
+            [InspectorName("Lane Divider Color（分路线颜色）")] public Color laneDividerColor = new Color(0.15f, 0.16f, 0.16f, 0.5f);
 
             [Header("Medieval Stone Palette（中世纪石材色板）")]
             [InspectorName("Sky Fog Color（天空雾色）")] public Color skyFogColor = new Color(0.24f, 0.32f, 0.39f);
@@ -550,6 +556,8 @@ namespace PlayableAd
 
         private readonly List<Encounter> encounters = new List<Encounter>();
         private readonly List<GameObject> rewardStageWallRoots = new List<GameObject>();
+        private readonly List<GameObject> roadBorderFlames = new List<GameObject>();
+        private readonly List<Mesh> ownedRuntimeMeshes = new List<Mesh>();
         private readonly HashSet<int> targetVisualFallbackWarnings = new HashSet<int>();
         private Transform worldRoot;
         private Transform runner;
@@ -572,6 +580,7 @@ namespace PlayableAd
         private NumberCombatSystem numberCombatSystem;
         private NumberCombatTarget bossNumberTarget;
         private VisualTimeScaleController visualTimeScale;
+        private SoldierVisualPool soldierVisualPool;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
         private Animator runnerAnimator;
@@ -613,16 +622,16 @@ namespace PlayableAd
         private float calloutUntil;
         private Texture2D whiteTexture;
         private Texture2D penaltyEdgeTexture;
-        private GUIStyle titleStyle;
-        private GUIStyle bodyStyle;
-        private GUIStyle smallStyle;
-        private GUIStyle buttonStyle;
-        private GUIStyle smashTitleStyle;
-        private GUIStyle smashSubtitleStyle;
-        private GUIStyle powerUpStyle;
-        private GUIStyle powerUpShadowStyle;
-        private GUIStyle tutorialBulletWarningStyle;
-        private GUIStyle tutorialBulletWarningShadowStyle;
+        [NonSerialized] private GUIStyle titleStyle;
+        [NonSerialized] private GUIStyle bodyStyle;
+        [NonSerialized] private GUIStyle smallStyle;
+        [NonSerialized] private GUIStyle buttonStyle;
+        [NonSerialized] private GUIStyle smashTitleStyle;
+        [NonSerialized] private GUIStyle smashSubtitleStyle;
+        [NonSerialized] private GUIStyle powerUpStyle;
+        [NonSerialized] private GUIStyle powerUpShadowStyle;
+        [NonSerialized] private GUIStyle tutorialBulletWarningStyle;
+        [NonSerialized] private GUIStyle tutorialBulletWarningShadowStyle;
         private float smashEffectStart;
         private float smashEffectUntil;
         private float powerUpNoticeStart;
@@ -647,6 +656,10 @@ namespace PlayableAd
         private int naturalSpeedLossProtectedLevel;
         private int smallPotionInvulnerabilityCount;
         private float tutorialElixirVisualUntil;
+        private float nextWorldVisibilityUpdate;
+        private int firstRelevantEncounterIndex;
+        private bool tier1SoldierVisualAvailable;
+        private bool tier4SoldierVisualAvailable;
 
         public PlayerSpeedController SpeedController => speedController;
         private bool SmallPotionInvulnerabilityActive => smallPotionInvulnerabilityCount > 0;
@@ -666,6 +679,15 @@ namespace PlayableAd
             : tuning != null ? tuning.bossDistance : 0f;
         private float CourseDistanceScale => tuning != null ? Mathf.Max(0.1f, tuning.bossDistance / 1300f) : 1f;
         private float OpeningElixirZ => tuning.openingElixirTime * playerSpeed.forwardSpeeds[0];
+
+        private static bool IsConstrainedRuntimePlatform()
+        {
+#if UNITY_EDITOR
+            return false;
+#else
+            return Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer;
+#endif
+        }
 
         private void OnValidate()
         {
@@ -696,6 +718,9 @@ namespace PlayableAd
                 return;
             }
             if (rewardRun == null) rewardRun = new BossRewardRunSettings();
+            if (visualPerformance == null) visualPerformance = new VisualPerformanceSettings();
+            if (visualPerformance.autoLowQualityOnMobileWeb && IsConstrainedRuntimePlatform())
+                visualPerformance.lowQualityMode = true;
             ApplyDocumentCourseLength();
             if (speedVisualProfile == null)
             {
@@ -706,8 +731,10 @@ namespace PlayableAd
             flowController = GetComponent<RunFlowController>();
             if (flowController == null) flowController = gameObject.AddComponent<RunFlowController>();
             flowController.ResetToIntro();
+            CacheTargetVisualAvailability();
             BuildWorld();
             BuildLevel();
+            SortEncountersByDistance();
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
@@ -806,6 +833,7 @@ namespace PlayableAd
                 Time.unscaledDeltaTime / penaltyFadeDuration);
             UpdateSmallPotionInvulnerabilityPresentation();
             UpdateTutorialBulletTimeWarningState();
+            UpdateWorldVisibility();
             bool movementActive = gameplayStarted && !ending && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
             if (!movementActive)
             {
@@ -1177,6 +1205,7 @@ namespace PlayableAd
         {
             int preloadedEnemies = 0;
             int distantVisibleEnemies = 0;
+            int animatedEnemies = 0;
             float currentForwardSpeed = GetForwardSpeed();
             float preloadDistance = Mathf.Clamp(currentForwardSpeed * tuning.enemyPreloadTime,
                 tuning.minimumEnemyPreloadDistance, tuning.maximumEnemyPreloadDistance);
@@ -1184,7 +1213,30 @@ namespace PlayableAd
                 tuning.minimumEnemyVisibleDistance, tuning.maximumEnemyVisibleDistance);
             float activeDistance = Mathf.Clamp(currentForwardSpeed * tuning.enemyActiveTime,
                 tuning.minimumEnemyActiveDistance, tuning.maximumEnemyActiveDistance);
-            for (int i = 0; i < encounters.Count; i++)
+            float recycleDistance = tuning.recycleDistance;
+            int maxPreloadedEnemies = tuning.maxPreloadedEnemies;
+            int maxDistantVisibleEnemies = tuning.maxDistantVisibleEnemies;
+            int maxAnimatedEnemies = tuning.maxAnimatedEnemies;
+            if (visualPerformance != null && visualPerformance.lowQualityMode)
+            {
+                maxPreloadedEnemies = Mathf.Min(maxPreloadedEnemies, 36);
+                maxDistantVisibleEnemies = Mathf.Min(maxDistantVisibleEnemies, 24);
+                activeDistance = Mathf.Min(activeDistance,
+                    visualPerformance.lowQualityEnemyActiveDistance);
+                recycleDistance = Mathf.Min(recycleDistance,
+                    visualPerformance.lowQualityEnemyRecycleDistance);
+                maxAnimatedEnemies = Mathf.Min(maxAnimatedEnemies,
+                    visualPerformance.lowQualityAnimatedEnemyLimit);
+            }
+
+            while (firstRelevantEncounterIndex < encounters.Count)
+            {
+                Encounter first = encounters[firstRelevantEncounterIndex];
+                if (first != null && first.root != null && !first.consumed) break;
+                firstRelevantEncounterIndex++;
+            }
+
+            for (int i = firstRelevantEncounterIndex; i < encounters.Count; i++)
             {
                 Encounter encounter = encounters[i];
                 if (encounter.consumed || encounter.root == null)
@@ -1193,17 +1245,18 @@ namespace PlayableAd
                 }
 
                 float dz = encounter.root.transform.position.z - runner.position.z;
-                if (encounter.type == EncounterType.Elixir && dz > preloadDistance)
-                {
-                    if (encounter.root.activeSelf) encounter.root.SetActive(false);
-                    continue;
-                }
+                if (dz > preloadDistance) break;
                 if (encounter.type == EncounterType.Elixir && !encounter.root.activeSelf)
                     encounter.root.SetActive(true);
 
+                if (encounter.type == EncounterType.Wall)
+                {
+                    if (!encounter.root.activeSelf) encounter.root.SetActive(true);
+                }
+
                 if (encounter.type == EncounterType.Target)
                 {
-                    if (dz < -tuning.recycleDistance)
+                    if (dz < -recycleDistance)
                     {
                         encounter.consumed = true;
                         encounter.visibility?.Recycle();
@@ -1217,14 +1270,14 @@ namespace PlayableAd
                     }
                     else if (dz > visibleDistance)
                     {
-                        desiredState = preloadedEnemies < tuning.maxPreloadedEnemies
+                        desiredState = preloadedEnemies < maxPreloadedEnemies
                             ? EnemyVisibilityState.Preloaded
                             : EnemyVisibilityState.Pooled;
                         if (desiredState == EnemyVisibilityState.Preloaded) preloadedEnemies++;
                     }
                     else if (dz > activeDistance)
                     {
-                        desiredState = distantVisibleEnemies < tuning.maxDistantVisibleEnemies
+                        desiredState = distantVisibleEnemies < maxDistantVisibleEnemies
                             ? EnemyVisibilityState.DistantVisible
                             : EnemyVisibilityState.Preloaded;
                         if (desiredState == EnemyVisibilityState.DistantVisible) distantVisibleEnemies++;
@@ -1236,13 +1289,19 @@ namespace PlayableAd
                     }
 
                     encounter.visibility?.SetState(desiredState);
+                    if (desiredState == EnemyVisibilityState.Active && encounter.visibility != null)
+                    {
+                        bool animate = animatedEnemies < maxAnimatedEnemies;
+                        encounter.visibility.SetActiveAnimationBudget(animate);
+                        if (animate) animatedEnemies++;
+                    }
                     if (desiredState != EnemyVisibilityState.Active) continue;
                 }
 
                 bool crossedThisFrame = encounter.hasPreviousDistance && encounter.previousDistance > 0f && dz <= 0f;
                 encounter.previousDistance = dz;
                 encounter.hasPreviousDistance = true;
-                if (dz < -tuning.recycleDistance && !crossedThisFrame)
+                if (dz < -recycleDistance && !crossedThisFrame)
                 {
                     encounter.consumed = true;
                     CompleteTutorialIfNeeded(encounter);
@@ -1347,12 +1406,15 @@ namespace PlayableAd
             }
             else
             {
-                if (prefab.soldierSections == null || prefab.soldierSections.Length == 0)
-                    missing.Add("Soldier Sections");
                 if (prefab.stoneWallPrefab == null)
                     missing.Add("Stone Wall Prefab");
-                if (prefab.additionalStoneWalls == null || prefab.additionalStoneWalls.Length == 0)
-                    missing.Add("Additional Stone Walls");
+                if (tuning == null || !tuning.useDocumentMainRunLayout)
+                {
+                    if (prefab.soldierSections == null || prefab.soldierSections.Length == 0)
+                        missing.Add("Soldier Sections");
+                    if (prefab.additionalStoneWalls == null || prefab.additionalStoneWalls.Length == 0)
+                        missing.Add("Additional Stone Walls");
+                }
             }
 
             if (missing.Count == 0) return true;
@@ -1396,6 +1458,26 @@ namespace PlayableAd
             else
             {
                 StartCoroutine(ElixirUpgradeSequence(encounter, encounter.tier));
+            }
+        }
+
+        private void UpdateWorldVisibility()
+        {
+            if (runner == null || roadBorderFlames.Count == 0
+                || Time.unscaledTime < nextWorldVisibilityUpdate)
+                return;
+
+            nextWorldVisibilityUpdate = Time.unscaledTime + 0.2f;
+            float runnerZ = runner.position.z;
+            float forwardDistance = Mathf.Max(60f, environment.fogEnd + 20f);
+            const float behindDistance = 28f;
+            for (int i = 0; i < roadBorderFlames.Count; i++)
+            {
+                GameObject flame = roadBorderFlames[i];
+                if (flame == null) continue;
+                float dz = flame.transform.position.z - runnerZ;
+                bool visible = dz >= -behindDistance && dz <= forwardDistance;
+                if (flame.activeSelf != visible) flame.SetActive(visible);
             }
         }
 
@@ -2123,6 +2205,9 @@ namespace PlayableAd
 
             worldRoot = new GameObject("GeneratedWorld").transform;
             worldRoot.SetParent(transform, false);
+            soldierVisualPool = gameObject.GetComponent<SoldierVisualPool>();
+            if (soldierVisualPool == null) soldierVisualPool = gameObject.AddComponent<SoldierVisualPool>();
+            soldierVisualPool.Initialize(worldRoot);
             if (GetComponent<BulletTimeManager>() == null)
                 gameObject.AddComponent<BulletTimeManager>();
             BuildCameraAndLight();
@@ -2214,6 +2299,7 @@ namespace PlayableAd
 
         private void BuildCameraAndLight()
         {
+            bool lowQuality = visualPerformance != null && visualPerformance.lowQualityMode;
             baseFov = GetConfiguredBaseFov();
             lastScreenWidth = Screen.width;
             lastScreenHeight = Screen.height;
@@ -2243,6 +2329,8 @@ namespace PlayableAd
             gameCamera.farClipPlane = 420f;
             gameCamera.clearFlags = CameraClearFlags.SolidColor;
             gameCamera.backgroundColor = environment.skyFogColor;
+            gameCamera.allowHDR = !lowQuality;
+            gameCamera.allowMSAA = false;
 
             GameObject lightObject = new GameObject("Directional Light");
             lightObject.transform.SetParent(worldRoot, false);
@@ -2251,7 +2339,9 @@ namespace PlayableAd
             light.type = LightType.Directional;
             light.intensity = environment.lightIntensity;
             light.color = environment.lightColor;
-            light.shadows = LightShadows.Soft;
+            light.shadows = lowQuality || QualitySettings.shadows == ShadowQuality.Disable
+                ? LightShadows.None
+                : LightShadows.Soft;
             light.shadowStrength = environment.shadowStrength;
 
             RenderSettings.ambientLight = environment.ambientColor;
@@ -2260,8 +2350,16 @@ namespace PlayableAd
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = environment.fogStart;
             RenderSettings.fogEndDistance = environment.fogEnd;
-            QualitySettings.shadows = ShadowQuality.All;
-            QualitySettings.shadowDistance = environment.shadowDistance;
+            if (lowQuality)
+            {
+                QualitySettings.shadows = ShadowQuality.Disable;
+                QualitySettings.shadowDistance = 0f;
+            }
+            else if (QualitySettings.shadows != ShadowQuality.Disable)
+            {
+                QualitySettings.shadowDistance = Mathf.Min(QualitySettings.shadowDistance,
+                    environment.shadowDistance);
+            }
         }
 
         private float GetConfiguredBaseFov()
@@ -2273,7 +2371,8 @@ namespace PlayableAd
         {
             float courseEndZ = CourseEndZ;
             float roadLength = courseEndZ + 28f;
-            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, courseEndZ * 0.5f), new Vector3(8.5f, 0.5f, roadLength), environment.roadColor, worldRoot);
+            const float roadWidth = 8.5f;
+            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, courseEndZ * 0.5f), new Vector3(roadWidth, 0.5f, roadLength), environment.roadColor, worldRoot);
             if (roadSurfaceMaterial != null)
                 road.GetComponent<Renderer>().sharedMaterial = roadSurfaceMaterial;
             GameObject leftWall = CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, courseEndZ * 0.5f), new Vector3(1.1f, 1.1f, roadLength), environment.wallColor, worldRoot);
@@ -2282,13 +2381,12 @@ namespace PlayableAd
             CreateRoadBoundary("LeftRoadBoundary", -4.12f);
             CreateRoadBoundary("RightRoadBoundary", 4.12f);
 
-            CreateDecorationBox("LeftRouteGuide", new Vector3(-1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
-            CreateDecorationBox("RightRouteGuide", new Vector3(1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
+            BuildLaneDividers(courseEndZ, roadLength, roadWidth * 0.5f);
 
-            for (float z = 0f; z < courseEndZ; z += environment.environmentReferenceSpacing)
+            BuildRoadBands(courseEndZ);
+            if (!hasAuthoredRoadBorders)
             {
-                CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
-                if (!hasAuthoredRoadBorders)
+                for (float z = 0f; z < courseEndZ; z += environment.environmentReferenceSpacing)
                 {
                     CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
                     CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
@@ -2296,6 +2394,75 @@ namespace PlayableAd
             }
 
             BuildDistantCastle();
+        }
+
+        private void BuildLaneDividers(float courseEndZ, float roadLength, float roadVisualHalfWidth)
+        {
+            float dividerX = roadVisualHalfWidth / 3f;
+            float halfLineWidth = Mathf.Clamp(environment.laneDividerWidth, 0.03f, 0.16f) * 0.5f;
+            float zMin = courseEndZ * 0.5f - roadLength * 0.5f + 0.02f;
+            float zMax = courseEndZ * 0.5f + roadLength * 0.5f - 0.02f;
+            const float surfaceY = -0.038f;
+
+            var vertices = new Vector3[8];
+            var normals = new Vector3[8];
+            var uv = new Vector2[8];
+            var triangles = new int[12];
+            for (int divider = 0; divider < 2; divider++)
+            {
+                float centerX = divider == 0 ? -dividerX : dividerX;
+                int vertex = divider * 4;
+                vertices[vertex] = new Vector3(centerX - halfLineWidth, surfaceY, zMin);
+                vertices[vertex + 1] = new Vector3(centerX + halfLineWidth, surfaceY, zMin);
+                vertices[vertex + 2] = new Vector3(centerX + halfLineWidth, surfaceY, zMax);
+                vertices[vertex + 3] = new Vector3(centerX - halfLineWidth, surfaceY, zMax);
+                normals[vertex] = normals[vertex + 1] = normals[vertex + 2] = normals[vertex + 3] = Vector3.up;
+                uv[vertex] = new Vector2(0f, 0f);
+                uv[vertex + 1] = new Vector2(1f, 0f);
+                uv[vertex + 2] = new Vector2(1f, 1f);
+                uv[vertex + 3] = new Vector2(0f, 1f);
+
+                int triangle = divider * 6;
+                triangles[triangle] = vertex;
+                triangles[triangle + 1] = vertex + 2;
+                triangles[triangle + 2] = vertex + 1;
+                triangles[triangle + 3] = vertex;
+                triangles[triangle + 4] = vertex + 3;
+                triangles[triangle + 5] = vertex + 2;
+            }
+
+            Mesh mesh = new Mesh { name = "LaneDividersMesh" };
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            ownedRuntimeMeshes.Add(mesh);
+
+            GameObject root = new GameObject("LaneDividers");
+            root.transform.SetParent(worldRoot, false);
+            root.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = root.AddComponent<MeshRenderer>();
+            Color dividerColor = environment.laneDividerColor;
+            dividerColor.a = 0.5f;
+            Material material = RuntimeStyle.CreateMaterial(dividerColor, 0f, 0.12f);
+            ConfigureFadeMaterial(material);
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        private static void ConfigureFadeMaterial(Material material)
+        {
+            if (material == null) return;
+            material.SetFloat("_Mode", 2f);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
 
         private bool BuildRoadBorderVisuals(GameObject leftWall, GameObject rightWall)
@@ -2370,9 +2537,62 @@ namespace PlayableAd
                 chunk.AddComponent<MeshFilter>().sharedMesh = mesh;
                 MeshRenderer renderer = chunk.AddComponent<MeshRenderer>();
                 renderer.sharedMaterial = roadBorderMaterial;
-                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-                renderer.receiveShadows = true;
+                bool lowQuality = visualPerformance != null && visualPerformance.lowQualityMode;
+                renderer.shadowCastingMode = lowQuality
+                    ? UnityEngine.Rendering.ShadowCastingMode.Off
+                    : UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = !lowQuality;
+                ownedRuntimeMeshes.Add(mesh);
             }
+        }
+
+        private void BuildRoadBands(float courseEndZ)
+        {
+            float spacing = Mathf.Max(0.1f, environment.environmentReferenceSpacing);
+            int count = Mathf.CeilToInt(Mathf.Max(0f, courseEndZ) / spacing);
+            if (count <= 0) return;
+
+            var vertices = new Vector3[count * 4];
+            var normals = new Vector3[count * 4];
+            var uv = new Vector2[count * 4];
+            var triangles = new int[count * 6];
+            for (int band = 0; band < count; band++)
+            {
+                float z = band * spacing;
+                int vertex = band * 4;
+                vertices[vertex] = new Vector3(-4.2f, -0.02f, z - 0.08f);
+                vertices[vertex + 1] = new Vector3(4.2f, -0.02f, z - 0.08f);
+                vertices[vertex + 2] = new Vector3(4.2f, -0.02f, z + 0.08f);
+                vertices[vertex + 3] = new Vector3(-4.2f, -0.02f, z + 0.08f);
+                normals[vertex] = normals[vertex + 1] = normals[vertex + 2] = normals[vertex + 3] = Vector3.up;
+                uv[vertex] = new Vector2(0f, 0f);
+                uv[vertex + 1] = new Vector2(1f, 0f);
+                uv[vertex + 2] = new Vector2(1f, 1f);
+                uv[vertex + 3] = new Vector2(0f, 1f);
+                int triangle = band * 6;
+                triangles[triangle] = vertex;
+                triangles[triangle + 1] = vertex + 2;
+                triangles[triangle + 2] = vertex + 1;
+                triangles[triangle + 3] = vertex;
+                triangles[triangle + 4] = vertex + 3;
+                triangles[triangle + 5] = vertex + 2;
+            }
+
+            Mesh mesh = new Mesh { name = "CombinedRoadBandsMesh" };
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            ownedRuntimeMeshes.Add(mesh);
+
+            GameObject root = new GameObject("CombinedRoadBands");
+            root.transform.SetParent(worldRoot, false);
+            root.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = root.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = RuntimeStyle.CreateMaterial(environment.routeMarkColor, 0f, 0.38f);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
 
         private static void AddMeshSubmeshes(List<CombineInstance> combines, Mesh mesh,
@@ -2396,6 +2616,14 @@ namespace PlayableAd
             flame.name = (side < 0f ? "Left" : "Right") + "RoadBorderFlame_" + segmentIndex;
             flame.transform.localPosition = new Vector3(side * RoadBorderCenterX, 0.72f, z);
             flame.transform.localRotation = Quaternion.identity;
+            Renderer[] renderers = flame.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderers[i].receiveShadows = false;
+            }
+            roadBorderFlames.Add(flame);
+            flame.SetActive(z <= environment.fogEnd + 20f);
         }
 
         private void BuildDistantCastle()
@@ -2481,6 +2709,9 @@ namespace PlayableAd
             DestroyOwnedObject(buttonNormalTexture);
             DestroyOwnedObject(buttonActiveTexture);
             DestroyOwnedObject(upgradeMagicCircleSprite);
+            for (int i = 0; i < ownedRuntimeMeshes.Count; i++)
+                DestroyOwnedObject(ownedRuntimeMeshes[i]);
+            ownedRuntimeMeshes.Clear();
         }
 
         private static void DestroyOwnedObject(UnityEngine.Object value)
@@ -2865,6 +3096,20 @@ namespace PlayableAd
                     yield return null;
                 }
             }
+
+            SortEncountersByDistance();
+        }
+
+        private void SortEncountersByDistance()
+        {
+            encounters.Sort((left, right) =>
+            {
+                if (ReferenceEquals(left, right)) return 0;
+                if (left == null || left.root == null) return 1;
+                if (right == null || right.root == null) return -1;
+                return left.root.transform.position.z.CompareTo(right.root.transform.position.z);
+            });
+            firstRelevantEncounterIndex = 0;
         }
 
         private void CreateRewardStoneWall(float z, int index)
@@ -3013,8 +3258,28 @@ namespace PlayableAd
         {
             Vector3 dimensions = targetShapes.Get(tier);
             Color color = speedVisualProfile.Get(tier).primaryColor;
-            GameObject root = CreateBox(objectName, new Vector3(x, dimensions.y * 0.5f, z), dimensions, color, parent != null ? parent : worldRoot);
-            Renderer placeholderRenderer = root.GetComponent<Renderer>();
+            GameObject visualPrefab = tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
+            bool usePooledVisual = visualPrefab != null && (tier == 1
+                ? tier1SoldierVisualAvailable
+                : tier >= 4 && tier4SoldierVisualAvailable);
+            Transform targetParent = parent != null ? parent : worldRoot;
+            GameObject root;
+            Renderer placeholderRenderer;
+            if (usePooledVisual)
+            {
+                root = new GameObject(objectName);
+                root.transform.SetParent(targetParent, false);
+                root.transform.localPosition = new Vector3(x, dimensions.y * 0.5f, z);
+                root.transform.localScale = dimensions;
+                root.AddComponent<BoxCollider>();
+                placeholderRenderer = null;
+            }
+            else
+            {
+                root = CreateBox(objectName, new Vector3(x, dimensions.y * 0.5f, z),
+                    dimensions, color, targetParent);
+                placeholderRenderer = root.GetComponent<Renderer>();
+            }
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
             Collider[] colliders = root.GetComponents<Collider>();
             obstacle.Initialize(tier, ObstacleType.Soldier, colliders);
@@ -3022,37 +3287,21 @@ namespace PlayableAd
             Renderer[] visibilityRenderers = placeholderRenderer != null
                 ? new[] { placeholderRenderer }
                 : Array.Empty<Renderer>();
-            GameObject visualPrefab = tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
-            if (visualPrefab != null)
+            float targetHeight = tier == 1 ? tier1TargetHeight : tier4TargetHeight;
+            Transform pooledVisualRoot = null;
+            if (usePooledVisual)
             {
-                Transform visualRoot = new GameObject("VisualRoot").transform;
-                visualRoot.SetParent(root.transform, false);
-                visualRoot.localPosition = new Vector3(0f, -0.5f, 0f);
-                visualRoot.localScale = new Vector3(
+                pooledVisualRoot = new GameObject("VisualRoot").transform;
+                pooledVisualRoot.SetParent(root.transform, false);
+                pooledVisualRoot.localPosition = new Vector3(0f, -0.5f, 0f);
+                pooledVisualRoot.localScale = new Vector3(
                     1f / Mathf.Max(0.001f, dimensions.x),
                     1f / Mathf.Max(0.001f, dimensions.y),
                     1f / Mathf.Max(0.001f, dimensions.z));
-
-                GameObject visual = Instantiate(visualPrefab, visualRoot, false);
-                visual.name = visualPrefab.name;
-                SanitizeTargetVisual(visual);
-                Renderer[] modelRenderers = visual.GetComponentsInChildren<Renderer>(true);
-                if (modelRenderers.Length > 0)
-                {
-                    float targetHeight = tier == 1 ? tier1TargetHeight : tier4TargetHeight;
-                    FitTargetVisual(visual, visualRoot, modelRenderers, targetHeight);
-                    ConfigureTargetCollider(root.GetComponent<BoxCollider>(), dimensions, modelRenderers, targetHeight);
-
-                    if (placeholderRenderer != null) Destroy(placeholderRenderer);
-                    MeshFilter placeholderMesh = root.GetComponent<MeshFilter>();
-                    if (placeholderMesh != null) Destroy(placeholderMesh);
-                    visibilityRenderers = modelRenderers;
-                }
-                else
-                {
-                    Destroy(visualRoot.gameObject);
-                    WarnTargetVisualFallback(tier, visualPrefab.name + " has no Renderer");
-                }
+                if (placeholderRenderer != null) Destroy(placeholderRenderer);
+                MeshFilter placeholderMesh = root.GetComponent<MeshFilter>();
+                if (placeholderMesh != null) Destroy(placeholderMesh);
+                visibilityRenderers = Array.Empty<Renderer>();
             }
             else if (tier == 1 || tier >= 4)
             {
@@ -3061,11 +3310,17 @@ namespace PlayableAd
 
             EnemyVisibilityController visibility = root.AddComponent<EnemyVisibilityController>();
             SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
+            if (pooledVisualRoot != null)
+            {
+                PooledSoldierVisual pooledVisual = root.AddComponent<PooledSoldierVisual>();
+                pooledVisual.Initialize(soldierVisualPool, visualPrefab, pooledVisualRoot,
+                    dimensions, targetHeight, root.GetComponent<BoxCollider>(), soldierKnockback);
+            }
             soldierKnockback.Initialize(visibilityRenderers);
             int displayLevel = tier >= 4 ? tier : SoldierDisplayLevel;
             NumberCombatTarget numberTarget = showLevelLabel
                 ? numberCombatSystem?.RegisterTarget(root.transform, visibilityRenderers,
-                    displayLevel, numberCombat.soldierHeadClearance, visibility)
+                    displayLevel, numberCombat.soldierHeadClearance, visibility, targetHeight)
                 : null;
             visibility.Initialize(visibilityRenderers, colliders);
             encounters.Add(new Encounter
@@ -3081,7 +3336,7 @@ namespace PlayableAd
             root.SetActive(false);
         }
 
-        private static void SanitizeTargetVisual(GameObject visual)
+        internal static void SanitizeTargetVisual(GameObject visual)
         {
             Collider[] visualColliders = visual.GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < visualColliders.Length; i++) visualColliders[i].enabled = false;
@@ -3104,7 +3359,7 @@ namespace PlayableAd
             }
         }
 
-        private static void FitTargetVisual(GameObject visual, Transform groundReference, Renderer[] renderers,
+        internal static void FitTargetVisual(GameObject visual, Transform groundReference, Renderer[] renderers,
             float targetHeight)
         {
             Animator animator = visual.GetComponentInChildren<Animator>(true);
@@ -3124,7 +3379,7 @@ namespace PlayableAd
             visual.transform.position += Vector3.up * (groundReference.position.y - bounds.min.y);
         }
 
-        private static void ConfigureTargetCollider(BoxCollider collider, Vector3 rootDimensions,
+        internal static void ConfigureTargetCollider(BoxCollider collider, Vector3 rootDimensions,
             Renderer[] renderers, float targetHeight)
         {
             if (collider == null) return;
@@ -3200,6 +3455,14 @@ namespace PlayableAd
                 elixir = pickup
             });
             root.SetActive(false);
+        }
+
+        private void CacheTargetVisualAvailability()
+        {
+            tier1SoldierVisualAvailable = tier1SoldierPrefab != null
+                && tier1SoldierPrefab.GetComponentInChildren<Renderer>(true) != null;
+            tier4SoldierVisualAvailable = tier4SoldierPrefab != null
+                && tier4SoldierPrefab.GetComponentInChildren<Renderer>(true) != null;
         }
 
         private void CreateTemporaryBoostPickup(float x, float z, float boostAmount,
@@ -3324,6 +3587,7 @@ namespace PlayableAd
                 bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null,
                 completesTutorial = completesTutorial
             });
+            root.SetActive(false);
         }
 
         private void GetStoneWallPlacement(StoneWallBlockingMode blockingMode, out float centerX,
@@ -3433,6 +3697,10 @@ namespace PlayableAd
             {
                 return;
             }
+
+            // Gameplay overlays are visual-only. Skip IMGUI layout/input passes on mobile;
+            // the end-card button still receives the full event stream when it is visible.
+            if (!ending && Event.current.type != EventType.Repaint) return;
 
             EnsureGuiStyles();
             float scale = Mathf.Max(0.45f, Mathf.Min(Screen.width / 540f, Screen.height / 960f));
@@ -3687,10 +3955,10 @@ namespace PlayableAd
             Color previousColor = GUI.color;
             GUI.color = new Color(0.12f, 0.06f, 0.01f, alpha * 0.8f);
             Rect labelRect = new Rect(20f, height * 0.42f + 3f, width - 40f, 64f);
-            GUI.Label(labelRect, "POWER UP!", powerUpShadowStyle);
+            GUI.Label(labelRect, "INVINCIBLE", powerUpShadowStyle);
             GUI.color = new Color(1f, 0.86f, 0.28f, alpha);
             GUI.Label(new Rect(labelRect.x, labelRect.y - 3f, labelRect.width, labelRect.height),
-                "POWER UP!", powerUpStyle);
+                "INVINCIBLE", powerUpStyle);
             GUI.color = previousColor;
         }
 
@@ -3703,7 +3971,7 @@ namespace PlayableAd
 
             float labelWidth = width * 0.94f;
             float centerX = width * 0.5f + 18f;
-            float centerY = height * 0.4f;
+            float centerY = height * 0.52f;
             Rect labelRect = new Rect(centerX - labelWidth * 0.5f, centerY - 43f, labelWidth, 86f);
 
             const float outlineOffset = 2.5f;

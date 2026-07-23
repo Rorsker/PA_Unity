@@ -140,10 +140,18 @@ namespace PlayableAd
     public sealed class VisualPerformanceSettings
     {
         [InspectorName("Low Quality Mode（低画质模式）")] public bool lowQualityMode;
+        [InspectorName("Auto Low Quality On Mobile/WebGL（移动端/WebGL自动低画质）")]
+        public bool autoLowQualityOnMobileWeb = true;
         [InspectorName("Enable Secondary Speed Lines（启用次级速度线）")] public bool enableSecondarySpeedLines = true;
         [Range(0.1f, 1f), InspectorName("Low Quality Particle Multiplier（低画质粒子倍率）")] public float lowQualityParticleMultiplier = 0.45f;
         [Range(4, 12), InspectorName("Low Quality Speed Line Count（低画质速度线数量）")] public int lowQualitySpeedLineCount = 6;
         [Range(4, 10), InspectorName("Low Quality Energy Shard Limit（低画质能量碎片上限）")] public int lowQualityEnergyShardLimit = 12;
         [Range(4, 10), InspectorName("Low Quality Wall Chunk Count（低画质墙块数量）")] public int lowQualityWallChunkCount = 6;
+        [Range(8f, 24f), InspectorName("Low Quality Enemy Active Distance（低画质敌人活动距离）")]
+        public float lowQualityEnemyActiveDistance = 14f;
+        [Range(2f, 12f), InspectorName("Low Quality Enemy Recycle Distance（低画质敌人身后回收距离）")]
+        public float lowQualityEnemyRecycleDistance = 6f;
+        [Range(8, 28), InspectorName("Low Quality Animated Enemy Limit（低画质动画敌人上限）")]
+        public int lowQualityAnimatedEnemyLimit = 16;
     }
 }
