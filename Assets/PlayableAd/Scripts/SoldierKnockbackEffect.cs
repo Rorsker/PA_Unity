@@ -44,7 +44,6 @@ namespace PlayableAd
         private static readonly int HitFlashOpacityProperty = Shader.PropertyToID("_HitFlashOpacity");
         private static readonly int HitFlashEmissionProperty = Shader.PropertyToID("_HitFlashEmission");
 
-        private Animator[] animators = Array.Empty<Animator>();
         private Renderer[] flashRenderers = Array.Empty<Renderer>();
         private MaterialPropertyBlock[] originalPropertyBlocks = Array.Empty<MaterialPropertyBlock>();
         private MaterialPropertyBlock[] flashPropertyBlocks = Array.Empty<MaterialPropertyBlock>();
@@ -73,11 +72,6 @@ namespace PlayableAd
             ActiveEffects.Clear();
         }
 
-        private void Awake()
-        {
-            animators = GetComponentsInChildren<Animator>(true);
-        }
-
         public void Initialize(Renderer[] renderers)
         {
             flashRenderers = renderers ?? Array.Empty<Renderer>();
@@ -96,8 +90,17 @@ namespace PlayableAd
                 if (oldest != null) oldest.Finish();
             }
 
-            for (int i = 0; i < animators.Length; i++)
-                if (animators[i] != null) animators[i].enabled = false;
+            SpriteSoldierImpactAnimation spriteImpact =
+                GetComponentInChildren<SpriteSoldierImpactAnimation>(true);
+            bool useSpriteImpact = spriteImpact != null && spriteImpact.PlayImpactAnimation();
+            Animator spriteAnimator = useSpriteImpact ? spriteImpact.Animator : null;
+            Animator[] currentAnimators = GetComponentsInChildren<Animator>(true);
+            for (int i = 0; i < currentAnimators.Length; i++)
+            {
+                Animator currentAnimator = currentAnimators[i];
+                if (currentAnimator != null && currentAnimator != spriteAnimator)
+                    currentAnimator.enabled = false;
+            }
 
             float speedT = Mathf.Clamp01(normalizedSpeed);
             float authoredMin = Mathf.Min(settings.minimumForwardSpeed, settings.maximumAuthoredForwardSpeed);
@@ -129,10 +132,13 @@ namespace PlayableAd
             visibility = visibilityController;
             gravityMultiplier = Mathf.Max(0f, settings.gravityMultiplier);
             recycleHeight = -Mathf.Abs(settings.belowRoadRecycleDepth);
-            remaining = Mathf.Max(0.1f, settings.flightLifetime);
+            remaining = useSpriteImpact
+                ? spriteImpact.ImpactDuration
+                : Mathf.Max(0.1f, settings.flightLifetime);
             playing = true;
             ActiveEffects.Add(this);
-            StartImpactFlash(settings);
+            if (useSpriteImpact) RestoreImpactFlash();
+            else StartImpactFlash(settings);
             return true;
         }
 

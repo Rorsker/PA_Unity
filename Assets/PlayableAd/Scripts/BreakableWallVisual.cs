@@ -91,13 +91,17 @@ namespace PlayableAd
 
         private void Update()
         {
+            if (!breaking || chunks == null)
+            {
+                breaking = false;
+                return;
+            }
             float worldScale = BulletTimeManager.Instance != null ? BulletTimeManager.Instance.WorldTimeScale : 1f;
             if (dustParticles != null)
             {
                 ParticleSystem.MainModule main = dustParticles.main;
                 main.simulationSpeed = worldScale;
             }
-            if (!breaking) return;
             float dt = BulletTimeManager.Instance != null
                 ? BulletTimeManager.Instance.GetWorldDeltaTime()
                 : Time.deltaTime;
@@ -161,7 +165,14 @@ namespace PlayableAd
                 if (!used) continue;
                 collider.enabled = true;
                 Renderer renderer = collider.GetComponent<Renderer>();
-                if (renderer != null) renderer.sharedMaterial = sharedStone;
+                if (renderer != null)
+                {
+                    renderer.sharedMaterial = sharedStone;
+                    renderer.shadowCastingMode = performance.lowQualityMode
+                        ? UnityEngine.Rendering.ShadowCastingMode.Off
+                        : UnityEngine.Rendering.ShadowCastingMode.On;
+                    renderer.receiveShadows = !performance.lowQualityMode;
+                }
                 chunks[i] = CreateChunkState(collider.transform, collider);
             }
         }
@@ -185,7 +196,12 @@ namespace PlayableAd
                     float centeredColumn = column - (columns - 1) * 0.5f;
                     chunkObject.transform.localPosition = new Vector3(centeredColumn * 1.3f + (row == 1 ? 0.18f : 0f), 0.58f + row * 1.05f, 0f);
                     chunkObject.transform.localScale = new Vector3(1.24f, 0.96f, 0.64f);
-                    chunkObject.GetComponent<Renderer>().sharedMaterial = sharedStone;
+                    Renderer renderer = chunkObject.GetComponent<Renderer>();
+                    renderer.sharedMaterial = sharedStone;
+                    renderer.shadowCastingMode = performance.lowQualityMode
+                        ? UnityEngine.Rendering.ShadowCastingMode.Off
+                        : UnityEngine.Rendering.ShadowCastingMode.On;
+                    renderer.receiveShadows = !performance.lowQualityMode;
                     chunks[index++] = CreateChunkState(chunkObject.transform, chunkObject.GetComponent<Collider>());
                 }
             }

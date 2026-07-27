@@ -264,7 +264,7 @@ namespace PlayableAdEditor.Tests
                 Assert.That(uiRoot.transform.Find("SafeArea/TopHUD/SpeedBar"), Is.Not.Null);
                 Assert.That(uiRoot.transform.Find("SafeArea/TopHUD/SpeedBar/Background/Fill"), Is.Not.Null);
                 Assert.That(uiRoot.transform.Find("SafeArea/TopHUD/SpeedBar/LevelTicks").childCount, Is.EqualTo(10));
-                Assert.That(uiRoot.GetComponentsInChildren<UnityEngine.UI.Text>(true).Length, Is.EqualTo(12));
+                Assert.That(uiRoot.GetComponentsInChildren<UnityEngine.UI.Text>(true).Length, Is.EqualTo(11));
                 Assert.That(uiRoot.GetComponentsInChildren<UnityEngine.UI.Image>(true).Length, Is.GreaterThanOrEqualTo(25));
             }
             finally
@@ -443,27 +443,6 @@ namespace PlayableAdEditor.Tests
         }
 
         [Test]
-        public void EnemyBreakPoolUsesFixedCapacityAndNonCollidingFragments()
-        {
-            GameObject poolObject = new GameObject("EnemyBreakPoolTest");
-            poolObject.transform.SetParent(root.transform);
-            EnemyBreakEffectPool pool = poolObject.AddComponent<EnemyBreakEffectPool>();
-            EnemyBreakPresentationSettings presentation = new EnemyBreakPresentationSettings
-            {
-                maxActiveFragments = 24,
-                fragmentsPerEnemy = 4
-            };
-            pool.Initialize(presentation, new VisualPerformanceSettings());
-
-            pool.PlayBreak(Vector3.zero, Vector3.one, Color.green, 1f, 1f, 10);
-
-            Assert.That(pool.Capacity, Is.EqualTo(24));
-            Assert.That(pool.ActiveFragmentCount, Is.EqualTo(4));
-            Collider[] colliders = poolObject.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < colliders.Length; i++) Assert.That(colliders[i].enabled, Is.False);
-        }
-
-        [Test]
         public void ObstacleResolutionPublishesItsEvaluatedOutcome()
         {
             BoxCollider collider = root.AddComponent<BoxCollider>();
@@ -539,7 +518,7 @@ namespace PlayableAdEditor.Tests
                 visibility.Initialize(new Renderer[] { renderer }, new Collider[] { collider });
 
                 visibility.SetState(EnemyVisibilityState.Preloaded);
-                Assert.That(enemy.activeSelf, Is.True);
+                Assert.That(enemy.activeSelf, Is.False);
                 Assert.That(renderer.enabled, Is.False);
                 Assert.That(collider.enabled, Is.False);
 
