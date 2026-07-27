@@ -7,21 +7,12 @@ using UnityEngine.SceneManagement;
 
 namespace PlayableAd.Editor
 {
-    [InitializeOnLoad]
     public static class FantasyCityBackgroundSetup
     {
         private const string RawPath = "Assets/PlayableAd/Visuals/Background/Source/FantasyCityBackground_Raw.jpg";
         private const string AdaptedPath = "Assets/PlayableAd/Visuals/Background/Processed/FantasyCityBackground_Adapted.jpg";
         private const string FogPath = "Assets/PlayableAd/Visuals/Background/Processed/FantasyCityFogExtension.png";
         private const string ScenePath = "Assets/Scenes/SampleScene.unity";
-        private const string SessionKey = "PlayableAd.FantasyCityBackgroundSetup.20260720.v1";
-
-        static FantasyCityBackgroundSetup()
-        {
-            if (!SessionState.GetBool(SessionKey, false) && File.Exists(RawPath))
-                EditorApplication.delayCall += AutoBuild;
-        }
-
         [MenuItem("Playable Ad/Build Fantasy City Background")]
         public static void Build()
         {
@@ -53,7 +44,6 @@ namespace PlayableAd.Editor
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
 
-            SessionState.SetBool(SessionKey, true);
             Debug.Log("Fantasy city background setup completed: 1024x768 source, focusX=0.58, overscan=1.08, brightness=0.84, fogHeight=0.48.");
             Selection.activeObject = controller;
         }
@@ -74,24 +64,6 @@ namespace PlayableAd.Editor
         public static void SetGameView9x20()
         {
             Screen.SetResolution(1080, 2400, false);
-        }
-
-        private static void AutoBuild()
-        {
-            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
-            {
-                EditorApplication.delayCall += AutoBuild;
-                return;
-            }
-
-            try
-            {
-                Build();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogException(exception);
-            }
         }
 
         private static void CreateFogTexture()

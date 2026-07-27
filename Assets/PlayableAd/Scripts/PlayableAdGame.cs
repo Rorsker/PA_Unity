@@ -3,20 +3,25 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 namespace PlayableAd
 {
     public sealed class PlayableAdGame : MonoBehaviour
     {
         private const float WallCollisionDistance = 1.3f;
-        private const int GameplayLevelConfigurationVersion = 5;
+        private const int GameplayLevelConfigurationVersion = 10;
         private const float FirstSpeedLossSectionEndZ = 150f;
         private const float SecondSpeedLossSectionEndZ = 350f;
         private const int SoldierDisplayLevel = 1;
         private const int OpeningElixirGroupId = 1;
         private const float NaturalSpeedLossProtectionDuration = 3f;
         private const int MainRunLowSpeedRecoveryLevel = 4;
+        private const float MainRunSmashCalloutEndZ = 200f;
+        private const string SmashSpeedCallout = "SMASH\nSPEED UP";
+        private const string RewardWingCallout = "CATCH THE WINGS TO FLY!";
         private const float ElixirVisualTargetHeight = 1.45f;
         private const float ElixirVisualBottomOffset = -0.72f;
         private static readonly Color SpeedLossImpactColor = new Color(0.82f, 0.035f, 0.025f, 0.76f);
@@ -27,6 +32,13 @@ namespace PlayableAd
         private const float RoadBorderCenterY = 0.25f;
         private const int RoadBorderSegmentsPerChunk = 5;
         private const int RoadBorderPedestalInterval = 2;
+        private const float RoadVisualWidth = 8.5f;
+        private const int DividerWallStartZone = 50;
+        private const int DividerWallEndZone = 57;
+        private const float LargePotionDividerWallPreviewDistance = 150f;
+        private const float LargePotionApproachEliteLabelDistance = 10f;
+        private const int FirstLargePotionApproachEliteZone = 54;
+        private const int SecondLargePotionApproachEliteZone = 56;
         private const float BossDeathFlightDistance = 9f;
         private const float BossDeathFlightHeight = 2.4f;
         private const float BossDeathAnimationDuration = 1.05f;
@@ -72,7 +84,7 @@ namespace PlayableAd
             [Min(0f), InspectorName("Start Offset From Tutorial（距教学起始偏移）")] public float startOffsetFromTutorial = 4.6125f;
             [Range(1, 50), InspectorName("Density Rows（密度行数）")] public int soldierCount = 10;
             [InspectorName("Placement Mode（摆放模式）")] public SoldierPlacementMode placementMode = SoldierPlacementMode.RandomDense;
-            [Range(0.4f, 1.2f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 0.5f;
+            [Range(0.4f, 3f), InspectorName("Forward Spacing（前后间距）")] public float minimumForwardSpacing = 1.5f;
             [Range(0.4f, 1f), InspectorName("Horizontal Coverage（横向覆盖范围）")] public float horizontalCoverage = 1f;
             [Range(0f, 0.9f), InspectorName("Forward Randomness（前后随机度）")] public float forwardRandomness = 0.8f;
         }
@@ -90,12 +102,18 @@ namespace PlayableAd
         public sealed class BossRewardRunSettings
         {
             [InspectorName("Enabled（启用奖励关）")] public bool enabled = true;
-            [Min(20f), InspectorName("Reward Run Length（奖励关长度）")] public float length = 200f;
-            [Range(1, 20), InspectorName("Soldier Section Count（士兵区段数量）")] public int soldierSectionCount = 10;
+            [InspectorName("Soldier Visual Prefab（奖励关士兵视觉预制体）")]
+            public GameObject soldierVisualPrefab;
+            [Min(20f), InspectorName("Reward Run Length（奖励关长度）")] public float length = 100f;
+            [Range(1, 20), InspectorName("Soldier Section Count（士兵区段数量）")] public int soldierSectionCount = 1;
             [Range(1, 50), InspectorName("Soldiers Per Section（每区段士兵数量）")] public int soldiersPerSection = 40;
             [Range(1, 20), InspectorName("Stone Wall Count（石墙数量）")] public int stoneWallCount = 10;
             [Min(0f), InspectorName("Start Offset After Boss（Boss后起始偏移）")] public float startOffsetAfterBoss = 14f;
             [Range(0.1f, 1.2f), InspectorName("Dense Soldier Spacing（密集士兵间距）")] public float soldierSpacing = 0.22f;
+            [Range(0.35f, 0.75f), InspectorName("Flying Wing Screen Height（飞行翅膀屏幕高度）")] public float guideViewportHeight = 0.52f;
+            [Range(5f, 40f), InspectorName("Wing Landing Distance（翅膀落地距离）")] public float guideLandingDistance = 18f;
+            [Range(0.2f, 1.2f), InspectorName("Wing Ground Height（翅膀落地高度）")] public float guideGroundHeight = 0.45f;
+            [Range(0.1f, 0.6f), InspectorName("Wing Pickup Duration（翅膀拾取时长）")] public float guidePickupDuration = 0.28f;
         }
 
         [Serializable]
@@ -132,14 +150,13 @@ namespace PlayableAd
             {
                 enabled = true,
                 triggerDistance = 5f,
-                duration = 0.5f,
+                duration = 1f,
                 worldTimeScale = 0.25f,
                 enterDuration = 0.1f,
                 exitDuration = 0.1f
             };
             [Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Tutorial Exit Speed Level（教学结束速度等级）")]
             public int tutorialExitSpeedLevel = 2;
-
             [Header("Stone Wall Collision（石墙碰撞）")]
             [Min(1), InspectorName("Stone Wall Safe Speed Level（石墙安全速度等级）")]
             public int stoneWallSafeSpeedLevel = 6;
@@ -169,9 +186,31 @@ namespace PlayableAd
             [Min(0f), InspectorName("Document Main Run Start Offset（文档主路线起始偏移）")]
             public float documentMainRunStartOffset = 10f;
             [Min(0f), InspectorName("Document Zone Gap（文档区块间隔）")]
-            public float documentZoneGap = 5f;
+            public float documentZoneGap = 7f;
             [Min(0.1f), InspectorName("Document Single Content Length（单个内容占用长度）")]
             public float documentSingleContentLength = 1f;
+            [Header("Zone 50-57 Divider Wall（区块50-57分隔墙）")]
+            [InspectorName("Divider Wall Enabled（启用分隔墙）")]
+            public bool dividerWallEnabled = true;
+            [Range(4f, 8f), InspectorName("Divider Wall Segment Spacing（分隔墙段间距）")]
+            public float dividerWallSegmentSpacing = 6.15f;
+            [Range(0.15f, 0.8f), InspectorName("Divider Wall Collision Half Width（分隔墙碰撞半宽）")]
+            public float dividerWallCollisionHalfWidth = 0.38f;
+            [Range(30f, 120f), InspectorName("Divider Wall Activation Distance（分隔墙激活距离）")]
+            public float dividerWallActivationDistance = 80f;
+            [Header("Divider Wall Bullet Time（竖向墙子弹时间）")]
+            [InspectorName("Divider Wall Bullet Time Enabled（启用竖向墙子弹时间）")]
+            public bool dividerWallBulletTimeEnabled = true;
+            [Min(0f), InspectorName("Divider Wall Bullet Time Trigger Distance（竖向墙子弹时间触发距离）")]
+            public float dividerWallBulletTimeTriggerDistance = 15f;
+            [Min(0f), InspectorName("Divider Wall Bullet Time Duration（竖向墙子弹时间持续时长）")]
+            public float dividerWallBulletTimeDuration = 1.2f;
+            [Range(0.01f, 1f), InspectorName("Divider Wall World Time Scale（竖向墙世界时间倍率）")]
+            public float dividerWallWorldTimeScale = 0.25f;
+            [Min(0f), InspectorName("Divider Wall Enter Duration（竖向墙进入时长）")]
+            public float dividerWallEnterDuration = 0.1f;
+            [Min(0.1f), InspectorName("Divider Wall Exit Duration（竖向墙退出时长）")]
+            public float dividerWallExitDuration = 0.1f;
             [Range(1, PlayerSpeedSettings.RequiredLevelCount), InspectorName("Document Elite Level（文档精英等级）")]
             public int documentEliteLevel = 8;
             [Min(0f), InspectorName("Document Elite Speed Penalty（文档精英速度惩罚）")]
@@ -180,15 +219,15 @@ namespace PlayableAd
             [Min(0f), InspectorName("Small Potion Boost（小瓶速度增量）")]
             public float documentSmallPotionBoost = 1f;
             [Min(0f), InspectorName("Small Potion Hold（小瓶保持时长）")]
-            public float documentSmallPotionHold = 1f;
-            [Min(0.01f), InspectorName("Small Potion Return（小瓶回退时长）")]
-            public float documentSmallPotionReturn = 3f;
+            public float documentSmallPotionHold = 3f;
+            [Range(0f, 0.5f), InspectorName("Small Potion Invulnerability Gold Filter（小瓶无敌金色滤镜强度）")]
+            public float smallPotionInvulnerabilityGoldFilter = 0.2f;
+            [Range(0.02f, 0.5f), InspectorName("Small Potion Filter Fade Duration（小瓶滤镜淡入淡出时长）")]
+            public float smallPotionFilterFadeDuration = 0.1f;
             [Min(0f), InspectorName("Large Potion Boost（大瓶速度增量）")]
             public float documentLargePotionBoost = 2f;
             [Min(0f), InspectorName("Large Potion Hold（大瓶保持时长）")]
             public float documentLargePotionHold = 1f;
-            [Min(0.01f), InspectorName("Large Potion Return（大瓶回退时长）")]
-            public float documentLargePotionReturn = 4f;
             [Min(10f), InspectorName("Boss Approach Padding（Boss 接近缓冲）")] public float bossApproachPadding = 13.46154f;
             [InspectorName("Procedural Seed（程序化随机种子）")] public int proceduralSeed = 41723;
             [Header("Mobile encounter budget（移动端遭遇预算）")]
@@ -204,8 +243,11 @@ namespace PlayableAd
             [Range(8f, 24f), InspectorName("Minimum Enemy Active Distance（最小敌人活动距离）")] public float minimumEnemyActiveDistance = 10f;
             [Range(30f, 70f), InspectorName("Maximum Enemy Active Distance（最大敌人活动距离）")] public float maximumEnemyActiveDistance = 52f;
             [Range(48, 96), InspectorName("Max Preloaded Enemies（最大预加载敌人数）")] public int maxPreloadedEnemies = 80;
+            [Range(12, 48), InspectorName("Max Animated Enemies（最大动画敌人数）")]
+            public int maxAnimatedEnemies = 28;
 
-            public void UpgradeGameplayLevelConfiguration(PlayerSpeedSettings speedSettings)
+            public void UpgradeGameplayLevelConfiguration(PlayerSpeedSettings speedSettings,
+                PrefabModules prefabModules)
             {
                 if (gameplayLevelConfigurationVersion >= GameplayLevelConfigurationVersion) return;
 
@@ -231,11 +273,31 @@ namespace PlayableAd
                 {
                     if (tutorialWallBulletTime == null) tutorialWallBulletTime = new BulletTimeSettings();
                     tutorialWallBulletTime.triggerDistance = 5f;
-                    tutorialWallBulletTime.duration = 0.5f;
+                    tutorialWallBulletTime.duration = 1f;
                     tutorialWallBulletTime.enterDuration = 0.1f;
                     tutorialWallBulletTime.exitDuration = 0.1f;
                     documentEliteSpeedPenalty = 0.5f;
                 }
+                if (gameplayLevelConfigurationVersion < 6 && prefabModules != null
+                    && prefabModules.soldierSections != null)
+                {
+                    for (int i = 0; i < prefabModules.soldierSections.Length; i++)
+                    {
+                        SoldierFormationSettings section = prefabModules.soldierSections[i];
+                        if (section != null) section.minimumForwardSpacing = 1.5f;
+                    }
+                }
+                if (gameplayLevelConfigurationVersion < 7)
+                    documentZoneGap = 7f;
+                if (gameplayLevelConfigurationVersion < 8)
+                    tutorialExitSpeedLevel = 2;
+                if (gameplayLevelConfigurationVersion < 9)
+                {
+                    smallPotionInvulnerabilityGoldFilter = 0.2f;
+                    smallPotionFilterFadeDuration = 0.1f;
+                }
+                if (gameplayLevelConfigurationVersion < 10)
+                    documentSmallPotionHold = 3f;
                 gameplayLevelConfigurationVersion = GameplayLevelConfigurationVersion;
             }
             [Range(24, 64), InspectorName("Max Distant Visible Enemies（最大远处可见敌人数）")] public int maxDistantVisibleEnemies = 48;
@@ -269,6 +331,10 @@ namespace PlayableAd
             [Header("Road Collision Boundaries（道路碰撞边界）")]
             [Min(0.1f), InspectorName("Road Boundary Thickness（道路边界厚度）")] public float roadBoundaryThickness = 0.35f;
             [Min(2f), InspectorName("Road Boundary Height（道路边界高度）")] public float roadBoundaryHeight = 5.5f;
+
+            [Header("Lane Dividers（分路线）")]
+            [Range(0.03f, 0.16f), InspectorName("Lane Divider Width（分路线宽度）")] public float laneDividerWidth = 0.08f;
+            [InspectorName("Lane Divider Color（分路线颜色）")] public Color laneDividerColor = new Color(0.15f, 0.16f, 0.16f, 0.5f);
 
             [Header("Medieval Stone Palette（中世纪石材色板）")]
             [InspectorName("Sky Fog Color（天空雾色）")] public Color skyFogColor = new Color(0.24f, 0.32f, 0.39f);
@@ -343,7 +409,6 @@ namespace PlayableAd
             public ElixirPickup elixir;
             public float temporaryBoostAmount;
             public float temporaryBoostHoldDuration;
-            public float temporaryBoostReturnDuration;
             public bool temporaryBoostGrantsInvulnerability;
             public float wallCenterX;
             public float wallHalfWidth;
@@ -468,11 +533,14 @@ namespace PlayableAd
         [SerializeField, InspectorName("Level 1 Soldier Icon（1级士兵图标）")] private Sprite speedBarSoldierHintIcon;
         [SerializeField, InspectorName("Stone Wall Icon（石墙图标）")] private Sprite speedBarStoneWallHintIcon;
         [SerializeField, InspectorName("Locked Stone Wall Icon（未解锁石墙图标）")] private Sprite speedBarStoneWallLockedHintIcon;
+        [SerializeField, InspectorName("Level 8 Elite Icon（8级精英图标）")] private Sprite speedBarEliteHintIcon;
+        [SerializeField, InspectorName("Locked Level 8 Elite Icon（未解锁8级精英图标）")] private Sprite speedBarEliteLockedHintIcon;
+        [SerializeField, InspectorName("Level 10 Boss Icon（10级Boss图标）")] private Sprite speedBarBossHintIcon;
+        [SerializeField, InspectorName("Locked Level 10 Boss Icon（未解锁10级Boss图标）")] private Sprite speedBarBossLockedHintIcon;
 
         [Header("External speed VFX（外部速度特效）")]
         [SerializeField, InspectorName("Running Wind Trail Prefab（跑步风痕预制体）")] private GameObject runningWindTrailPrefab;
         [SerializeField, InspectorName("Acceleration Aura Prefab（加速法阵预制体）")] private GameObject accelerationAuraPrefab;
-        [SerializeField, InspectorName("Upgrade Magic Circle Texture（升级法阵贴图）")] private Texture2D upgradeMagicCircleTexture;
 
         [Header("Elixir presentation（药剂表现）")]
         [SerializeField, InspectorName("Elixir Presentation（药剂表现设置）")] private ElixirPresentationSettings elixirPresentation = new ElixirPresentationSettings();
@@ -532,6 +600,8 @@ namespace PlayableAd
 
         private readonly List<Encounter> encounters = new List<Encounter>();
         private readonly List<GameObject> rewardStageWallRoots = new List<GameObject>();
+        private readonly List<GameObject> roadBorderFlames = new List<GameObject>();
+        private readonly List<Mesh> ownedRuntimeMeshes = new List<Mesh>();
         private readonly HashSet<int> targetVisualFallbackWarnings = new HashSet<int>();
         private Transform worldRoot;
         private Transform runner;
@@ -559,6 +629,7 @@ namespace PlayableAd
         private NumberCombatSystem numberCombatSystem;
         private NumberCombatTarget bossNumberTarget;
         private VisualTimeScaleController visualTimeScale;
+        private SoldierVisualPool soldierVisualPool;
         private PlayerSpeedController speedController;
         private PlayerForwardMotionController forwardMotion;
         private Animator runnerAnimator;
@@ -575,6 +646,7 @@ namespace PlayableAd
         private Vector3 directionalShake;
         private float flashAlpha;
         private float penaltyEdgeIntensity;
+        private float smallPotionGoldOverlayAlpha;
         private float fovPunchOffset;
         private float baseFov = 58f;
         private bool dragging;
@@ -598,6 +670,7 @@ namespace PlayableAd
         private bool rewardStageActive;
         private bool rewardStageBuilt;
         private bool rewardStageCompleted;
+        private bool rewardStageFinishing;
         private float rewardStageEndZ;
         private bool ending;
         private BossClashPhase currentBossPhase;
@@ -605,22 +678,22 @@ namespace PlayableAd
         private float calloutUntil;
         private Texture2D whiteTexture;
         private Texture2D penaltyEdgeTexture;
-        private GUIStyle titleStyle;
-        private GUIStyle bodyStyle;
-        private GUIStyle smallStyle;
-        private GUIStyle buttonStyle;
-        private GUIStyle smashTitleStyle;
-        private GUIStyle smashSubtitleStyle;
-        private GUIStyle tutorialBulletWarningStyle;
-        private GUIStyle tutorialBulletWarningShadowStyle;
+        [NonSerialized] private GUIStyle titleStyle;
+        [NonSerialized] private GUIStyle bodyStyle;
+        [NonSerialized] private GUIStyle smallStyle;
+        [NonSerialized] private GUIStyle buttonStyle;
+        [NonSerialized] private GUIStyle smashTitleStyle;
+        [NonSerialized] private GUIStyle smashSubtitleStyle;
+        [NonSerialized] private GUIStyle rewardWingCalloutStyle;
+        [NonSerialized] private GUIStyle powerUpStyle;
+        [NonSerialized] private GUIStyle powerUpShadowStyle;
+        [NonSerialized] private GUIStyle tutorialBulletWarningStyle;
+        [NonSerialized] private GUIStyle tutorialBulletWarningShadowStyle;
         private float smashEffectStart;
         private float smashEffectUntil;
+        private float powerUpNoticeStart;
+        private float powerUpNoticeUntil;
         private bool tutorialBulletTimeWarningActive;
-        private LineRenderer upgradeRing;
-        private SpriteRenderer upgradeMagicCircle;
-        private SpriteRenderer upgradeMagicCircleGlow;
-        private Sprite upgradeMagicCircleSprite;
-        private int upgradeRingSequence;
         private float lastImpactTime;
         private float lastNormalShakeTime;
         private int comboPitchIndex;
@@ -635,6 +708,21 @@ namespace PlayableAd
         private float naturalSpeedLossProtectedUntil;
         private int naturalSpeedLossProtectedLevel;
         private int smallPotionInvulnerabilityCount;
+        private float tutorialElixirVisualUntil;
+        private float nextWorldVisibilityUpdate;
+        private int firstRelevantEncounterIndex;
+        private bool tier1SoldierVisualAvailable;
+        private bool tier4SoldierVisualAvailable;
+        private GameObject dividerWallRoot;
+        private float dividerWallStartZ;
+        private float dividerWallEndZ;
+        private float dividerWallX;
+        private int dividerWallSafeSide = 1;
+        private bool dividerWallBulletTimeTriggered;
+        private bool restartRequested;
+        private GameObject restartButtonCanvas;
+        private RectTransform restartSafeAreaRoot;
+        private Rect lastRestartSafeArea;
 
         public PlayerSpeedController SpeedController => speedController;
         private bool SmallPotionInvulnerabilityActive => smallPotionInvulnerabilityCount > 0;
@@ -655,11 +743,20 @@ namespace PlayableAd
         private float CourseDistanceScale => tuning != null ? Mathf.Max(0.1f, tuning.bossDistance / 1300f) : 1f;
         private float OpeningElixirZ => tuning.openingElixirTime * playerSpeed.forwardSpeeds[0];
 
+        private static bool IsConstrainedRuntimePlatform()
+        {
+#if UNITY_EDITOR
+            return false;
+#else
+            return Application.isMobilePlatform || Application.platform == RuntimePlatform.WebGLPlayer;
+#endif
+        }
+
         private void OnValidate()
         {
             if (tuning == null) tuning = new Tuning();
             if (playerSpeed == null) playerSpeed = new PlayerSpeedSettings();
-            tuning.UpgradeGameplayLevelConfiguration(playerSpeed);
+            tuning.UpgradeGameplayLevelConfiguration(playerSpeed, prefab);
             if (gameplayCombo == null) gameplayCombo = new GameplayComboSettings();
             gameplayCombo.UpgradeLegacyDefaults();
             if (numberCombat == null) numberCombat = new NumberCombatSettings();
@@ -677,13 +774,16 @@ namespace PlayableAd
             Screen.autorotateToLandscapeRight = false;
             if (tuning == null) tuning = new Tuning();
             if (playerSpeed == null) playerSpeed = new PlayerSpeedSettings();
-            tuning.UpgradeGameplayLevelConfiguration(playerSpeed);
+            tuning.UpgradeGameplayLevelConfiguration(playerSpeed, prefab);
             if (!ValidatePrefabModules())
             {
                 enabled = false;
                 return;
             }
             if (rewardRun == null) rewardRun = new BossRewardRunSettings();
+            if (visualPerformance == null) visualPerformance = new VisualPerformanceSettings();
+            if (visualPerformance.autoLowQualityOnMobileWeb && IsConstrainedRuntimePlatform())
+                visualPerformance.lowQualityMode = true;
             ApplyDocumentCourseLength();
             if (speedVisualProfile == null)
             {
@@ -694,11 +794,15 @@ namespace PlayableAd
             flowController = GetComponent<RunFlowController>();
             if (flowController == null) flowController = gameObject.AddComponent<RunFlowController>();
             flowController.ResetToIntro();
+            CacheTargetVisualAvailability();
             BuildWorld();
             BuildLevel();
+            SortEncountersByDistance();
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
+            powerUpNoticeStart = 0f;
+            powerUpNoticeUntil = 0f;
             if (autoBeginGameplay)
             {
                 BeginGameplay();
@@ -718,11 +822,15 @@ namespace PlayableAd
             rewardStageActive = false;
             rewardStageBuilt = false;
             rewardStageCompleted = false;
+            rewardStageFinishing = false;
             rewardStageEndZ = 0f;
             rewardStageWallRoots.Clear();
             naturalSpeedLossProtectedUntil = 0f;
             naturalSpeedLossProtectedLevel = 0;
             smallPotionInvulnerabilityCount = 0;
+            tutorialElixirVisualUntil = 0f;
+            smallPotionGoldOverlayAlpha = 0f;
+            dividerWallBulletTimeTriggered = false;
             flowController?.ResetToIntro();
             comboManager?.ResetCombo();
             numberCombatSystem?.RefreshPlayerLevel();
@@ -731,6 +839,8 @@ namespace PlayableAd
             targetX = 0f;
             callout = string.Empty;
             calloutUntil = 0f;
+            powerUpNoticeStart = 0f;
+            powerUpNoticeUntil = 0f;
             penaltyEdgeIntensity = 0f;
             tutorialBulletTimeWarningActive = false;
             runnerSpriteVisual?.ResetVisualState();
@@ -753,9 +863,15 @@ namespace PlayableAd
             rewardStageActive = false;
             rewardStageBuilt = false;
             rewardStageCompleted = false;
+            rewardStageFinishing = false;
             rewardStageEndZ = 0f;
             rewardStageWallRoots.Clear();
             smallPotionInvulnerabilityCount = 0;
+            tutorialElixirVisualUntil = 0f;
+            smallPotionGoldOverlayAlpha = 0f;
+            dividerWallBulletTimeTriggered = false;
+            powerUpNoticeStart = 0f;
+            powerUpNoticeUntil = 0f;
             comboManager?.ResetCombo();
             numberCombatSystem?.RefreshPlayerLevel();
             speedController.SetLevel(playerSpeed.startingLevel, SpeedChangeReason.InitialSetup, this);
@@ -786,8 +902,14 @@ namespace PlayableAd
                 : 0.65f;
             penaltyEdgeIntensity = Mathf.MoveTowards(penaltyEdgeIntensity, 0f,
                 Time.unscaledDeltaTime / penaltyFadeDuration);
+            UpdateSmallPotionInvulnerabilityPresentation();
             UpdateTutorialBulletTimeWarningState();
-            bool movementActive = gameplayStarted && !ending && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
+            UpdateWorldVisibility();
+            UpdateDividerWallVisibility();
+            UpdateLargePotionVisibility();
+            UpdateRestartButtonSafeArea();
+            bool movementActive = gameplayStarted && !ending && !rewardStageFinishing
+                && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
             if (!movementActive)
             {
                 forwardMotion?.Tick(0f, false);
@@ -811,6 +933,8 @@ namespace PlayableAd
             if (!bossSequence)
             {
                 MoveRunner();
+                UpdateDividerWallBulletTime();
+                BlockDividerWallCrossing();
                 ProcessEncounters();
                 RecoverAtMinimumSpeedAfterTutorial();
                 if (rewardStageActive)
@@ -1223,6 +1347,7 @@ namespace PlayableAd
         {
             int preloadedEnemies = 0;
             int distantVisibleEnemies = 0;
+            int animatedEnemies = 0;
             float currentForwardSpeed = GetForwardSpeed();
             float preloadDistance = Mathf.Clamp(currentForwardSpeed * tuning.enemyPreloadTime,
                 tuning.minimumEnemyPreloadDistance, tuning.maximumEnemyPreloadDistance);
@@ -1230,7 +1355,30 @@ namespace PlayableAd
                 tuning.minimumEnemyVisibleDistance, tuning.maximumEnemyVisibleDistance);
             float activeDistance = Mathf.Clamp(currentForwardSpeed * tuning.enemyActiveTime,
                 tuning.minimumEnemyActiveDistance, tuning.maximumEnemyActiveDistance);
-            for (int i = 0; i < encounters.Count; i++)
+            float recycleDistance = tuning.recycleDistance;
+            int maxPreloadedEnemies = tuning.maxPreloadedEnemies;
+            int maxDistantVisibleEnemies = tuning.maxDistantVisibleEnemies;
+            int maxAnimatedEnemies = tuning.maxAnimatedEnemies;
+            if (visualPerformance != null && visualPerformance.lowQualityMode)
+            {
+                maxPreloadedEnemies = Mathf.Min(maxPreloadedEnemies, 36);
+                maxDistantVisibleEnemies = Mathf.Min(maxDistantVisibleEnemies, 24);
+                activeDistance = Mathf.Min(activeDistance,
+                    visualPerformance.lowQualityEnemyActiveDistance);
+                recycleDistance = Mathf.Min(recycleDistance,
+                    visualPerformance.lowQualityEnemyRecycleDistance);
+                maxAnimatedEnemies = Mathf.Min(maxAnimatedEnemies,
+                    visualPerformance.lowQualityAnimatedEnemyLimit);
+            }
+
+            while (firstRelevantEncounterIndex < encounters.Count)
+            {
+                Encounter first = encounters[firstRelevantEncounterIndex];
+                if (first != null && first.root != null && !first.consumed) break;
+                firstRelevantEncounterIndex++;
+            }
+
+            for (int i = firstRelevantEncounterIndex; i < encounters.Count; i++)
             {
                 Encounter encounter = encounters[i];
                 if (encounter.consumed || encounter.root == null)
@@ -1239,17 +1387,18 @@ namespace PlayableAd
                 }
 
                 float dz = encounter.root.transform.position.z - runner.position.z;
-                if (encounter.type == EncounterType.Elixir && dz > preloadDistance)
-                {
-                    if (encounter.root.activeSelf) encounter.root.SetActive(false);
-                    continue;
-                }
+                if (dz > preloadDistance) break;
                 if (encounter.type == EncounterType.Elixir && !encounter.root.activeSelf)
                     encounter.root.SetActive(true);
 
+                if (encounter.type == EncounterType.Wall)
+                {
+                    if (!encounter.root.activeSelf) encounter.root.SetActive(true);
+                }
+
                 if (encounter.type == EncounterType.Target)
                 {
-                    if (dz < -tuning.recycleDistance)
+                    if (dz < -recycleDistance)
                     {
                         encounter.consumed = true;
                         encounter.visibility?.Recycle();
@@ -1263,14 +1412,14 @@ namespace PlayableAd
                     }
                     else if (dz > visibleDistance)
                     {
-                        desiredState = preloadedEnemies < tuning.maxPreloadedEnemies
+                        desiredState = preloadedEnemies < maxPreloadedEnemies
                             ? EnemyVisibilityState.Preloaded
                             : EnemyVisibilityState.Pooled;
                         if (desiredState == EnemyVisibilityState.Preloaded) preloadedEnemies++;
                     }
                     else if (dz > activeDistance)
                     {
-                        desiredState = distantVisibleEnemies < tuning.maxDistantVisibleEnemies
+                        desiredState = distantVisibleEnemies < maxDistantVisibleEnemies
                             ? EnemyVisibilityState.DistantVisible
                             : EnemyVisibilityState.Preloaded;
                         if (desiredState == EnemyVisibilityState.DistantVisible) distantVisibleEnemies++;
@@ -1282,13 +1431,19 @@ namespace PlayableAd
                     }
 
                     encounter.visibility?.SetState(desiredState);
+                    if (desiredState == EnemyVisibilityState.Active && encounter.visibility != null)
+                    {
+                        bool animate = animatedEnemies < maxAnimatedEnemies;
+                        encounter.visibility.SetActiveAnimationBudget(animate);
+                        if (animate) animatedEnemies++;
+                    }
                     if (desiredState != EnemyVisibilityState.Active) continue;
                 }
 
                 bool crossedThisFrame = encounter.hasPreviousDistance && encounter.previousDistance > 0f && dz <= 0f;
                 encounter.previousDistance = dz;
                 encounter.hasPreviousDistance = true;
-                if (dz < -tuning.recycleDistance && !crossedThisFrame)
+                if (dz < -recycleDistance && !crossedThisFrame)
                 {
                     encounter.consumed = true;
                     CompleteTutorialIfNeeded(encounter);
@@ -1393,12 +1548,15 @@ namespace PlayableAd
             }
             else
             {
-                if (prefab.soldierSections == null || prefab.soldierSections.Length == 0)
-                    missing.Add("Soldier Sections");
                 if (prefab.stoneWallPrefab == null)
                     missing.Add("Stone Wall Prefab");
-                if (prefab.additionalStoneWalls == null || prefab.additionalStoneWalls.Length == 0)
-                    missing.Add("Additional Stone Walls");
+                if (tuning == null || !tuning.useDocumentMainRunLayout)
+                {
+                    if (prefab.soldierSections == null || prefab.soldierSections.Length == 0)
+                        missing.Add("Soldier Sections");
+                    if (prefab.additionalStoneWalls == null || prefab.additionalStoneWalls.Length == 0)
+                        missing.Add("Additional Stone Walls");
+                }
             }
 
             if (missing.Count == 0) return true;
@@ -1432,7 +1590,10 @@ namespace PlayableAd
             if (encounter.elixir == null || encounter.elixir.HasCollected) return;
             audioFeedback?.PlayElixirContact();
             if (!encounter.elixir.TryCollect()) return;
-            if (encounter.temporaryBoostAmount > 0f)
+            if (encounter.exclusivePickupGroupId == OpeningElixirGroupId)
+                BeginTutorialElixirVisuals();
+            if (encounter.temporaryBoostAmount > 0f
+                || encounter.temporaryBoostGrantsInvulnerability)
             {
                 StartCoroutine(TemporaryBoostSequence(encounter));
             }
@@ -1440,6 +1601,34 @@ namespace PlayableAd
             {
                 StartCoroutine(ElixirUpgradeSequence(encounter, encounter.tier));
             }
+        }
+
+        private void UpdateWorldVisibility()
+        {
+            if (runner == null || roadBorderFlames.Count == 0
+                || Time.unscaledTime < nextWorldVisibilityUpdate)
+                return;
+
+            nextWorldVisibilityUpdate = Time.unscaledTime + 0.2f;
+            float runnerZ = runner.position.z;
+            float forwardDistance = Mathf.Max(60f, environment.fogEnd + 20f);
+            const float behindDistance = 28f;
+            for (int i = 0; i < roadBorderFlames.Count; i++)
+            {
+                GameObject flame = roadBorderFlames[i];
+                if (flame == null) continue;
+                float dz = flame.transform.position.z - runnerZ;
+                bool visible = dz >= -behindDistance && dz <= forwardDistance;
+                if (flame.activeSelf != visible) flame.SetActive(visible);
+            }
+        }
+
+        private void BeginTutorialElixirVisuals()
+        {
+            tutorialElixirVisualUntil = Time.unscaledTime
+                + Mathf.Max(0.1f, elixirPresentation.totalDuration);
+            powerUpNoticeStart = Time.unscaledTime;
+            powerUpNoticeUntil = powerUpNoticeStart + 0.9f;
         }
 
         private void CollectExclusiveElixirGroup(int groupId)
@@ -1512,7 +1701,6 @@ namespace PlayableAd
                     fovPunchOffset = Mathf.Max(fovPunchOffset, elixirPresentation.cameraRebound);
                     callout = nextTier == speedController.MaxLevel ? "MAX SPEED!" : "";
                     calloutUntil = elapsed + 0.6f;
-                    StartCoroutine(PlayUpgradeRing(nextTier));
                 }
 
                 yield return null;
@@ -1524,121 +1712,20 @@ namespace PlayableAd
             }
         }
 
-        private IEnumerator PlayUpgradeRing(int targetLevel)
+        private void UpdateSmallPotionInvulnerabilityPresentation()
         {
-            if (upgradeRing == null && upgradeMagicCircle == null)
-            {
-                yield break;
-            }
+            numberCombatSystem?.SetInvulnerabilityActive(SmallPotionInvulnerabilityActive);
+            bool visualInvulnerabilityActive = SmallPotionInvulnerabilityActive
+                || Time.unscaledTime < tutorialElixirVisualUntil;
+            float fadeDuration = tuning != null
+                ? Mathf.Max(0.02f, tuning.smallPotionFilterFadeDuration)
+                : 0.1f;
+            float targetOverlayAlpha = visualInvulnerabilityActive && tuning != null
+                ? Mathf.Clamp(tuning.smallPotionInvulnerabilityGoldFilter, 0f, 0.5f)
+                : 0f;
+            smallPotionGoldOverlayAlpha = Mathf.MoveTowards(smallPotionGoldOverlayAlpha,
+                targetOverlayAlpha, Time.unscaledDeltaTime * 0.5f / fadeDuration);
 
-            int sequence = ++upgradeRingSequence;
-            if (upgradeRing != null) upgradeRing.enabled = true;
-            if (upgradeMagicCircle != null) upgradeMagicCircle.enabled = true;
-            if (upgradeMagicCircleGlow != null) upgradeMagicCircleGlow.enabled = true;
-
-            float timer = 0f;
-            const float primaryIntroDuration = 0.22f;
-            const float primarySettleDuration = 0.18f;
-            const float primaryHoldEnd = 0.85f;
-            const float primaryDuration = 1.35f;
-            const float circleIntroDuration = 0.28f;
-            const float circleHoldEnd = 1.75f;
-            const float circleDuration = 2.35f;
-            float normalRadius = elixirPresentation.energyRingMaxRadius;
-            float overshootRadius = normalRadius * 1.18f;
-            Color targetColor = speedVisualProfile.Get(targetLevel).primaryColor;
-            Color circleColor = Color.Lerp(new Color(1f, 0.24f, 0.025f), targetColor, 0.28f);
-            Color circleGlowColor = Color.Lerp(new Color(0.95f, 0.035f, 0.015f), targetColor, 0.16f);
-
-            while (timer < circleDuration && sequence == upgradeRingSequence)
-            {
-                timer += Time.unscaledDeltaTime;
-                if (upgradeRing != null && timer <= primaryDuration)
-                {
-                    float radius;
-                    float alpha;
-                    if (timer < primaryIntroDuration)
-                    {
-                        float t = Mathf.Clamp01(timer / primaryIntroDuration);
-                        radius = Mathf.Lerp(0.12f, overshootRadius, 1f - Mathf.Pow(1f - t, 3f));
-                        alpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t * 2.2f));
-                    }
-                    else if (timer < primaryIntroDuration + primarySettleDuration)
-                    {
-                        float t = Mathf.Clamp01((timer - primaryIntroDuration) / primarySettleDuration);
-                        radius = Mathf.Lerp(overshootRadius, normalRadius, Mathf.SmoothStep(0f, 1f, t));
-                        alpha = 1f;
-                    }
-                    else if (timer < primaryHoldEnd)
-                    {
-                        radius = normalRadius * (1f + Mathf.Sin(timer * 10f) * 0.022f);
-                        alpha = 0.92f;
-                    }
-                    else
-                    {
-                        float t = Mathf.Clamp01((timer - primaryHoldEnd) / (primaryDuration - primaryHoldEnd));
-                        float eased = Mathf.SmoothStep(0f, 1f, t);
-                        radius = Mathf.Lerp(normalRadius, 0.05f, eased);
-                        alpha = 1f - eased;
-                    }
-
-                    upgradeRing.transform.localScale = Vector3.one * radius;
-                    Color color = Color.Lerp(speedVisualProfile.Get(1).primaryColor, targetColor,
-                        Mathf.Clamp01(timer / (primaryIntroDuration + primarySettleDuration)));
-                    color.a = alpha;
-                    upgradeRing.startColor = color;
-                    upgradeRing.endColor = color;
-                }
-                else if (upgradeRing != null)
-                {
-                    upgradeRing.enabled = false;
-                }
-
-                float circleScale;
-                float circleAlpha;
-                if (timer < circleIntroDuration)
-                {
-                    float t = Mathf.Clamp01(timer / circleIntroDuration);
-                    circleScale = Mathf.Lerp(0.1f, 0.7f, 1f - Mathf.Pow(1f - t, 3f));
-                    circleAlpha = Mathf.SmoothStep(0f, 0.88f, t);
-                }
-                else if (timer < circleHoldEnd)
-                {
-                    float pulse = Mathf.Sin((timer - circleIntroDuration) * 5.2f);
-                    circleScale = 0.66f * (1f + pulse * 0.045f);
-                    circleAlpha = 0.76f + pulse * 0.1f;
-                }
-                else
-                {
-                    float t = Mathf.Clamp01((timer - circleHoldEnd) / (circleDuration - circleHoldEnd));
-                    float eased = Mathf.SmoothStep(0f, 1f, t);
-                    circleScale = Mathf.Lerp(0.66f, 0.05f, eased);
-                    circleAlpha = Mathf.Lerp(0.76f, 0f, eased);
-                }
-
-                if (upgradeMagicCircle != null)
-                {
-                    upgradeMagicCircle.transform.localScale = Vector3.one * circleScale;
-                    upgradeMagicCircle.transform.Rotate(0f, 0f, 42f * Time.unscaledDeltaTime, Space.Self);
-                    Color color = circleColor;
-                    color.a = circleAlpha;
-                    upgradeMagicCircle.color = color;
-                }
-                if (upgradeMagicCircleGlow != null)
-                {
-                    upgradeMagicCircleGlow.transform.localScale = Vector3.one * circleScale * 1.12f;
-                    upgradeMagicCircleGlow.transform.Rotate(0f, 0f, -18f * Time.unscaledDeltaTime, Space.Self);
-                    Color glowColor = circleGlowColor;
-                    glowColor.a = circleAlpha * 0.34f;
-                    upgradeMagicCircleGlow.color = glowColor;
-                }
-                yield return null;
-            }
-
-            if (sequence != upgradeRingSequence) yield break;
-            if (upgradeRing != null) upgradeRing.enabled = false;
-            if (upgradeMagicCircle != null) upgradeMagicCircle.enabled = false;
-            if (upgradeMagicCircleGlow != null) upgradeMagicCircleGlow.enabled = false;
         }
 
         private void HitTarget(Encounter encounter)
@@ -1649,8 +1736,17 @@ namespace PlayableAd
             UpdateGameplayCombo(encounter, resolution);
             if (resolution == ObstacleResolutionType.Boosted)
             {
-                callout = "撞！\n速度↑";
-                calloutUntil = elapsed + 0.75f;
+                if (!rewardStageActive && runner != null
+                    && runner.position.z <= MainRunSmashCalloutEndZ)
+                {
+                    callout = SmashSpeedCallout;
+                    calloutUntil = elapsed + 0.75f;
+                }
+                else if (callout == SmashSpeedCallout)
+                {
+                    callout = string.Empty;
+                    calloutUntil = elapsed;
+                }
                 smashEffectStart = Time.unscaledTime;
                 smashEffectUntil = smashEffectStart + 0.28f;
                 Impact(encounter, CollisionOutcome.SpeedGain, 1.15f);
@@ -1809,6 +1905,48 @@ namespace PlayableAd
 
             rewardStageCompleted = true;
             rewardStageActive = false;
+            rewardStageFinishing = true;
+            runner.position = new Vector3(runner.position.x, runner.position.y, rewardStageEndZ);
+            CancelDrag();
+            forwardMotion?.Tick(0f, false);
+            StartCoroutine(FinishRewardStageWithWingPickup());
+        }
+
+        private IEnumerator FinishRewardStageWithWingPickup()
+        {
+            if (rewardGuideBubble != null && runner != null)
+            {
+                rewardGuideBubble.position = GetRewardGuideLandingPosition();
+                FaceRewardGuideTowardCamera(true);
+                Vector3 start = rewardGuideBubble.position;
+                Vector3 startScale = rewardGuideBubble.localScale;
+                float duration = rewardRun != null
+                    ? Mathf.Max(0.1f, rewardRun.guidePickupDuration)
+                    : 0.28f;
+                float timer = 0f;
+                while (timer < duration && rewardGuideBubble != null)
+                {
+                    timer += Time.unscaledDeltaTime;
+                    float t = Mathf.Clamp01(timer / duration);
+                    float eased = Mathf.SmoothStep(0f, 1f, t);
+                    Vector3 pickupPoint = runner.position + new Vector3(0f, 0.55f, 0.12f);
+                    rewardGuideBubble.position = Vector3.Lerp(start, pickupPoint, eased);
+                    rewardGuideBubble.localScale = Vector3.Lerp(startScale,
+                        startScale * 0.58f, eased);
+                    float alpha = 1f - Mathf.SmoothStep(0.72f, 1f, t);
+                    SetRewardGuideBubbleAlpha(rewardGuideBubbleCore, alpha);
+                    SetRewardGuideBubbleAlpha(rewardGuideBubbleInnerGlow, alpha * 0.44f);
+                    SetRewardGuideBubbleAlpha(rewardGuideBubbleOuterGlow, alpha * 0.28f);
+                    if (rewardGuideBubbleLight != null)
+                        rewardGuideBubbleLight.intensity = alpha * 1.35f;
+                    yield return null;
+                }
+
+                flashAlpha = Mathf.Max(flashAlpha, 0.3f);
+                DestroyRewardGuideBubble();
+            }
+
+            rewardStageFinishing = false;
             ending = true;
             SetGameplayHudVisible(false);
             flowController.EnterResult();
@@ -1827,6 +1965,14 @@ namespace PlayableAd
         {
             if (bossRuntimeAnimator != null && bossSupportsAttackAnimation)
                 bossRuntimeAnimator.SetBool(BossAttackingHash, attacking);
+        }
+
+        private void TriggerBossAttackPenaltyFeedback()
+        {
+            if (currentBossPhase != BossClashPhase.Contact
+                && currentBossPhase != BossClashPhase.Struggle)
+                return;
+            penaltyEdgeIntensity = Mathf.Max(penaltyEdgeIntensity, 1f);
         }
 
         private void ResetBossTapInteraction(bool immediatePromptHide)
@@ -1931,6 +2077,7 @@ namespace PlayableAd
                 if (speedQualified && ReadBossTapDown())
                 {
                     bossTapCount = Mathf.Min(requiredTaps, bossTapCount + 1);
+                    comboManager?.AddCombo();
                     tapPush = 1f;
                     bossTapPromptView?.RegisterTap();
                 }
@@ -2071,6 +2218,7 @@ namespace PlayableAd
             rewardStageActive = true;
             bossVictoryFraming = false;
             rewardStageCompleted = false;
+            rewardStageFinishing = false;
             rewardStageEndZ = CourseEndZ;
             bossSequence = false;
             ending = false;
@@ -2296,13 +2444,35 @@ namespace PlayableAd
 
             Vector3 velocity = Vector3.zero;
             float timer = 0f;
-            while (rewardGuideBubble != null)
+            bool landingStarted = false;
+            Vector3 landingStart = Vector3.zero;
+            while (rewardGuideBubble != null && rewardStageActive)
             {
                 timer += Time.unscaledDeltaTime;
-                Vector3 target = GetRewardGuideScreenAnchor();
-                rewardGuideBubble.position = Vector3.SmoothDamp(
-                    rewardGuideBubble.position, target, ref velocity, 0.2f, 40f,
-                    Time.unscaledDeltaTime);
+                float landingDistance = rewardRun != null
+                    ? Mathf.Max(1f, rewardRun.guideLandingDistance)
+                    : 18f;
+                float remainingDistance = runner != null
+                    ? rewardStageEndZ - runner.position.z
+                    : landingDistance;
+                if (remainingDistance <= landingDistance)
+                {
+                    if (!landingStarted)
+                    {
+                        landingStarted = true;
+                        landingStart = rewardGuideBubble.position;
+                    }
+                    float landingT = Mathf.Clamp01(1f - remainingDistance / landingDistance);
+                    rewardGuideBubble.position = Vector3.Lerp(landingStart,
+                        GetRewardGuideLandingPosition(), Mathf.SmoothStep(0f, 1f, landingT));
+                }
+                else
+                {
+                    Vector3 target = GetRewardGuideScreenAnchor();
+                    rewardGuideBubble.position = Vector3.SmoothDamp(
+                        rewardGuideBubble.position, target, ref velocity, 0.2f, 40f,
+                        Time.unscaledDeltaTime);
+                }
                 FaceRewardGuideTowardCamera(false);
                 UpdateRewardGuideBubbleAppearance(timer, 1f);
                 yield return null;
@@ -2383,7 +2553,7 @@ namespace PlayableAd
         private Vector3 GetRewardGuideScreenAnchor()
         {
             if (gameCamera == null)
-                return runner != null ? runner.position + new Vector3(0f, 3f, 6f) : Vector3.up * 3f;
+                return runner != null ? runner.position + new Vector3(0f, 2.2f, 6f) : Vector3.up * 2.2f;
 
             float depth = 12f;
             if (runner != null)
@@ -2392,7 +2562,19 @@ namespace PlayableAd
                     gameCamera.transform.forward);
             }
             depth = Mathf.Max(7f, depth);
-            return gameCamera.ViewportToWorldPoint(new Vector3(0.5f, 0.78f, depth));
+            float viewportHeight = rewardRun != null
+                ? Mathf.Clamp(rewardRun.guideViewportHeight, 0.35f, 0.75f)
+                : 0.52f;
+            return gameCamera.ViewportToWorldPoint(new Vector3(0.5f, viewportHeight, depth));
+        }
+
+        private Vector3 GetRewardGuideLandingPosition()
+        {
+            float x = runner != null ? runner.position.x : 0f;
+            float y = rewardRun != null
+                ? Mathf.Max(0.2f, rewardRun.guideGroundHeight)
+                : 0.45f;
+            return new Vector3(x, y, rewardStageEndZ);
         }
 
         private void FaceRewardGuideTowardCamera(bool immediate)
@@ -2449,6 +2631,9 @@ namespace PlayableAd
 
             worldRoot = new GameObject("GeneratedWorld").transform;
             worldRoot.SetParent(transform, false);
+            soldierVisualPool = gameObject.GetComponent<SoldierVisualPool>();
+            if (soldierVisualPool == null) soldierVisualPool = gameObject.AddComponent<SoldierVisualPool>();
+            soldierVisualPool.Initialize(worldRoot);
             if (GetComponent<BulletTimeManager>() == null)
                 gameObject.AddComponent<BulletTimeManager>();
             BuildCameraAndLight();
@@ -2494,9 +2679,107 @@ namespace PlayableAd
             speedBarView.Initialize(speedController, speedVisualProfile,
                 speedBarHintFrame, speedBarSoldierHintIcon, speedBarStoneWallHintIcon,
                 speedBarStoneWallLockedHintIcon,
+                speedBarEliteHintIcon, speedBarEliteHintIcon,
+                speedBarBossHintIcon, speedBarBossLockedHintIcon,
                 Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel),
                 runner, gameCamera);
             BuildComboSystem(canvasRoot);
+            BuildRestartButton();
+        }
+
+        private void BuildRestartButton()
+        {
+            EnsureRuntimeEventSystem();
+
+            GameObject canvasObject = new GameObject("RestartButtonCanvas", typeof(RectTransform));
+            canvasObject.transform.SetParent(transform, false);
+            restartButtonCanvas = canvasObject;
+            Canvas canvas = canvasObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 80;
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasObject.AddComponent<GraphicRaycaster>();
+
+            GameObject safeAreaObject = new GameObject("SafeArea", typeof(RectTransform));
+            safeAreaObject.transform.SetParent(canvasObject.transform, false);
+            restartSafeAreaRoot = safeAreaObject.GetComponent<RectTransform>();
+            ApplyRestartButtonSafeArea();
+
+            GameObject buttonObject = new GameObject("RestartButton", typeof(RectTransform));
+            buttonObject.transform.SetParent(restartSafeAreaRoot, false);
+            RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+            buttonRect.anchorMin = buttonRect.anchorMax = Vector2.zero;
+            buttonRect.pivot = Vector2.zero;
+            buttonRect.anchoredPosition = new Vector2(28f, 28f);
+            buttonRect.sizeDelta = new Vector2(216f, 76f);
+
+            Image background = buttonObject.AddComponent<Image>();
+            background.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+            background.type = background.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            background.color = new Color(0.035f, 0.045f, 0.055f, 0.9f);
+
+            Outline outline = buttonObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.82f, 0.88f, 0.92f, 0.85f);
+            outline.effectDistance = new Vector2(2f, -2f);
+            outline.useGraphicAlpha = true;
+
+            Button button = buttonObject.AddComponent<Button>();
+            button.targetGraphic = background;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 0.9f, 0.64f, 1f);
+            colors.pressedColor = new Color(0.72f, 0.78f, 0.82f, 1f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.fadeDuration = 0.06f;
+            button.colors = colors;
+            button.onClick.AddListener(RestartFromBeginning);
+
+            GameObject labelObject = new GameObject("Label", typeof(RectTransform));
+            labelObject.transform.SetParent(buttonRect, false);
+            RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(10f, 4f);
+            labelRect.offsetMax = new Vector2(-10f, -4f);
+            Text label = labelObject.AddComponent<Text>();
+            label.text = "RESTART";
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 31;
+            label.fontStyle = FontStyle.Bold;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = Color.white;
+            label.raycastTarget = false;
+        }
+
+        private void UpdateRestartButtonSafeArea()
+        {
+            if (restartSafeAreaRoot != null && Screen.safeArea != lastRestartSafeArea)
+                ApplyRestartButtonSafeArea();
+        }
+
+        private void ApplyRestartButtonSafeArea()
+        {
+            if (restartSafeAreaRoot == null || Screen.width <= 0 || Screen.height <= 0) return;
+            Rect safeArea = Screen.safeArea;
+            restartSafeAreaRoot.anchorMin = new Vector2(
+                safeArea.xMin / Screen.width, safeArea.yMin / Screen.height);
+            restartSafeAreaRoot.anchorMax = new Vector2(
+                safeArea.xMax / Screen.width, safeArea.yMax / Screen.height);
+            restartSafeAreaRoot.offsetMin = Vector2.zero;
+            restartSafeAreaRoot.offsetMax = Vector2.zero;
+            lastRestartSafeArea = safeArea;
+        }
+
+        private void EnsureRuntimeEventSystem()
+        {
+            if (EventSystem.current != null) return;
+            GameObject eventSystemObject = new GameObject("RuntimeEventSystem",
+                typeof(EventSystem), typeof(StandaloneInputModule));
+            eventSystemObject.transform.SetParent(transform, false);
         }
 
         private void BuildComboSystem(GameObject canvasRoot)
@@ -2508,7 +2791,8 @@ namespace PlayableAd
             comboManager.Initialize(gameplayCombo);
 
             comboUIController = canvasRoot.AddComponent<ComboUIController>();
-            comboUIController.Initialize(comboManager, gameplayCombo.presentation);
+            comboUIController.Initialize(comboManager, gameplayCombo.presentation,
+                speedBarView != null ? speedBarView.SoldierHintRoot : null);
         }
 
         private void BuildSpeedLevelFeedback()
@@ -2535,11 +2819,11 @@ namespace PlayableAd
             flashAlpha = Mathf.Max(flashAlpha, 0.045f);
             speedFeedback?.PulseNormalBoost();
             speedBarView?.PulseNormalBoost();
-            audioFeedback?.PlayEnergyReturn();
         }
 
         private void BuildCameraAndLight()
         {
+            bool lowQuality = visualPerformance != null && visualPerformance.lowQualityMode;
             baseFov = GetConfiguredBaseFov();
             lastScreenWidth = Screen.width;
             lastScreenHeight = Screen.height;
@@ -2569,6 +2853,8 @@ namespace PlayableAd
             gameCamera.farClipPlane = 420f;
             gameCamera.clearFlags = CameraClearFlags.SolidColor;
             gameCamera.backgroundColor = environment.skyFogColor;
+            gameCamera.allowHDR = !lowQuality;
+            gameCamera.allowMSAA = false;
 
             GameObject lightObject = new GameObject("Directional Light");
             lightObject.transform.SetParent(worldRoot, false);
@@ -2577,7 +2863,9 @@ namespace PlayableAd
             light.type = LightType.Directional;
             light.intensity = environment.lightIntensity;
             light.color = environment.lightColor;
-            light.shadows = LightShadows.Soft;
+            light.shadows = lowQuality || QualitySettings.shadows == ShadowQuality.Disable
+                ? LightShadows.None
+                : LightShadows.Soft;
             light.shadowStrength = environment.shadowStrength;
 
             RenderSettings.ambientLight = environment.ambientColor;
@@ -2586,8 +2874,16 @@ namespace PlayableAd
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = environment.fogStart;
             RenderSettings.fogEndDistance = environment.fogEnd;
-            QualitySettings.shadows = ShadowQuality.All;
-            QualitySettings.shadowDistance = environment.shadowDistance;
+            if (lowQuality)
+            {
+                QualitySettings.shadows = ShadowQuality.Disable;
+                QualitySettings.shadowDistance = 0f;
+            }
+            else if (QualitySettings.shadows != ShadowQuality.Disable)
+            {
+                QualitySettings.shadowDistance = Mathf.Min(QualitySettings.shadowDistance,
+                    environment.shadowDistance);
+            }
         }
 
         private float GetConfiguredBaseFov()
@@ -2599,7 +2895,7 @@ namespace PlayableAd
         {
             float courseEndZ = CourseEndZ;
             float roadLength = courseEndZ + 28f;
-            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, courseEndZ * 0.5f), new Vector3(8.5f, 0.5f, roadLength), environment.roadColor, worldRoot);
+            GameObject road = CreateBox("Road", new Vector3(0f, -0.3f, courseEndZ * 0.5f), new Vector3(RoadVisualWidth, 0.5f, roadLength), environment.roadColor, worldRoot);
             if (roadSurfaceMaterial != null)
                 road.GetComponent<Renderer>().sharedMaterial = roadSurfaceMaterial;
             GameObject leftWall = CreateBox("LeftWall", new Vector3(-4.7f, 0.25f, courseEndZ * 0.5f), new Vector3(1.1f, 1.1f, roadLength), environment.wallColor, worldRoot);
@@ -2608,13 +2904,12 @@ namespace PlayableAd
             CreateRoadBoundary("LeftRoadBoundary", -4.12f);
             CreateRoadBoundary("RightRoadBoundary", 4.12f);
 
-            CreateDecorationBox("LeftRouteGuide", new Vector3(-1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
-            CreateDecorationBox("RightRouteGuide", new Vector3(1.35f, -0.015f, courseEndZ * 0.5f), new Vector3(0.055f, 0.025f, courseEndZ + 20f), environment.routeMarkColor, worldRoot);
+            BuildLaneDividers(courseEndZ, roadLength, RoadVisualWidth * 0.5f);
 
-            for (float z = 0f; z < courseEndZ; z += environment.environmentReferenceSpacing)
+            BuildRoadBands(courseEndZ);
+            if (!hasAuthoredRoadBorders)
             {
-                CreateDecorationBox("RoadBand", new Vector3(0f, -0.02f, z), new Vector3(8.4f, 0.04f, 0.16f), environment.routeMarkColor, worldRoot);
-                if (!hasAuthoredRoadBorders)
+                for (float z = 0f; z < courseEndZ; z += environment.environmentReferenceSpacing)
                 {
                     CreateDecorationBox("TorchLeft", new Vector3(-4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
                     CreateDecorationBox("TorchRight", new Vector3(4.05f, 1.1f, z + 2.5f), new Vector3(0.25f, 2.2f, 0.25f), environment.timberColor, worldRoot);
@@ -2622,6 +2917,75 @@ namespace PlayableAd
             }
 
             BuildDistantCastle();
+        }
+
+        private void BuildLaneDividers(float courseEndZ, float roadLength, float roadVisualHalfWidth)
+        {
+            float dividerX = roadVisualHalfWidth / 3f;
+            float halfLineWidth = Mathf.Clamp(environment.laneDividerWidth, 0.03f, 0.16f) * 0.5f;
+            float zMin = courseEndZ * 0.5f - roadLength * 0.5f + 0.02f;
+            float zMax = courseEndZ * 0.5f + roadLength * 0.5f - 0.02f;
+            const float surfaceY = -0.038f;
+
+            var vertices = new Vector3[8];
+            var normals = new Vector3[8];
+            var uv = new Vector2[8];
+            var triangles = new int[12];
+            for (int divider = 0; divider < 2; divider++)
+            {
+                float centerX = divider == 0 ? -dividerX : dividerX;
+                int vertex = divider * 4;
+                vertices[vertex] = new Vector3(centerX - halfLineWidth, surfaceY, zMin);
+                vertices[vertex + 1] = new Vector3(centerX + halfLineWidth, surfaceY, zMin);
+                vertices[vertex + 2] = new Vector3(centerX + halfLineWidth, surfaceY, zMax);
+                vertices[vertex + 3] = new Vector3(centerX - halfLineWidth, surfaceY, zMax);
+                normals[vertex] = normals[vertex + 1] = normals[vertex + 2] = normals[vertex + 3] = Vector3.up;
+                uv[vertex] = new Vector2(0f, 0f);
+                uv[vertex + 1] = new Vector2(1f, 0f);
+                uv[vertex + 2] = new Vector2(1f, 1f);
+                uv[vertex + 3] = new Vector2(0f, 1f);
+
+                int triangle = divider * 6;
+                triangles[triangle] = vertex;
+                triangles[triangle + 1] = vertex + 2;
+                triangles[triangle + 2] = vertex + 1;
+                triangles[triangle + 3] = vertex;
+                triangles[triangle + 4] = vertex + 3;
+                triangles[triangle + 5] = vertex + 2;
+            }
+
+            Mesh mesh = new Mesh { name = "LaneDividersMesh" };
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            ownedRuntimeMeshes.Add(mesh);
+
+            GameObject root = new GameObject("LaneDividers");
+            root.transform.SetParent(worldRoot, false);
+            root.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = root.AddComponent<MeshRenderer>();
+            Color dividerColor = environment.laneDividerColor;
+            dividerColor.a = 0.5f;
+            Material material = RuntimeStyle.CreateMaterial(dividerColor, 0f, 0.12f);
+            ConfigureFadeMaterial(material);
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        private static void ConfigureFadeMaterial(Material material)
+        {
+            if (material == null) return;
+            material.SetFloat("_Mode", 2f);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
 
         private bool BuildRoadBorderVisuals(GameObject leftWall, GameObject rightWall)
@@ -2696,9 +3060,62 @@ namespace PlayableAd
                 chunk.AddComponent<MeshFilter>().sharedMesh = mesh;
                 MeshRenderer renderer = chunk.AddComponent<MeshRenderer>();
                 renderer.sharedMaterial = roadBorderMaterial;
-                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-                renderer.receiveShadows = true;
+                bool lowQuality = visualPerformance != null && visualPerformance.lowQualityMode;
+                renderer.shadowCastingMode = lowQuality
+                    ? UnityEngine.Rendering.ShadowCastingMode.Off
+                    : UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = !lowQuality;
+                ownedRuntimeMeshes.Add(mesh);
             }
+        }
+
+        private void BuildRoadBands(float courseEndZ)
+        {
+            float spacing = Mathf.Max(0.1f, environment.environmentReferenceSpacing);
+            int count = Mathf.CeilToInt(Mathf.Max(0f, courseEndZ) / spacing);
+            if (count <= 0) return;
+
+            var vertices = new Vector3[count * 4];
+            var normals = new Vector3[count * 4];
+            var uv = new Vector2[count * 4];
+            var triangles = new int[count * 6];
+            for (int band = 0; band < count; band++)
+            {
+                float z = band * spacing;
+                int vertex = band * 4;
+                vertices[vertex] = new Vector3(-4.2f, -0.02f, z - 0.08f);
+                vertices[vertex + 1] = new Vector3(4.2f, -0.02f, z - 0.08f);
+                vertices[vertex + 2] = new Vector3(4.2f, -0.02f, z + 0.08f);
+                vertices[vertex + 3] = new Vector3(-4.2f, -0.02f, z + 0.08f);
+                normals[vertex] = normals[vertex + 1] = normals[vertex + 2] = normals[vertex + 3] = Vector3.up;
+                uv[vertex] = new Vector2(0f, 0f);
+                uv[vertex + 1] = new Vector2(1f, 0f);
+                uv[vertex + 2] = new Vector2(1f, 1f);
+                uv[vertex + 3] = new Vector2(0f, 1f);
+                int triangle = band * 6;
+                triangles[triangle] = vertex;
+                triangles[triangle + 1] = vertex + 2;
+                triangles[triangle + 2] = vertex + 1;
+                triangles[triangle + 3] = vertex;
+                triangles[triangle + 4] = vertex + 3;
+                triangles[triangle + 5] = vertex + 2;
+            }
+
+            Mesh mesh = new Mesh { name = "CombinedRoadBandsMesh" };
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            ownedRuntimeMeshes.Add(mesh);
+
+            GameObject root = new GameObject("CombinedRoadBands");
+            root.transform.SetParent(worldRoot, false);
+            root.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = root.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = RuntimeStyle.CreateMaterial(environment.routeMarkColor, 0f, 0.38f);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
 
         private static void AddMeshSubmeshes(List<CombineInstance> combines, Mesh mesh,
@@ -2720,8 +3137,16 @@ namespace PlayableAd
             if (roadBorderFlamePrefab == null) return;
             GameObject flame = Instantiate(roadBorderFlamePrefab, worldRoot);
             flame.name = (side < 0f ? "Left" : "Right") + "RoadBorderFlame_" + segmentIndex;
-            flame.transform.localPosition = new Vector3(side * RoadBorderCenterX, 0.72f, z);
+            flame.transform.localPosition = new Vector3(side * RoadBorderCenterX, 1.72f, z);
             flame.transform.localRotation = Quaternion.identity;
+            Renderer[] renderers = flame.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderers[i].receiveShadows = false;
+            }
+            roadBorderFlames.Add(flame);
+            flame.SetActive(z <= environment.fogEnd + 20f);
         }
 
         private void BuildDistantCastle()
@@ -2772,7 +3197,6 @@ namespace PlayableAd
             speedFeedback = root.AddComponent<SpeedVisualFeedback>();
             speedFeedback.Initialize(speedVisualProfile, visualPerformance, runningWindTrailPrefab,
                 accelerationAuraPrefab);
-            BuildUpgradeRing(root.transform);
             audioFeedback = root.AddComponent<AudioFeedbackController>();
             audioFeedback.Initialize(audioPresentation);
             visualTimeScale = gameObject.GetComponent<VisualTimeScaleController>();
@@ -2807,7 +3231,9 @@ namespace PlayableAd
             DestroyOwnedObject(penaltyEdgeTexture);
             DestroyOwnedObject(buttonNormalTexture);
             DestroyOwnedObject(buttonActiveTexture);
-            DestroyOwnedObject(upgradeMagicCircleSprite);
+            for (int i = 0; i < ownedRuntimeMeshes.Count; i++)
+                DestroyOwnedObject(ownedRuntimeMeshes[i]);
+            ownedRuntimeMeshes.Clear();
         }
 
         private static void DestroyOwnedObject(UnityEngine.Object value)
@@ -2828,13 +3254,13 @@ namespace PlayableAd
             bossVisual = bossReplaceable.VisualRoot;
             bossRuntimeAnimator = bossReplaceable.Animator;
             CharacterGroundShadow bossShadow = bossRoot.AddComponent<CharacterGroundShadow>();
-            bossShadow.Initialize(new Vector2(3.6f, 1.35f), environment.shadowStrength, environment.lightEuler);
+            bossShadow.Initialize(new Vector2(2.88f, 1.08f), environment.shadowStrength, environment.lightEuler);
             if (bossRuntimeAnimator != null)
             {
                 BossAnimationEvents animationEvents = bossRuntimeAnimator.GetComponent<BossAnimationEvents>();
                 if (animationEvents == null)
                     animationEvents = bossRuntimeAnimator.gameObject.AddComponent<BossAnimationEvents>();
-                animationEvents.Initialize(audioFeedback);
+                animationEvents.Initialize(audioFeedback, TriggerBossAttackPenaltyFeedback);
             }
             bossSupportsAttackAnimation = HasAnimatorParameter(bossRuntimeAnimator, BossAttackingHash);
             int bossLabelLevel = Mathf.Clamp(playerSpeed.bossVictoryLevel, 1, 10);
@@ -2886,10 +3312,10 @@ namespace PlayableAd
                 prefab != null ? prefab.openingElixirLeftPrefab : null);
             CreateElixir(0f, openingElixirZ,
                 playerSpeed.tutorialElixirTargetLevel, OpeningElixirGroupId,
-                prefab != null ? prefab.openingElixirCenterPrefab : null);
+                prefab != null ? prefab.openingElixirLeftPrefab : null);
             CreateElixir(openingLaneOffset, openingElixirZ,
                 playerSpeed.tutorialElixirTargetLevel, OpeningElixirGroupId,
-                prefab != null ? prefab.openingElixirRightPrefab : null);
+                prefab != null ? prefab.openingElixirLeftPrefab : null);
 
             float firstSoldierZ = openingElixirZ + tuning.tutorialFirstSoldierGap;
             int soldierCount = Mathf.Clamp(tuning.tutorialSoldierCount, 3, 5);
@@ -3014,11 +3440,176 @@ namespace PlayableAd
         {
             MainRunZone[] layout = CreateDocumentMainRunLayout();
             float currentZ = tutorialEndZ + Mathf.Max(0f, tuning.documentMainRunStartOffset);
+            float dividerStart = float.NaN;
+            float dividerEnd = float.NaN;
             for (int i = 0; i < layout.Length; i++)
             {
+                int zoneNumber = i + 1;
+                if (zoneNumber == DividerWallStartZone) dividerStart = currentZ;
+                float zoneLength = GetDocumentZoneLength(layout[i], i);
                 BuildDocumentZone(layout[i], i, currentZ);
-                currentZ += GetDocumentZoneLength(layout[i], i)
-                    + Mathf.Max(0f, tuning.documentZoneGap);
+                if (zoneNumber == DividerWallEndZone) dividerEnd = currentZ + zoneLength;
+                currentZ += zoneLength + Mathf.Max(0f, tuning.documentZoneGap);
+            }
+
+            if (tuning.dividerWallEnabled && !float.IsNaN(dividerStart)
+                && !float.IsNaN(dividerEnd) && dividerEnd > dividerStart)
+                BuildDividerWall(dividerStart, dividerEnd);
+        }
+
+        private void BuildDividerWall(float startZ, float endZ)
+        {
+            GameObject sourcePrefab = prefab != null ? prefab.stoneWallPrefab : null;
+            if (sourcePrefab == null) return;
+
+            MeshFilter[] sourceFilters = sourcePrefab.GetComponentsInChildren<MeshFilter>(true);
+            if (sourceFilters == null || sourceFilters.Length == 0) return;
+
+            float spacing = Mathf.Clamp(tuning.dividerWallSegmentSpacing, 4f, 8f);
+            int segmentCount = Mathf.Max(1, Mathf.CeilToInt((endZ - startZ) / spacing));
+            dividerWallX = -RoadVisualWidth / 6f;
+            dividerWallStartZ = startZ;
+            dividerWallEndZ = endZ;
+
+            var combines = new List<CombineInstance>(segmentCount * sourceFilters.Length);
+            Matrix4x4 sourceRootInverse = sourcePrefab.transform.worldToLocalMatrix;
+            Material wallMaterial = null;
+            for (int segment = 0; segment < segmentCount; segment++)
+            {
+                float segmentZ = startZ + (segment + 0.5f) * spacing;
+                Matrix4x4 placement = Matrix4x4.TRS(
+                    new Vector3(dividerWallX, 0f, segmentZ),
+                    Quaternion.Euler(0f, 90f, 0f), Vector3.one);
+                for (int filterIndex = 0; filterIndex < sourceFilters.Length; filterIndex++)
+                {
+                    MeshFilter sourceFilter = sourceFilters[filterIndex];
+                    if (sourceFilter == null || sourceFilter.sharedMesh == null) continue;
+                    Matrix4x4 assetMatrix = sourceRootInverse * sourceFilter.transform.localToWorldMatrix;
+                    AddMeshSubmeshes(combines, sourceFilter.sharedMesh, placement * assetMatrix);
+                    if (wallMaterial == null)
+                    {
+                        Renderer sourceRenderer = sourceFilter.GetComponent<Renderer>();
+                        if (sourceRenderer != null) wallMaterial = sourceRenderer.sharedMaterial;
+                    }
+                }
+            }
+            if (combines.Count == 0) return;
+
+            Mesh mesh = new Mesh
+            {
+                name = "Zone50To57DividerWallMesh",
+                indexFormat = UnityEngine.Rendering.IndexFormat.UInt32
+            };
+            mesh.CombineMeshes(combines.ToArray(), true, true, false);
+            mesh.RecalculateBounds();
+            ownedRuntimeMeshes.Add(mesh);
+
+            dividerWallRoot = new GameObject("Zone50To57DividerWall");
+            dividerWallRoot.transform.SetParent(worldRoot, false);
+            dividerWallRoot.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = dividerWallRoot.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = wallMaterial != null
+                ? wallMaterial
+                : RuntimeStyle.CreateMaterial(new Color(0.4f, 0.43f, 0.44f), 0f, 0.28f);
+            bool lowQuality = visualPerformance != null && visualPerformance.lowQualityMode;
+            renderer.shadowCastingMode = lowQuality
+                ? UnityEngine.Rendering.ShadowCastingMode.Off
+                : UnityEngine.Rendering.ShadowCastingMode.On;
+            renderer.receiveShadows = !lowQuality;
+
+            dividerWallSafeSide = runner != null && runner.position.x < dividerWallX ? -1 : 1;
+            dividerWallRoot.SetActive(false);
+        }
+
+        private void UpdateDividerWallVisibility()
+        {
+            if (dividerWallRoot == null || runner == null) return;
+            float activationDistance = tuning != null
+                ? Mathf.Clamp(tuning.dividerWallActivationDistance, 30f, 120f)
+                : 80f;
+            bool visible = runner.position.z >= dividerWallStartZ - activationDistance
+                && runner.position.z <= dividerWallEndZ + 12f;
+            if (dividerWallRoot.activeSelf != visible) dividerWallRoot.SetActive(visible);
+        }
+
+        private void UpdateLargePotionVisibility()
+        {
+            if (runner == null || dividerWallStartZ <= 0f) return;
+            if (dividerWallStartZ - runner.position.z > LargePotionDividerWallPreviewDistance)
+                return;
+
+            for (int i = 0; i < encounters.Count; i++)
+            {
+                Encounter encounter = encounters[i];
+                if (encounter == null || encounter.consumed
+                    || encounter.type != EncounterType.Elixir || encounter.root == null)
+                    continue;
+
+                bool isLargePotion = IsLargePotionName(encounter.root.name);
+                if (isLargePotion && !encounter.root.activeSelf)
+                    encounter.root.SetActive(true);
+            }
+        }
+
+        private void UpdateDividerWallBulletTime()
+        {
+            if (dividerWallRoot == null || runner == null || tuning == null
+                || !tuning.dividerWallBulletTimeEnabled)
+                return;
+
+            float triggerDistance = Mathf.Max(0f,
+                tuning.dividerWallBulletTimeTriggerDistance);
+            float distanceToWall = dividerWallStartZ - runner.position.z;
+
+            if (!dividerWallBulletTimeTriggered && distanceToWall <= triggerDistance
+                && distanceToWall > 0f)
+            {
+                dividerWallBulletTimeTriggered = true;
+                BulletTimeManager manager = BulletTimeManager.Instance;
+                if (manager != null)
+                {
+                    var settings = new BulletTimeSettings
+                    {
+                        enabled = true,
+                        triggerDistance = triggerDistance,
+                        // BulletTimeManager counts this with unscaled real-world time.
+                        duration = Mathf.Max(0f, tuning.dividerWallBulletTimeDuration),
+                        worldTimeScale = tuning.dividerWallWorldTimeScale,
+                        enterDuration = tuning.dividerWallEnterDuration,
+                        exitDuration = tuning.dividerWallExitDuration
+                    };
+                    manager.StartBulletTime(settings);
+                }
+            }
+        }
+
+        private void BlockDividerWallCrossing()
+        {
+            if (dividerWallRoot == null || runner == null || tuning == null) return;
+
+            float deltaX = runner.position.x - dividerWallX;
+            int currentSide = deltaX < 0f ? -1 : 1;
+            bool insideLongitudinalRange = runner.position.z >= dividerWallStartZ - 0.35f
+                && runner.position.z <= dividerWallEndZ + 0.35f;
+            if (!insideLongitudinalRange)
+            {
+                dividerWallSafeSide = currentSide;
+                return;
+            }
+
+            float collisionHalfWidth = Mathf.Clamp(tuning.dividerWallCollisionHalfWidth, 0.15f, 0.8f);
+            float blockingX = dividerWallX + dividerWallSafeSide * collisionHalfWidth;
+            if (dividerWallSafeSide < 0)
+            {
+                if (runner.position.x > blockingX)
+                    runner.position = new Vector3(blockingX, runner.position.y, runner.position.z);
+                targetX = Mathf.Min(targetX, blockingX);
+            }
+            else
+            {
+                if (runner.position.x < blockingX)
+                    runner.position = new Vector3(blockingX, runner.position.y, runner.position.z);
+                targetX = Mathf.Max(targetX, blockingX);
             }
         }
 
@@ -3027,17 +3618,23 @@ namespace PlayableAd
             GameObject pickup = encounter.root;
             ElixirVisual visual = pickup != null ? pickup.GetComponent<ElixirVisual>() : null;
             visual?.BeginConsume();
+            // Hide the collected road potion immediately; its invulnerability timer continues independently.
+            if (pickup != null) pickup.SetActive(false);
             flashAlpha = Mathf.Max(flashAlpha, elixirPresentation.pickupFlash * 0.8f);
             PunchCamera(0.13f, elixirPresentation.cameraShake * 0.8f, 0f);
             visualTimeScale.RequestSlowMotion(elixirPresentation.slowMotionScale,
                 elixirPresentation.slowMotionDuration * 0.7f);
 
             bool grantsInvulnerability = encounter.temporaryBoostGrantsInvulnerability;
-            if (grantsInvulnerability) smallPotionInvulnerabilityCount++;
+            if (grantsInvulnerability)
+            {
+                smallPotionInvulnerabilityCount++;
+                powerUpNoticeStart = Time.unscaledTime;
+                powerUpNoticeUntil = powerUpNoticeStart + 0.9f;
+            }
 
-            float startSpeed = speedController.CurrentSpeed;
             float boostedSpeed = Mathf.Min(speedController.Settings.maximumSpeed,
-                startSpeed + encounter.temporaryBoostAmount);
+                speedController.CurrentSpeed + encounter.temporaryBoostAmount);
             speedController.SetSpeed(boostedSpeed, SpeedChangeReason.PotionPickup, this);
 
             float timer = 0f;
@@ -3050,18 +3647,6 @@ namespace PlayableAd
                 yield return null;
             }
 
-            timer = 0f;
-            float returnDuration = Mathf.Max(0.01f, encounter.temporaryBoostReturnDuration);
-            while (timer < returnDuration)
-            {
-                timer += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(timer / returnDuration);
-                float targetSpeed = Mathf.Lerp(boostedSpeed, startSpeed, Mathf.SmoothStep(0f, 1f, t));
-                speedController.SetSpeed(targetSpeed, SpeedChangeReason.PotionPickup, this);
-                yield return null;
-            }
-
-            speedController.SetSpeed(startSpeed, SpeedChangeReason.PotionPickup, this);
             if (grantsInvulnerability)
                 smallPotionInvulnerabilityCount = Mathf.Max(0, smallPotionInvulnerabilityCount - 1);
             if (pickup != null) pickup.SetActive(false);
@@ -3095,17 +3680,20 @@ namespace PlayableAd
                 case MainRunContentType.Elite:
                     CreateTarget(laneX, startZ,
                         Mathf.Clamp(tuning.documentEliteLevel, 1, speedController.MaxLevel),
-                        null, zoneName + "_Elite", true);
+                        null, zoneName + "_Elite", true, null,
+                        IsLargePotionApproachEliteZone(zoneIndex)
+                            ? LargePotionApproachEliteLabelDistance
+                            : -1f);
                     break;
                 case MainRunContentType.SmallPotion:
-                    CreateTemporaryBoostPickup(laneX, startZ, tuning.documentSmallPotionBoost,
-                        tuning.documentSmallPotionHold, tuning.documentSmallPotionReturn,
+                    CreateTemporaryBoostPickup(laneX, startZ, 0f,
+                        tuning.documentSmallPotionHold,
                         prefab != null ? prefab.openingElixirCenterPrefab : null,
                         zoneName + "_SmallPotion", true);
                     break;
                 case MainRunContentType.LargePotion:
                     CreateTemporaryBoostPickup(laneX, startZ, tuning.documentLargePotionBoost,
-                        tuning.documentLargePotionHold, tuning.documentLargePotionReturn,
+                        tuning.documentLargePotionHold,
                         prefab != null ? prefab.bossMaxSpeedElixirPrefab : null,
                         zoneName + "_LargePotion", false);
                     break;
@@ -3118,6 +3706,13 @@ namespace PlayableAd
                 GetDocumentLaneLength(zone.left, zoneIndex),
                 Mathf.Max(GetDocumentLaneLength(zone.center, zoneIndex),
                     GetDocumentLaneLength(zone.right, zoneIndex)));
+        }
+
+        private static bool IsLargePotionApproachEliteZone(int zeroBasedZoneIndex)
+        {
+            int zoneNumber = zeroBasedZoneIndex + 1;
+            return zoneNumber == FirstLargePotionApproachEliteZone
+                || zoneNumber == SecondLargePotionApproachEliteZone;
         }
 
         private float GetDocumentLaneLength(MainRunLaneContent content, int zoneIndex)
@@ -3188,13 +3783,16 @@ namespace PlayableAd
             int soldiersPerSection = Mathf.Clamp(
                 rewardRun != null ? rewardRun.soldiersPerSection : 40, 1, 50);
             float rewardLength = Mathf.Max(20f, rewardRun != null ? rewardRun.length : 200f);
-            float soldierInterval = rewardLength / sectionCount;
-            float wallInterval = rewardLength / wallCount;
+            float soldierInterval = rewardLength / Mathf.Max(1, sectionCount);
+            // Keep the walls in a compact field, leaving the final part of the reward
+            // run clear for the single retained soldier section.
+            float wallFieldLength = rewardLength * 0.68f;
+            float wallInterval = wallFieldLength / (wallCount + 1f);
 
             int totalSteps = Mathf.Max(sectionCount, wallCount);
             for (int i = 0; i < totalSteps; i++)
             {
-                if (i < sectionCount)
+                if (i < sectionCount && sectionCount > 1)
                 {
                     float sectionStart = RewardRunStartZ + soldierInterval * (i + 0.04f);
                     yield return StartCoroutine(CreateRewardSoldierSection(i, sectionStart,
@@ -3204,11 +3802,32 @@ namespace PlayableAd
 
                 if (i < wallCount)
                 {
-                    float wallZ = RewardRunStartZ + wallInterval * (i + 0.72f);
+                    float wallZ = RewardRunStartZ + wallInterval * (i + 1f);
                     CreateRewardStoneWall(wallZ, i + 1);
                     yield return null;
                 }
             }
+
+            if (sectionCount == 1)
+            {
+                float sectionStart = RewardRunStartZ + rewardLength * 0.78f;
+                yield return StartCoroutine(CreateRewardSoldierSection(
+                    0, sectionStart, soldiersPerSection, rewardLength * 0.2f));
+            }
+
+            SortEncountersByDistance();
+        }
+
+        private void SortEncountersByDistance()
+        {
+            encounters.Sort((left, right) =>
+            {
+                if (ReferenceEquals(left, right)) return 0;
+                if (left == null || left.root == null) return 1;
+                if (right == null || right.root == null) return -1;
+                return left.root.transform.position.z.CompareTo(right.root.transform.position.z);
+            });
+            firstRelevantEncounterIndex = 0;
         }
 
         private void CreateRewardStoneWall(float z, int index)
@@ -3250,7 +3869,8 @@ namespace PlayableAd
                 float z = startZ + Mathf.Clamp(soldierIndex * spacing + jitter, 0f, sectionLength);
                 CreateTarget(x, z, 1, sectionObject.transform,
                     "RewardSoldier_" + (sectionIndex + 1) + "_" + (soldierIndex + 1),
-                    soldierIndex == 0);
+                    soldierIndex == 0,
+                    rewardRun != null ? rewardRun.soldierVisualPrefab : null);
                 if ((soldierIndex + 1) % 8 == 0)
                     yield return null;
             }
@@ -3353,12 +3973,36 @@ namespace PlayableAd
         }
 
         private void CreateTarget(float x, float z, int tier, Transform parent = null,
-            string objectName = "Target", bool showLevelLabel = true)
+            string objectName = "Target", bool showLevelLabel = true,
+            GameObject visualPrefabOverride = null, float levelLabelPreviewDistance = -1f)
         {
             Vector3 dimensions = targetShapes.Get(tier);
             Color color = speedVisualProfile.Get(tier).primaryColor;
-            GameObject root = CreateBox(objectName, new Vector3(x, dimensions.y * 0.5f, z), dimensions, color, parent != null ? parent : worldRoot);
-            Renderer placeholderRenderer = root.GetComponent<Renderer>();
+            GameObject visualPrefab = visualPrefabOverride != null
+                ? visualPrefabOverride
+                : tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
+            bool usePooledVisual = visualPrefab != null && (visualPrefabOverride != null
+                ? visualPrefab.GetComponentInChildren<Renderer>(true) != null
+                : tier == 1 ? tier1SoldierVisualAvailable
+                : tier >= 4 && tier4SoldierVisualAvailable);
+            Transform targetParent = parent != null ? parent : worldRoot;
+            GameObject root;
+            Renderer placeholderRenderer;
+            if (usePooledVisual)
+            {
+                root = new GameObject(objectName);
+                root.transform.SetParent(targetParent, false);
+                root.transform.localPosition = new Vector3(x, dimensions.y * 0.5f, z);
+                root.transform.localScale = dimensions;
+                root.AddComponent<BoxCollider>();
+                placeholderRenderer = null;
+            }
+            else
+            {
+                root = CreateBox(objectName, new Vector3(x, dimensions.y * 0.5f, z),
+                    dimensions, color, targetParent);
+                placeholderRenderer = root.GetComponent<Renderer>();
+            }
             ObstacleController obstacle = root.AddComponent<ObstacleController>();
             Collider[] colliders = root.GetComponents<Collider>();
             obstacle.Initialize(tier, ObstacleType.Soldier, colliders);
@@ -3366,37 +4010,21 @@ namespace PlayableAd
             Renderer[] visibilityRenderers = placeholderRenderer != null
                 ? new[] { placeholderRenderer }
                 : Array.Empty<Renderer>();
-            GameObject visualPrefab = tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
-            if (visualPrefab != null)
+            float targetHeight = tier == 1 ? tier1TargetHeight : tier4TargetHeight;
+            Transform pooledVisualRoot = null;
+            if (usePooledVisual)
             {
-                Transform visualRoot = new GameObject("VisualRoot").transform;
-                visualRoot.SetParent(root.transform, false);
-                visualRoot.localPosition = new Vector3(0f, -0.5f, 0f);
-                visualRoot.localScale = new Vector3(
+                pooledVisualRoot = new GameObject("VisualRoot").transform;
+                pooledVisualRoot.SetParent(root.transform, false);
+                pooledVisualRoot.localPosition = new Vector3(0f, -0.5f, 0f);
+                pooledVisualRoot.localScale = new Vector3(
                     1f / Mathf.Max(0.001f, dimensions.x),
                     1f / Mathf.Max(0.001f, dimensions.y),
                     1f / Mathf.Max(0.001f, dimensions.z));
-
-                GameObject visual = Instantiate(visualPrefab, visualRoot, false);
-                visual.name = visualPrefab.name;
-                SanitizeTargetVisual(visual);
-                Renderer[] modelRenderers = visual.GetComponentsInChildren<Renderer>(true);
-                if (modelRenderers.Length > 0)
-                {
-                    float targetHeight = tier == 1 ? tier1TargetHeight : tier4TargetHeight;
-                    FitTargetVisual(visual, visualRoot, modelRenderers, targetHeight);
-                    ConfigureTargetCollider(root.GetComponent<BoxCollider>(), dimensions, modelRenderers, targetHeight);
-
-                    if (placeholderRenderer != null) Destroy(placeholderRenderer);
-                    MeshFilter placeholderMesh = root.GetComponent<MeshFilter>();
-                    if (placeholderMesh != null) Destroy(placeholderMesh);
-                    visibilityRenderers = modelRenderers;
-                }
-                else
-                {
-                    Destroy(visualRoot.gameObject);
-                    WarnTargetVisualFallback(tier, visualPrefab.name + " has no Renderer");
-                }
+                if (placeholderRenderer != null) Destroy(placeholderRenderer);
+                MeshFilter placeholderMesh = root.GetComponent<MeshFilter>();
+                if (placeholderMesh != null) Destroy(placeholderMesh);
+                visibilityRenderers = Array.Empty<Renderer>();
             }
             else if (tier == 1 || tier >= 4)
             {
@@ -3410,11 +4038,18 @@ namespace PlayableAd
                 Mathf.Max(0.42f, dimensions.z * 0.72f)),
                 environment.shadowStrength, environment.lightEuler);
             SoldierKnockbackEffect soldierKnockback = root.AddComponent<SoldierKnockbackEffect>();
+            if (pooledVisualRoot != null)
+            {
+                PooledSoldierVisual pooledVisual = root.AddComponent<PooledSoldierVisual>();
+                pooledVisual.Initialize(soldierVisualPool, visualPrefab, pooledVisualRoot,
+                    dimensions, targetHeight, root.GetComponent<BoxCollider>(), soldierKnockback);
+            }
             soldierKnockback.Initialize(visibilityRenderers);
             int displayLevel = tier >= 4 ? tier : SoldierDisplayLevel;
             NumberCombatTarget numberTarget = showLevelLabel
                 ? numberCombatSystem?.RegisterTarget(root.transform, visibilityRenderers,
-                    displayLevel, numberCombat.soldierHeadClearance, visibility)
+                    displayLevel, numberCombat.soldierHeadClearance, visibility, targetHeight,
+                    levelLabelPreviewDistance)
                 : null;
             visibility.Initialize(visibilityRenderers, colliders);
             encounters.Add(new Encounter
@@ -3430,7 +4065,7 @@ namespace PlayableAd
             root.SetActive(false);
         }
 
-        private static void SanitizeTargetVisual(GameObject visual)
+        internal static void SanitizeTargetVisual(GameObject visual)
         {
             Collider[] visualColliders = visual.GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < visualColliders.Length; i++) visualColliders[i].enabled = false;
@@ -3453,7 +4088,7 @@ namespace PlayableAd
             }
         }
 
-        private static void FitTargetVisual(GameObject visual, Transform groundReference, Renderer[] renderers,
+        internal static void FitTargetVisual(GameObject visual, Transform groundReference, Renderer[] renderers,
             float targetHeight)
         {
             Animator animator = visual.GetComponentInChildren<Animator>(true);
@@ -3473,15 +4108,18 @@ namespace PlayableAd
             visual.transform.position += Vector3.up * (groundReference.position.y - bounds.min.y);
         }
 
-        private static void ConfigureTargetCollider(BoxCollider collider, Vector3 rootDimensions,
+        internal static void ConfigureTargetCollider(BoxCollider collider, Vector3 rootDimensions,
             Renderer[] renderers, float targetHeight)
         {
             if (collider == null) return;
             Bounds bounds = CalculateRendererBounds(renderers);
+            float visualDepth = bounds.size.z * 0.8f;
+            if (visualDepth <= 0.001f)
+                visualDepth = rootDimensions.z * 0.8f;
             Vector3 worldSize = new Vector3(
                 bounds.size.x * 0.8f,
                 targetHeight * 0.9f,
-                bounds.size.z * 0.8f);
+                visualDepth);
             collider.size = new Vector3(
                 worldSize.x / Mathf.Max(0.001f, rootDimensions.x),
                 worldSize.y / Mathf.Max(0.001f, rootDimensions.y),
@@ -3534,7 +4172,8 @@ namespace PlayableAd
             root.transform.position = new Vector3(x, 0.9f, z);
 
             Renderer[] renderers = CreateElixirVisual(root, visualPrefab, resolvedTargetLevel);
-            root.AddComponent<ElixirVisual>().Initialize(elixirPresentation, renderers, speedVisualProfile, resolvedTargetLevel);
+            root.AddComponent<ElixirVisual>().Initialize(elixirPresentation, renderers,
+                speedVisualProfile, resolvedTargetLevel, IsLargePotionName(objectName));
             SphereCollider pickupCollider = root.AddComponent<SphereCollider>();
             pickupCollider.isTrigger = true;
             pickupCollider.radius = 1.1f;
@@ -3551,8 +4190,16 @@ namespace PlayableAd
             root.SetActive(false);
         }
 
+        private void CacheTargetVisualAvailability()
+        {
+            tier1SoldierVisualAvailable = tier1SoldierPrefab != null
+                && tier1SoldierPrefab.GetComponentInChildren<Renderer>(true) != null;
+            tier4SoldierVisualAvailable = tier4SoldierPrefab != null
+                && tier4SoldierPrefab.GetComponentInChildren<Renderer>(true) != null;
+        }
+
         private void CreateTemporaryBoostPickup(float x, float z, float boostAmount,
-            float holdDuration, float returnDuration, GameObject visualPrefab, string objectName,
+            float holdDuration, GameObject visualPrefab, string objectName,
             bool grantsInvulnerability)
         {
             int encounterCountBeforeCreate = encounters.Count;
@@ -3562,12 +4209,12 @@ namespace PlayableAd
             Encounter encounter = encounters[encounterCountBeforeCreate];
             encounter.temporaryBoostAmount = Mathf.Max(0f, boostAmount);
             encounter.temporaryBoostHoldDuration = Mathf.Max(0f, holdDuration);
-            encounter.temporaryBoostReturnDuration = Mathf.Max(0.01f, returnDuration);
             encounter.temporaryBoostGrantsInvulnerability = grantsInvulnerability;
         }
 
         private Renderer[] CreateElixirVisual(GameObject root, GameObject visualPrefab, int targetLevel)
         {
+            float scaleMultiplier = GetElixirVisualScaleMultiplier(root != null ? root.name : string.Empty);
             if (visualPrefab != null)
             {
                 GameObject visual = Instantiate(visualPrefab, root.transform, false);
@@ -3585,20 +4232,36 @@ namespace PlayableAd
                 Renderer[] importedRenderers = visual.GetComponentsInChildren<Renderer>(true);
                 if (importedRenderers.Length > 0)
                 {
-                    FitElixirVisual(root.transform, visual.transform, importedRenderers);
+                    FitElixirVisual(root.transform, visual.transform, importedRenderers, scaleMultiplier);
                     return importedRenderers;
                 }
 
                 Destroy(visual);
             }
 
-            return CreateProceduralElixirVisual(root, targetLevel);
+            return CreateProceduralElixirVisual(root, targetLevel, scaleMultiplier);
         }
 
-        private static void FitElixirVisual(Transform root, Transform visual, Renderer[] renderers)
+        private static float GetElixirVisualScaleMultiplier(string objectName)
+        {
+            if (objectName.IndexOf("OpeningElixir", StringComparison.OrdinalIgnoreCase) >= 0)
+                return 1f;
+            return IsLargePotionName(objectName) ? 3f : 2f;
+        }
+
+        private static bool IsLargePotionName(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName)) return false;
+            return objectName.IndexOf("LargePotion", StringComparison.OrdinalIgnoreCase) >= 0
+                || objectName.IndexOf("BossMaxSpeedElixir", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void FitElixirVisual(Transform root, Transform visual, Renderer[] renderers,
+            float scaleMultiplier)
         {
             Bounds bounds = CalculateRendererBounds(renderers);
-            float scaleFactor = ElixirVisualTargetHeight / Mathf.Max(0.001f, bounds.size.y);
+            float scaleFactor = ElixirVisualTargetHeight * scaleMultiplier
+                / Mathf.Max(0.001f, bounds.size.y);
             visual.localScale *= scaleFactor;
 
             bounds = CalculateRendererBounds(renderers);
@@ -3609,19 +4272,23 @@ namespace PlayableAd
                 rootPosition.z - bounds.center.z);
         }
 
-        private Renderer[] CreateProceduralElixirVisual(GameObject root, int targetLevel)
+        private Renderer[] CreateProceduralElixirVisual(GameObject root, int targetLevel,
+            float scaleMultiplier)
         {
             GameObject bottle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             bottle.transform.SetParent(root.transform, false);
-            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f);
+            float groundCompensation = 0.72f * (scaleMultiplier - 1f);
+            bottle.transform.localPosition = new Vector3(0f, groundCompensation, 0f);
+            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f) * scaleMultiplier;
             SpeedTierVisualData elixirTier = speedVisualProfile.Get(targetLevel);
             bottle.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.primaryColor, 0.15f, 0.9f);
             Destroy(bottle.GetComponent<Collider>());
 
             GameObject cap = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cap.transform.SetParent(root.transform, false);
-            cap.transform.localPosition = new Vector3(0f, 0.85f, 0f);
-            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f);
+            cap.transform.localPosition = new Vector3(0f,
+                groundCompensation + 0.85f * scaleMultiplier, 0f);
+            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f) * scaleMultiplier;
             cap.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.secondaryColor, 0.4f, 0.8f);
             Destroy(cap.GetComponent<Collider>());
 
@@ -3674,6 +4341,7 @@ namespace PlayableAd
                 bulletTimeSettings = bulletTimeSettings != null ? bulletTimeSettings.Clone() : null,
                 completesTutorial = completesTutorial
             });
+            root.SetActive(false);
         }
 
         private void GetStoneWallPlacement(StoneWallBlockingMode blockingMode, out float centerX,
@@ -3709,56 +4377,6 @@ namespace PlayableAd
             widthScale = 2f / 3f;
         }
 
-        private void BuildUpgradeRing(Transform parent)
-        {
-            GameObject ringObject = new GameObject("UpgradeEnergyRing");
-            ringObject.transform.SetParent(parent, false);
-            ringObject.transform.localPosition = new Vector3(0f, -0.85f, 0f);
-            upgradeRing = ringObject.AddComponent<LineRenderer>();
-            upgradeRing.useWorldSpace = false;
-            upgradeRing.loop = true;
-            upgradeRing.positionCount = 36;
-            upgradeRing.startWidth = 0.09f;
-            upgradeRing.endWidth = 0.09f;
-            upgradeRing.sharedMaterial = speedVisualProfile.lineMaterial != null
-                ? speedVisualProfile.lineMaterial
-                : RuntimeStyle.CreateMaterial(Color.white, 0f, 0.1f);
-            for (int i = 0; i < 36; i++)
-            {
-                float angle = i / 36f * Mathf.PI * 2f;
-                upgradeRing.SetPosition(i, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
-            }
-            upgradeRing.enabled = false;
-
-            if (upgradeMagicCircleTexture == null) return;
-            upgradeMagicCircleSprite = Sprite.Create(upgradeMagicCircleTexture,
-                new Rect(0f, 0f, upgradeMagicCircleTexture.width, upgradeMagicCircleTexture.height),
-                new Vector2(0.5f, 0.5f), Mathf.Max(upgradeMagicCircleTexture.width, upgradeMagicCircleTexture.height) * 0.5f,
-                0, SpriteMeshType.FullRect);
-            upgradeMagicCircleSprite.name = "RuntimeUpgradeMagicCircle";
-            upgradeMagicCircleGlow = BuildUpgradeMagicCircleLayer(
-                "UpgradeMagicCircleGlow", parent, upgradeMagicCircleSprite, -0.84f, -1);
-            upgradeMagicCircle = BuildUpgradeMagicCircleLayer(
-                "UpgradeMagicCircleRunes", parent, upgradeMagicCircleSprite, -0.82f, 0);
-        }
-
-        private static SpriteRenderer BuildUpgradeMagicCircleLayer(
-            string objectName, Transform parent, Sprite sprite, float localY, int sortingOrder)
-        {
-            GameObject layer = new GameObject(objectName);
-            layer.transform.SetParent(parent, false);
-            layer.transform.localPosition = new Vector3(0f, localY, 0f);
-            layer.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            layer.transform.localScale = Vector3.one * 0.05f;
-            SpriteRenderer renderer = layer.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.sortingOrder = sortingOrder;
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            renderer.enabled = false;
-            return renderer;
-        }
-
         private GameObject CreateBox(string name, Vector3 position, Vector3 scale, Color color, Transform parent)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -3784,11 +4402,21 @@ namespace PlayableAd
                 return;
             }
 
+            // Gameplay overlays are visual-only. Skip IMGUI layout/input passes on mobile;
+            // the end-card button still receives the full event stream when it is visible.
+            if (!ending && Event.current.type != EventType.Repaint) return;
+
             EnsureGuiStyles();
             float scale = Mathf.Max(0.45f, Mathf.Min(Screen.width / 540f, Screen.height / 960f));
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             float width = Screen.width / scale;
             float height = Screen.height / scale;
+
+            if (smallPotionGoldOverlayAlpha > 0.001f)
+            {
+                DrawRect(new Rect(0f, 0f, width, height),
+                    new Color(1f, 0.68f, 0.08f, smallPotionGoldOverlayAlpha));
+            }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (showSpeedDebugOverlay && speedController != null)
@@ -3816,9 +4444,13 @@ namespace PlayableAd
             {
                 DrawTutorialBulletTimeWarning(width, height);
             }
+            else if (!ending && (rewardStageActive || rewardStageFinishing))
+            {
+                DrawRewardWingCallout(width, height);
+            }
             else if (!ending && elapsed < calloutUntil)
             {
-                if (callout == "撞！\n速度↑")
+                if (callout == SmashSpeedCallout)
                 {
                     DrawSmashCallout(width, height);
                 }
@@ -3835,6 +4467,11 @@ namespace PlayableAd
             else if (!ending && !bossSequence)
             {
                 GUI.Label(new Rect(20f, height - 108f, width - 40f, 45f), "KEEP MOMENTUM", smallStyle);
+            }
+
+            if (!ending)
+            {
+                DrawPowerUpNotice(width, height);
             }
 
             if (ending)
@@ -3856,35 +4493,26 @@ namespace PlayableAd
 
             if (endCardGameLogo != null)
             {
-                Rect logoBounds = new Rect(width * 0.07f, height * 0.035f,
-                    width * 0.86f, height * 0.27f);
+                Rect logoBounds = new Rect(width * 0.07f, height * 0.085f,
+                    width * 0.86f, height * 0.26f);
                 Rect logoRect = FitTextureInBounds(endCardGameLogo, logoBounds);
                 GUI.DrawTexture(logoRect, endCardGameLogo, ScaleMode.StretchToFill, true);
-
-                if (endCardVictoryLogo != null)
-                {
-                    float victorySize = Mathf.Min(width * 0.3f, height * 0.16f);
-                    float victoryY = Mathf.Min(logoRect.yMax + height * 0.01f,
-                        height * 0.49f - victorySize);
-                    Rect victoryRect = new Rect((width - victorySize) * 0.5f,
-                        victoryY, victorySize, victorySize);
-                    GUI.DrawTexture(victoryRect, endCardVictoryLogo,
-                        ScaleMode.StretchToFill, true);
-                }
             }
-            else if (endCardVictoryLogo != null)
+
+            if (endCardVictoryLogo != null)
             {
-                float victorySize = Mathf.Min(width * 0.34f, height * 0.18f);
+                float victorySize = Mathf.Min(width * 0.8232f, height * 0.4508f);
+                float victoryCenterY = height * 0.47f;
                 Rect victoryRect = new Rect((width - victorySize) * 0.5f,
-                    height * 0.16f, victorySize, victorySize);
+                    victoryCenterY - victorySize * 0.5f, victorySize, victorySize);
                 GUI.DrawTexture(victoryRect, endCardVictoryLogo,
                     ScaleMode.StretchToFill, true);
             }
 
             if (endCardPlayNowImage == null) return;
 
-            Rect ctaBounds = new Rect(width * 0.045f, height * 0.55f,
-                width * 0.91f, height * 0.4f);
+            Rect ctaBounds = new Rect(width * 0.045f, height * 0.61f,
+                width * 0.91f, height * 0.37f);
             Rect ctaBaseRect = FitTextureInBounds(endCardPlayNowImage, ctaBounds);
             float ctaPulse = 1f + Mathf.Sin(Time.unscaledTime * 3.8f) * 0.055f;
             Rect ctaRect = ScaleRectFromCenter(ctaBaseRect, ctaPulse);
@@ -3909,30 +4537,38 @@ namespace PlayableAd
                     ScaleMode.StretchToFill, true);
             }
 
-            Rect clickRect = new Rect(
-                ctaRect.x + ctaRect.width * 0.16f,
-                ctaRect.y + ctaRect.height * 0.36f,
-                ctaRect.width * 0.68f,
-                ctaRect.height * 0.26f);
+            Rect clickRect = ctaRect;
             if (GUI.Button(clickRect, GUIContent.none, GUIStyle.none))
                 HandleEndCardClick();
         }
 
         private void HandleEndCardClick()
         {
-            if (!string.IsNullOrWhiteSpace(endCardStoreUrl))
-            {
-                Application.OpenURL(endCardStoreUrl);
-                return;
-            }
+            RestartFromBeginning();
+        }
 
-            Debug.Log("PlayableAd CTA clicked. Store URL is not configured yet.");
+        private void RestartFromBeginning()
+        {
+            if (restartRequested) return;
+            restartRequested = true;
+            CancelDrag();
+            BulletTimeManager.Instance?.StopBulletTime();
+            visualTimeScale?.Restore();
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (activeScene.IsValid() && !string.IsNullOrEmpty(activeScene.name))
+                SceneManager.LoadScene(activeScene.name);
+            else
+                restartRequested = false;
         }
 
         private void SetGameplayHudVisible(bool visible)
         {
             if (speedBarView != null)
                 speedBarView.gameObject.SetActive(visible);
+            if (restartButtonCanvas != null)
+                restartButtonCanvas.SetActive(visible);
             numberCombatSystem?.SetVisible(visible);
             if (!visible)
                 bossTapPromptView?.Hide(true);
@@ -4012,21 +4648,83 @@ namespace PlayableAd
             GUI.color = new Color(color.r, color.g, color.b, alpha);
             float labelWidth = width * 0.84f;
             float labelX = (width - labelWidth) * 0.5f + offset.x;
-            GUI.Label(new Rect(labelX + 18f, height * 0.16f + offset.y, labelWidth, 58f), "撞！", smashTitleStyle);
-            GUI.Label(new Rect(labelX, height * 0.225f + offset.y, labelWidth, 42f), "速度↑", smashSubtitleStyle);
+            GUI.Label(new Rect(labelX, height * 0.23f + offset.y, labelWidth, 54f), "SMASH", smashTitleStyle);
+            GUI.Label(new Rect(labelX, height * 0.272f + offset.y, labelWidth, 36f), "↑  SPEED UP  ↑", smashSubtitleStyle);
+            GUI.color = previousColor;
+        }
+
+        private void DrawRewardWingCallout(float width, float height)
+        {
+            float now = Time.unscaledTime;
+            float effectProgress = smashEffectUntil > smashEffectStart
+                ? Mathf.Clamp01((now - smashEffectStart) / (smashEffectUntil - smashEffectStart))
+                : 1f;
+            float remainingEffect = 1f - effectProgress;
+            float jitterX = Mathf.Sin(now * 92f) * 7f * remainingEffect;
+            float jitterY = Mathf.Cos(now * 117f) * 4f * remainingEffect;
+
+            if (remainingEffect > 0f)
+            {
+                for (int i = 3; i >= 1; i--)
+                {
+                    float ghostOffset = i * 5f * remainingEffect;
+                    float ghostAlpha = 0.08f * remainingEffect * (4 - i);
+                    DrawRewardWingText(width, height,
+                        new Vector2(jitterX - ghostOffset, jitterY + i * 2f),
+                        ghostAlpha, new Color(1f, 0.72f, 0.3f, 1f));
+                }
+            }
+
+            DrawRewardWingText(width, height, new Vector2(jitterX, jitterY), 1f, Color.white);
+        }
+
+        private void DrawRewardWingText(float width, float height, Vector2 offset,
+            float alpha, Color color)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = new Color(color.r, color.g, color.b, alpha);
+            float labelWidth = width * 0.96f;
+            float labelX = (width - labelWidth) * 0.5f + offset.x;
+            GUI.Label(new Rect(labelX, height * 0.25f + offset.y, labelWidth, 72f),
+                RewardWingCallout, rewardWingCalloutStyle);
+            GUI.color = previousColor;
+        }
+
+        private void DrawPowerUpNotice(float width, float height)
+        {
+            if (powerUpNoticeUntil <= powerUpNoticeStart || Time.unscaledTime >= powerUpNoticeUntil)
+                return;
+
+            float progress = Mathf.Clamp01((Time.unscaledTime - powerUpNoticeStart)
+                / (powerUpNoticeUntil - powerUpNoticeStart));
+            float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(progress / 0.16f));
+            float fadeOut = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.58f, 1f, progress));
+            float pulse = 1f + Mathf.Sin(progress * Mathf.PI * 3f) * 0.06f;
+            float alpha = fadeIn * fadeOut;
+            if (alpha <= 0.001f) return;
+
+            powerUpStyle.fontSize = Mathf.RoundToInt(46f * pulse);
+            powerUpShadowStyle.fontSize = powerUpStyle.fontSize;
+            Color previousColor = GUI.color;
+            GUI.color = new Color(0.12f, 0.06f, 0.01f, alpha * 0.8f);
+            Rect labelRect = new Rect(20f, height * 0.42f + 3f, width - 40f, 64f);
+            GUI.Label(labelRect, "INVINCIBLE", powerUpShadowStyle);
+            GUI.color = new Color(1f, 0.86f, 0.28f, alpha);
+            GUI.Label(new Rect(labelRect.x, labelRect.y - 3f, labelRect.width, labelRect.height),
+                "INVINCIBLE", powerUpStyle);
             GUI.color = previousColor;
         }
 
         private void DrawTutorialBulletTimeWarning(float width, float height)
         {
-            const string warning = "还撞不碎这个！";
+            const string warning = "NOT YET!";
             float pulse = 1f + Mathf.Sin(Time.unscaledTime * Mathf.PI * 6.4f) * 0.1f;
             tutorialBulletWarningStyle.fontSize = Mathf.RoundToInt(58f * pulse);
             tutorialBulletWarningShadowStyle.fontSize = tutorialBulletWarningStyle.fontSize;
 
             float labelWidth = width * 0.94f;
             float centerX = width * 0.5f + 18f;
-            float centerY = height * 0.4f;
+            float centerY = height * 0.52f;
             Rect labelRect = new Rect(centerX - labelWidth * 0.5f, centerY - 43f, labelWidth, 86f);
 
             const float outlineOffset = 2.5f;
@@ -4099,16 +4797,36 @@ namespace PlayableAd
             smashTitleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 43,
+                fontSize = 44,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.white }
             };
             smashSubtitleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 24,
+                fontSize = 23,
                 fontStyle = FontStyle.Normal,
                 normal = { textColor = Color.white }
+            };
+            rewardWingCalloutStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 34,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                clipping = TextClipping.Clip,
+                normal = { textColor = Color.white }
+            };
+            powerUpStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 46,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.86f, 0.28f, 1f) }
+            };
+            powerUpShadowStyle = new GUIStyle(powerUpStyle)
+            {
+                normal = { textColor = new Color(0.12f, 0.06f, 0.01f, 0.8f) }
             };
             buttonNormalTexture = MakeTexture(new Color(0.95f, 0.25f, 0.08f));
             buttonActiveTexture = MakeTexture(new Color(1f, 0.42f, 0.08f));

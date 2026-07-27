@@ -45,7 +45,6 @@ namespace PlayableAd
             Assign(ref settings.armorBreak, MakeHardImpact("PA_ArmorBreak", 0.2f, 196f, 0.24f, 0.38f, 241), owned);
             Assign(ref settings.highSpeedWhoosh, MakeChirp("PA_HighSpeedWhoosh", 0.13f, 1180f, 310f, 0.12f), owned);
             Assign(ref settings.soldierFlyAway, MakeChirp("PA_FlyAway", 0.24f, 520f, 180f, 0.17f), owned);
-            Assign(ref settings.energyReturn, MakeChirp("PA_EnergyReturn", 0.18f, 420f, 920f, 0.2f), owned);
             Assign(ref settings.wallLowImpact, MakeImpact("PA_WallLow", 0.34f, 54f, 0.55f, 0.18f, 307), owned);
             Assign(ref settings.wallStoneDebris, MakeImpact("PA_StoneDebris", 0.52f, 96f, 0.34f, 0.38f, 401), owned);
             Assign(ref settings.wallDust, MakeImpact("PA_WallDust", 0.42f, 48f, 0.12f, 0.24f, 503), owned);

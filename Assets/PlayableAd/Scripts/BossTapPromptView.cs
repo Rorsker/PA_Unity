@@ -10,6 +10,7 @@ namespace PlayableAd
         private RectTransform safeAreaRoot;
         private RectTransform handRect;
         private Image handImage;
+        private Text tapLabel;
         private CanvasGroup canvasGroup;
         private Rect lastSafeArea;
         private bool visible;
@@ -52,6 +53,28 @@ namespace PlayableAd
             shadow.effectDistance = new Vector2(4f, -5f);
             shadow.useGraphicAlpha = true;
 
+            RectTransform labelRect = CreateRect("RapidTapLabel", handRect);
+            labelRect.anchorMin = labelRect.anchorMax = new Vector2(0.5f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 1f);
+            labelRect.anchoredPosition = new Vector2(0f, -8f);
+            labelRect.sizeDelta = new Vector2(240f, 88f);
+
+            tapLabel = labelRect.gameObject.AddComponent<Text>();
+            tapLabel.text = "TAP!";
+            tapLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tapLabel.fontSize = 68;
+            tapLabel.fontStyle = FontStyle.Bold;
+            tapLabel.alignment = TextAnchor.MiddleCenter;
+            tapLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            tapLabel.verticalOverflow = VerticalWrapMode.Overflow;
+            tapLabel.color = new Color(1f, 0.82f, 0.16f, 1f);
+            tapLabel.raycastTarget = false;
+
+            Outline labelOutline = labelRect.gameObject.AddComponent<Outline>();
+            labelOutline.effectColor = new Color(0.04f, 0.035f, 0.025f, 0.92f);
+            labelOutline.effectDistance = new Vector2(4f, -4f);
+            labelOutline.useGraphicAlpha = true;
+
             ApplySafeArea();
         }
 
@@ -60,6 +83,7 @@ namespace PlayableAd
             visible = handImage != null && handImage.sprite != null;
             tapPunch = 0f;
             if (handImage != null) handImage.enabled = visible;
+            if (tapLabel != null) tapLabel.enabled = visible;
         }
 
         public void RegisterTap()
@@ -76,6 +100,7 @@ namespace PlayableAd
             {
                 canvasGroup.alpha = 0f;
                 if (handImage != null) handImage.enabled = false;
+                if (tapLabel != null) tapLabel.enabled = false;
             }
         }
 
@@ -91,6 +116,7 @@ namespace PlayableAd
             {
                 canvasGroup.alpha = 0f;
                 if (handImage != null) handImage.enabled = false;
+                if (tapLabel != null) tapLabel.enabled = false;
                 return;
             }
 

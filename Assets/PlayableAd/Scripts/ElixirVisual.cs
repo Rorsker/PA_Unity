@@ -13,6 +13,18 @@ namespace PlayableAd
         [Range(0f, 2f), InspectorName("Emission Intensity（发光强度）")] public float emissionIntensity = 0.8f;
         [Range(0.8f, 2.2f), InspectorName("Ring Radius（光环半径）")] public float ringRadius = 1.1f;
 
+        [Header("Large potion highlight（大药瓶高亮）")]
+        [Range(1f, 4f), InspectorName("Large Potion Emission Multiplier（大药瓶发光倍率）")]
+        public float largePotionEmissionMultiplier = 2.2f;
+        [Range(1.2f, 3f), InspectorName("Large Potion Ring Radius Multiplier（大药瓶光环半径倍率）")]
+        public float largePotionRingRadiusMultiplier = 2.1f;
+        [Range(0.04f, 0.18f), InspectorName("Large Potion Ring Width（大药瓶光环宽度）")]
+        public float largePotionRingWidth = 0.1f;
+        [Range(0.5f, 6f), InspectorName("Large Potion Pulse Speed（大药瓶脉冲速度）")]
+        public float largePotionPulseSpeed = 3f;
+        [ColorUsage(false, true), InspectorName("Large Potion Highlight Color（大药瓶高亮颜色）")]
+        public Color largePotionHighlightColor = new Color(1f, 0.76f, 0.18f, 1f);
+
         [Header("Pickup Sequence（拾取流程）")]
         [Range(0.6f, 0.9f), InspectorName("Total Duration（总时长）")] public float totalDuration = 0.8f;
         [Range(0.06f, 0.16f), InspectorName("Collapse Duration（收缩时长）")] public float collapseDuration = 0.11f;
@@ -31,6 +43,7 @@ namespace PlayableAd
         private ElixirPresentationSettings settings;
         private Renderer[] renderers;
         private LineRenderer groundRing;
+        private LineRenderer largePotionHighlightRing;
         private MaterialPropertyBlock propertyBlock;
         private Vector3 basePosition;
         private bool consumed;
@@ -39,8 +52,11 @@ namespace PlayableAd
         private Color secondaryColor;
         private Material sharedLineMaterial;
         private float animationTime;
+        private bool largePotionHighlight;
 
-        public void Initialize(ElixirPresentationSettings presentationSettings, Renderer[] visualRenderers, SpeedVisualProfile profile, int targetLevel)
+        public void Initialize(ElixirPresentationSettings presentationSettings,
+            Renderer[] visualRenderers, SpeedVisualProfile profile, int targetLevel,
+            bool useLargePotionHighlight = false)
         {
             settings = presentationSettings;
             renderers = visualRenderers;
@@ -52,7 +68,9 @@ namespace PlayableAd
             primaryColor = tier.primaryColor;
             secondaryColor = tier.secondaryColor;
             sharedLineMaterial = profile.lineMaterial;
+            largePotionHighlight = useLargePotionHighlight;
             BuildGroundRing();
+            if (largePotionHighlight) BuildLargePotionHighlightRing();
 
             for (int i = 0; i < renderers.Length; i++)
             {
@@ -71,6 +89,10 @@ namespace PlayableAd
             {
                 groundRing.enabled = false;
             }
+            if (largePotionHighlightRing != null)
+            {
+                largePotionHighlightRing.enabled = false;
+            }
         }
 
         private void Update()
@@ -88,7 +110,15 @@ namespace PlayableAd
             transform.localPosition = basePosition + Vector3.up * (wave * settings.hoverHeight);
             transform.Rotate(0f, settings.rotationSpeed * worldDeltaTime, 0f, Space.Self);
 
-            Color emission = secondaryColor * Mathf.Lerp(0.25f, settings.emissionIntensity, wave);
+            float highlightWave = (Mathf.Sin(animationTime * settings.largePotionPulseSpeed + seed) + 1f) * 0.5f;
+            Color emissionColor = largePotionHighlight
+                ? Color.Lerp(secondaryColor, settings.largePotionHighlightColor, 0.65f)
+                : secondaryColor;
+            float emissionMultiplier = largePotionHighlight
+                ? settings.largePotionEmissionMultiplier
+                : 1f;
+            Color emission = emissionColor
+                * (Mathf.Lerp(0.25f, settings.emissionIntensity, wave) * emissionMultiplier);
             for (int i = 0; i < renderers.Length; i++)
             {
                 Renderer renderer = renderers[i];
@@ -111,27 +141,50 @@ namespace PlayableAd
                 groundRing.startColor = color;
                 groundRing.endColor = color;
             }
+
+            if (largePotionHighlightRing != null)
+            {
+                float radius = settings.ringRadius * settings.largePotionRingRadiusMultiplier
+                    * Mathf.Lerp(0.9f, 1.1f, highlightWave);
+                largePotionHighlightRing.transform.localScale = Vector3.one * radius;
+                Color color = settings.largePotionHighlightColor;
+                color.a = Mathf.Lerp(0.32f, 0.82f, highlightWave);
+                largePotionHighlightRing.startColor = color;
+                largePotionHighlightRing.endColor = color;
+            }
         }
 
         private void BuildGroundRing()
         {
-            GameObject ringObject = new GameObject("PickupRing");
+            groundRing = BuildRing("PickupRing", 32, 0.045f);
+        }
+
+        private void BuildLargePotionHighlightRing()
+        {
+            largePotionHighlightRing = BuildRing("LargePotionHighlightRing", 40,
+                settings.largePotionRingWidth);
+        }
+
+        private LineRenderer BuildRing(string objectName, int segmentCount, float width)
+        {
+            GameObject ringObject = new GameObject(objectName);
             ringObject.transform.SetParent(transform, false);
             ringObject.transform.localPosition = new Vector3(0f, -0.82f, 0f);
-            groundRing = ringObject.AddComponent<LineRenderer>();
-            groundRing.useWorldSpace = false;
-            groundRing.loop = true;
-            groundRing.positionCount = 32;
-            groundRing.startWidth = 0.045f;
-            groundRing.endWidth = 0.045f;
-            groundRing.sharedMaterial = sharedLineMaterial != null
+            LineRenderer ring = ringObject.AddComponent<LineRenderer>();
+            ring.useWorldSpace = false;
+            ring.loop = true;
+            ring.positionCount = segmentCount;
+            ring.startWidth = width;
+            ring.endWidth = width;
+            ring.sharedMaterial = sharedLineMaterial != null
                 ? sharedLineMaterial
                 : RuntimeStyle.CreateMaterial(Color.white, 0f, 0.1f);
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < segmentCount; i++)
             {
-                float angle = i / 32f * Mathf.PI * 2f;
-                groundRing.SetPosition(i, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
+                float angle = i / (float)segmentCount * Mathf.PI * 2f;
+                ring.SetPosition(i, new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)));
             }
+            return ring;
         }
     }
 }

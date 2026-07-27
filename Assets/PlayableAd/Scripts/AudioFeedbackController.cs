@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -22,7 +23,10 @@ namespace PlayableAd
 
         [Header("Background Music（背景音乐）")]
         [InspectorName("Background Music Loop（背景音乐循环）")] public AudioClip backgroundMusicLoop;
-        [Range(0f, 1f), InspectorName("Background Music Volume（背景音乐音量）")] public float backgroundMusicVolume = 0.18f;
+        [Range(0f, 1f), InspectorName("Desktop Background Music Volume（电脑背景音乐音量）")]
+        public float backgroundMusicVolume = 0.09411765f;
+        [Range(0f, 1f), InspectorName("Mobile Background Music Volume（手机背景音乐音量）")]
+        public float mobileBackgroundMusicVolume = 0.4117647f;
 
         [Header("Movement Loops（移动循环音效）")]
         [InspectorName("Footsteps Loop（脚步循环）")] public AudioClip footstepsLoop;
@@ -51,7 +55,6 @@ namespace PlayableAd
         [InspectorName("Armor Break（装甲破碎）")] public AudioClip armorBreak;
         [InspectorName("High Speed Whoosh（高速呼啸）")] public AudioClip highSpeedWhoosh;
         [InspectorName("Soldier Fly Away（士兵飞离）")] public AudioClip soldierFlyAway;
-        [InspectorName("Energy Return（能量回收）")] public AudioClip energyReturn;
 
         [Header("Wall Break Layers（墙体破碎音层）")]
         [InspectorName("Wall Low Impact（墙体低强度冲击）")] public AudioClip wallLowImpact;
@@ -68,21 +71,25 @@ namespace PlayableAd
 
         [Header("Mix Hierarchy（混音层级）")]
         [Range(0f, 1f), InspectorName("Movement Volume（移动音量）")] public float movementVolume = 0.22f;
-        [Range(0f, 1f), InspectorName("Normal Impact Volume（普通冲击音量）")] public float normalImpactVolume = 0.5f;
+        [Range(0f, 2f), InspectorName("Normal Impact Volume（普通冲击音量）")] public float normalImpactVolume = 1.7825f;
         [Range(0f, 1f), InspectorName("Upgrade Volume（升级音量）")] public float upgradeVolume = 0.68f;
-        [Range(0f, 1f), InspectorName("Wall Volume（墙体音量）")] public float wallVolume = 0.82f;
+        [Range(0f, 1f), InspectorName("Wall Volume（墙体音量）")] public float wallVolume = 0.369f;
         [Range(0f, 1f), InspectorName("Boss Volume（Boss 音量）")] public float bossVolume = 1f;
         [Range(0f, 0.6f), InspectorName("Priority Duck Amount（高优先级压低量）")] public float priorityDuckAmount = 0.32f;
 
         [Header("Voice Limits（并发音源限制）")]
         [Range(2, 8), InspectorName("Action Voice Count（动作音源数量）")] public int actionVoiceCount = 5;
-        [Range(0.03f, 0.2f), InspectorName("Normal Impact Min Interval（普通冲击最小间隔）")] public float normalImpactMinInterval = 0.055f;
-        [Range(0.04f, 0.3f), InspectorName("Energy Return Min Interval（能量回收最小间隔）")] public float energyReturnMinInterval = 0.08f;
+        [Range(0.03f, 0.2f), InspectorName("Normal Impact Min Interval（普通冲击最小间隔）")] public float normalImpactMinInterval = 0.04f;
         [Range(2f, 24f), InspectorName("Movement Smoothing（移动平滑度）")] public float movementSmoothing = 12f;
     }
 
     public sealed class AudioFeedbackController : MonoBehaviour
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")]
+        private static extern int PA_IsMobileBrowser();
+#endif
+
         private sealed class Voice
         {
             public AudioSource source;
@@ -101,7 +108,6 @@ namespace PlayableAd
         private readonly List<AudioClip> ownedProceduralClips = new List<AudioClip>();
         private float baseMovementVolume;
         private float lastSoldierImpactTime = float.NegativeInfinity;
-        private float lastEnergyReturnTime = float.NegativeInfinity;
         private float lastHapticTime = float.NegativeInfinity;
 
         public Action<HapticStrength> ExternalHapticHandler;
@@ -127,7 +133,7 @@ namespace PlayableAd
             {
                 backgroundMusic = CreateSource("Audio_Music", settings.backgroundMusicLoop, true);
                 backgroundMusic.volume = settings.audioEnabled
-                    ? settings.backgroundMusicVolume * settings.masterVolume
+                    ? GetConfiguredBackgroundMusicVolume()
                     : 0f;
                 backgroundMusic.priority = 96;
             }
@@ -152,6 +158,20 @@ namespace PlayableAd
             StartLoopIfAssigned(footsteps);
             StartLoopIfAssigned(wind);
             StartLoopIfAssigned(speedEnergy);
+        }
+
+        private float GetConfiguredBackgroundMusicVolume()
+        {
+            bool useMobileVolume;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            useMobileVolume = PA_IsMobileBrowser() != 0;
+#else
+            useMobileVolume = Application.isMobilePlatform;
+#endif
+            float platformVolume = useMobileVolume
+                ? settings.mobileBackgroundMusicVolume
+                : settings.backgroundMusicVolume;
+            return Mathf.Clamp01(platformVolume) * Mathf.Clamp01(settings.masterVolume);
         }
 
         public void UpdateSpeed(int tier, float continuousNormalizedSpeed, float actualNormalizedSpeed, bool movementActive,
@@ -228,7 +248,8 @@ namespace PlayableAd
                 if (selected != null) variant = selected;
             }
 
-            float baseVolume = settings.normalImpactVolume * comboCompression * Mathf.Lerp(1.15f, 1.65f, speedResponse);
+            float baseVolume = settings.normalImpactVolume * comboCompression
+                * Mathf.Lerp(1.15f, 1.65f, speedResponse);
             float primaryVolume = baseVolume * Mathf.Lerp(0.82f, 1f, speedResponse);
             LastCollisionVolume = Mathf.Clamp01(primaryVolume * settings.masterVolume);
             LastCollisionPitch = Mathf.Clamp(pitch, 0.5f, 2f);
@@ -279,13 +300,6 @@ namespace PlayableAd
                 PlayVoice(settings.impactPenalty, settings.normalImpactVolume * 0.62f, 0.86f, 3);
                 TriggerHaptic(HapticStrength.Medium);
             }
-        }
-
-        public void PlayEnergyReturn()
-        {
-            if (Time.unscaledTime - lastEnergyReturnTime < settings.energyReturnMinInterval) return;
-            lastEnergyReturnTime = Time.unscaledTime;
-            PlayVoice(settings.energyReturn, settings.normalImpactVolume * 0.38f, UnityEngine.Random.Range(0.98f, 1.08f), 1);
         }
 
         public void PlayWallBreak()
@@ -419,9 +433,7 @@ namespace PlayableAd
             if (selected < 0 || (actionVoices[selected].source.isPlaying && priority < actionVoices[selected].priority)) return false;
             Voice target = actionVoices[selected];
             target.source.Stop();
-            target.source.clip = clip;
             target.source.pitch = Mathf.Clamp(pitch, 0.5f, 2f);
-            target.source.volume = Mathf.Clamp01(volume * settings.masterVolume);
             target.source.spatialBlend = spatial ? settings.collisionSpatialBlend : 0f;
             target.source.minDistance = settings.collisionMinDistance;
             target.source.maxDistance = Mathf.Max(settings.collisionMinDistance, settings.collisionMaxDistance);
@@ -429,7 +441,20 @@ namespace PlayableAd
             else target.source.transform.localPosition = Vector3.zero;
             target.priority = priority;
             target.busyUntil = now + clip.length / Mathf.Max(0.5f, target.source.pitch);
-            target.source.Play();
+            if (spatial)
+            {
+                // PlayOneShot permits collision gain above AudioSource.volume's 1.0 ceiling.
+                // This path is used only by soldier impacts; other SFX keep their existing mix.
+                target.source.clip = null;
+                target.source.volume = 1f;
+                target.source.PlayOneShot(clip, Mathf.Max(0f, volume * settings.masterVolume));
+            }
+            else
+            {
+                target.source.clip = clip;
+                target.source.volume = Mathf.Clamp01(volume * settings.masterVolume);
+                target.source.Play();
+            }
             return true;
         }
 
