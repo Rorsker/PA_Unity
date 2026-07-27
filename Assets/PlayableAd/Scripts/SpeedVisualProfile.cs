@@ -141,8 +141,9 @@ namespace PlayableAd
     {
         [InspectorName("Low Quality Mode（低画质模式）")] public bool lowQualityMode;
         [InspectorName("Auto Low Quality On Mobile/WebGL（移动端/WebGL自动低画质）")]
-        public bool autoLowQualityOnMobileWeb = true;
+        public bool autoLowQualityOnMobileWeb = false;
         [InspectorName("Enable Secondary Speed Lines（启用次级速度线）")] public bool enableSecondarySpeedLines = true;
+        [InspectorName("Enable Level Up VFX（启用升级特效）")] public bool enableLevelUpVfx = false;
         [Range(0.1f, 1f), InspectorName("Low Quality Particle Multiplier（低画质粒子倍率）")] public float lowQualityParticleMultiplier = 0.45f;
         [Range(4, 12), InspectorName("Low Quality Speed Line Count（低画质速度线数量）")] public int lowQualitySpeedLineCount = 6;
         [Range(4, 10), InspectorName("Low Quality Energy Shard Limit（低画质能量碎片上限）")] public int lowQualityEnergyShardLimit = 12;

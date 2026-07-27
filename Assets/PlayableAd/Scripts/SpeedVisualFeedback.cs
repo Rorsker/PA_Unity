@@ -244,7 +244,10 @@ namespace PlayableAd
             UpdateExternalSpeedVfx(forwardSpeed, continuousSpeed, worldDeltaTime, worldScale);
 
             UpdateEdgeLines(forwardSpeed);
-            UpdateLevelUpRings(worldDeltaTime);
+            if (IsLevelUpVfxEnabled())
+                UpdateLevelUpRings(worldDeltaTime);
+            else if (HasActiveLevelUpVfx())
+                HideLevelUpVfx();
             if (levelBurstParticles != null)
             {
                 ParticleSystem.MainModule burstMain = levelBurstParticles.main;
@@ -255,6 +258,11 @@ namespace PlayableAd
         public void PlayLevelUpBurst(int level, SpeedLevelFeedbackData feedback, Color color, float strength,
             int qualityLevel, bool reducedFlash)
         {
+            if (!IsLevelUpVfxEnabled())
+            {
+                HideLevelUpVfx();
+                return;
+            }
             if (feedback == null) return;
             temporaryBoost = Mathf.Max(temporaryBoost,
                 Mathf.Clamp01((feedback.trailBoostMultiplier - 1f) * strength * (reducedFlash ? 0.65f : 1f)));
@@ -302,7 +310,48 @@ namespace PlayableAd
 
         public void PulseLevelUp()
         {
+            if (!IsLevelUpVfxEnabled()) return;
             Pulse(profile != null ? profile.levelUpPulse : 1f);
+        }
+
+        private bool IsLevelUpVfxEnabled()
+        {
+            return performance == null || performance.enableLevelUpVfx;
+        }
+
+        private bool HasActiveLevelUpVfx()
+        {
+            if (levelBurstParticles != null
+                && (levelBurstParticles.isPlaying || levelBurstParticles.particleCount > 0))
+                return true;
+
+            if (levelUpRings == null) return false;
+            for (int i = 0; i < levelUpRings.Length; i++)
+            {
+                if (levelUpRings[i] != null && levelUpRings[i].enabled)
+                    return true;
+                if (ringTimers != null && i < ringTimers.Length && ringTimers[i] > 0f)
+                    return true;
+            }
+            return false;
+        }
+
+        private void HideLevelUpVfx()
+        {
+            if (levelBurstParticles != null)
+            {
+                levelBurstParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                levelBurstParticles.Clear(true);
+            }
+
+            if (levelUpRings == null) return;
+            for (int i = 0; i < levelUpRings.Length; i++)
+            {
+                if (levelUpRings[i] == null) continue;
+                levelUpRings[i].enabled = false;
+                if (ringTimers != null && i < ringTimers.Length)
+                    ringTimers[i] = 0f;
+            }
         }
 
         public void SetInvulnerabilityAuraActive(bool active)

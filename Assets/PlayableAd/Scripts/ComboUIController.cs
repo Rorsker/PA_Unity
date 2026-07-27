@@ -9,9 +9,9 @@ namespace PlayableAd
     {
         [Header("Layout（布局）")]
         [InspectorName("Screen Anchor（屏幕锚点）")]
-        public Vector2 screenAnchor = new Vector2(0.78f, 0.62f);
+        public Vector2 screenAnchor = new Vector2(0.78f, 0.56f);
         [InspectorName("Screen Offset（屏幕偏移）")]
-        public Vector2 screenOffset = new Vector2(-48f, 0f);
+        public Vector2 screenOffset = new Vector2(0f, -240f);
         [Range(-25f, 25f), InspectorName("Text Angle（文字倾斜角度）")]
         public float textAngle = 9f;
         [Range(36, 120), InspectorName("Font Size（初始字体大小）")]
@@ -99,9 +99,17 @@ namespace PlayableAd
             if ((screenAnchor - previousAnchor).sqrMagnitude < 0.0001f
                 && screenOffset.sqrMagnitude < 0.0001f)
             {
-                screenAnchor = new Vector2(0.78f, 0.62f);
-                screenOffset = new Vector2(-48f, 0f);
+                screenAnchor = new Vector2(0.78f, 0.56f);
+                screenOffset = new Vector2(0f, -240f);
                 textAngle = 9f;
+            }
+
+            Vector2 previousRightAnchor = new Vector2(0.78f, 0.62f);
+            if ((screenAnchor - previousRightAnchor).sqrMagnitude < 0.0001f
+                && (screenOffset - new Vector2(-48f, 0f)).sqrMagnitude < 0.0001f)
+            {
+                screenAnchor = new Vector2(0.78f, 0.56f);
+                screenOffset = new Vector2(0f, -240f);
             }
 
             if (comboColorGradient == null) comboColorGradient = CreateDefaultComboGradient();
@@ -159,6 +167,7 @@ namespace PlayableAd
         private ComboPresentationSettings settings;
         private RectTransform layerRoot;
         private RectTransform displayRoot;
+        private RectTransform layoutAnchor;
         private CanvasGroup canvasGroup;
         private Text currentText;
         private Text outgoingText;
@@ -186,8 +195,10 @@ namespace PlayableAd
         private bool zeroFadeActive;
         private bool milestoneActive;
         private bool initialized;
+        private readonly Vector3[] layoutAnchorCorners = new Vector3[4];
 
-        public void Initialize(ComboManager manager, ComboPresentationSettings presentationSettings)
+        public void Initialize(ComboManager manager, ComboPresentationSettings presentationSettings,
+            RectTransform targetLayoutAnchor = null)
         {
             if (initialized)
             {
@@ -203,6 +214,7 @@ namespace PlayableAd
 
             comboManager = manager;
             settings = presentationSettings ?? new ComboPresentationSettings();
+            layoutAnchor = targetLayoutAnchor;
             BuildUI();
 
             comboManager.ComboChanged += HandleComboChanged;
@@ -231,10 +243,15 @@ namespace PlayableAd
             layerCanvas.sortingOrder = 55;
 
             displayRoot = CreateRect("ComboDisplay", layerRoot);
-            Vector2 anchor = new Vector2(Mathf.Clamp01(settings.screenAnchor.x), Mathf.Clamp01(settings.screenAnchor.y));
+            Vector2 anchor = layoutAnchor != null
+                ? new Vector2(0.5f, 0.5f)
+                : new Vector2(Mathf.Clamp01(settings.screenAnchor.x),
+                    Mathf.Clamp01(settings.screenAnchor.y));
             displayRoot.anchorMin = anchor;
             displayRoot.anchorMax = anchor;
-            displayRoot.pivot = new Vector2(0.5f, 0.5f);
+            displayRoot.pivot = layoutAnchor != null
+                ? new Vector2(0f, 1f)
+                : new Vector2(0.5f, 0.5f);
             displayRoot.sizeDelta = new Vector2(480f, 190f);
             basePosition = settings.screenOffset;
             displayRoot.anchoredPosition = basePosition;
@@ -277,6 +294,13 @@ namespace PlayableAd
             Shadow currentShadow = currentText.gameObject.AddComponent<Shadow>();
             currentShadow.effectColor = new Color(0f, 0f, 0f, 0.72f);
             currentShadow.effectDistance = new Vector2(4f, -5f);
+
+            if (layoutAnchor != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                RefreshAnchoredBasePosition();
+                displayRoot.anchoredPosition = basePosition;
+            }
         }
 
         private void BuildParticlePool()
@@ -362,12 +386,26 @@ namespace PlayableAd
             if (!initialized || !comboManager.IsEnabled) return;
 
             float deltaTime = Time.unscaledDeltaTime;
+            RefreshAnchoredBasePosition();
             UpdateColor(deltaTime);
             UpdateMilestone(deltaTime);
             UpdatePop(deltaTime);
             UpdateShake(deltaTime);
             UpdateZeroFade(deltaTime);
             UpdateParticles(deltaTime);
+        }
+
+        private void RefreshAnchoredBasePosition()
+        {
+            if (layoutAnchor == null || layerRoot == null) return;
+
+            layoutAnchor.GetWorldCorners(layoutAnchorCorners);
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, layoutAnchorCorners[0]);
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    layerRoot, screenPoint, null, out Vector2 localPoint))
+                return;
+
+            basePosition = localPoint + settings.screenOffset;
         }
 
         private void UpdatePop(float deltaTime)

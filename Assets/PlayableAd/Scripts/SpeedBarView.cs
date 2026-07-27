@@ -60,6 +60,8 @@ namespace PlayableAd
         private float badgeScale = 1f;
         private float badgeRise;
 
+        public RectTransform SoldierHintRoot => soldierHint != null ? soldierHint.root : null;
+
         private const float LevelUpBadgeRiseDistance = 54f;
         private const float LevelUpBadgeWorldDownOffset = 0.65f;
         private const float LevelUpBadgeScreenDownOffset = 40f;
@@ -241,7 +243,7 @@ namespace PlayableAd
                 {
                     eliteHint = BuildEncounterHint(tick, "EliteSoldierHitHint", 8,
                         eliteHintIcon,
-                        eliteLockedHintIcon != null ? eliteLockedHintIcon : eliteHintIcon,
+                        eliteHintIcon,
                         new Vector2(112f, 128f), Color.white);
                 }
                 if (level == 10 && bossHintIcon != null)

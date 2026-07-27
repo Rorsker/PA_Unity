@@ -36,6 +36,8 @@ namespace PlayableAd
         [Header("Persistent Character Highlight")]
         [SerializeField] private Color characterTint = new Color(1.14f, 1.16f, 1.28f, 1f);
         [SerializeField] private Color haloColor = new Color(0.16f, 0.72f, 1f, 0.26f);
+        [SerializeField, InspectorName("Enable Orbit Particles（启用常驻环绕光点）")]
+        private bool enablePersistentOrbitParticles;
         [SerializeField, Range(2f, 20f)] private float orbitParticleRate = 12f;
 
         private float shieldChargeUntil;
@@ -253,8 +255,16 @@ namespace PlayableAd
                 haloRenderer.receiveShadows = false;
             }
 
-            if (persistentOrbitParticles == null)
-                BuildPersistentOrbitParticles();
+            if (enablePersistentOrbitParticles)
+            {
+                if (persistentOrbitParticles == null)
+                    BuildPersistentOrbitParticles();
+            }
+            else if (persistentOrbitParticles != null)
+            {
+                persistentOrbitParticles.Stop(true,
+                    ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
             UpdatePersistentHighlight();
         }
 

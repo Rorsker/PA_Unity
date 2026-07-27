@@ -19,6 +19,8 @@ namespace PlayableAd
         private const int OpeningElixirGroupId = 1;
         private const float NaturalSpeedLossProtectionDuration = 3f;
         private const int MainRunLowSpeedRecoveryLevel = 4;
+        private const float MainRunSmashCalloutEndZ = 200f;
+        private const string SmashSpeedCallout = "SMASH\nSPEED UP";
         private const string RewardWingCallout = "CATCH THE WINGS TO FLY!";
         private const float ElixirVisualTargetHeight = 1.45f;
         private const float ElixirVisualBottomOffset = -0.72f;
@@ -33,6 +35,10 @@ namespace PlayableAd
         private const float RoadVisualWidth = 8.5f;
         private const int DividerWallStartZone = 50;
         private const int DividerWallEndZone = 57;
+        private const float LargePotionDividerWallPreviewDistance = 150f;
+        private const float LargePotionApproachEliteLabelDistance = 10f;
+        private const int FirstLargePotionApproachEliteZone = 54;
+        private const int SecondLargePotionApproachEliteZone = 56;
         private const float BossDeathFlightDistance = 9f;
         private const float BossDeathFlightHeight = 2.4f;
         private const float BossDeathAnimationDuration = 1.05f;
@@ -96,8 +102,10 @@ namespace PlayableAd
         public sealed class BossRewardRunSettings
         {
             [InspectorName("Enabled（启用奖励关）")] public bool enabled = true;
-            [Min(20f), InspectorName("Reward Run Length（奖励关长度）")] public float length = 200f;
-            [Range(1, 20), InspectorName("Soldier Section Count（士兵区段数量）")] public int soldierSectionCount = 10;
+            [InspectorName("Soldier Visual Prefab（奖励关士兵视觉预制体）")]
+            public GameObject soldierVisualPrefab;
+            [Min(20f), InspectorName("Reward Run Length（奖励关长度）")] public float length = 100f;
+            [Range(1, 20), InspectorName("Soldier Section Count（士兵区段数量）")] public int soldierSectionCount = 1;
             [Range(1, 50), InspectorName("Soldiers Per Section（每区段士兵数量）")] public int soldiersPerSection = 40;
             [Range(1, 20), InspectorName("Stone Wall Count（石墙数量）")] public int stoneWallCount = 10;
             [Min(0f), InspectorName("Start Offset After Boss（Boss后起始偏移）")] public float startOffsetAfterBoss = 14f;
@@ -898,6 +906,7 @@ namespace PlayableAd
             UpdateTutorialBulletTimeWarningState();
             UpdateWorldVisibility();
             UpdateDividerWallVisibility();
+            UpdateLargePotionVisibility();
             UpdateRestartButtonSafeArea();
             bool movementActive = gameplayStarted && !ending && !rewardStageFinishing
                 && flowController != null && flowController.IsGameplayActive && Time.timeScale > 0f;
@@ -1705,6 +1714,7 @@ namespace PlayableAd
 
         private void UpdateSmallPotionInvulnerabilityPresentation()
         {
+            numberCombatSystem?.SetInvulnerabilityActive(SmallPotionInvulnerabilityActive);
             bool visualInvulnerabilityActive = SmallPotionInvulnerabilityActive
                 || Time.unscaledTime < tutorialElixirVisualUntil;
             float fadeDuration = tuning != null
@@ -1726,8 +1736,17 @@ namespace PlayableAd
             UpdateGameplayCombo(encounter, resolution);
             if (resolution == ObstacleResolutionType.Boosted)
             {
-                callout = rewardStageActive ? RewardWingCallout : "SMASH\nSPEED UP";
-                calloutUntil = elapsed + 0.75f;
+                if (!rewardStageActive && runner != null
+                    && runner.position.z <= MainRunSmashCalloutEndZ)
+                {
+                    callout = SmashSpeedCallout;
+                    calloutUntil = elapsed + 0.75f;
+                }
+                else if (callout == SmashSpeedCallout)
+                {
+                    callout = string.Empty;
+                    calloutUntil = elapsed;
+                }
                 smashEffectStart = Time.unscaledTime;
                 smashEffectUntil = smashEffectStart + 0.28f;
                 Impact(encounter, CollisionOutcome.SpeedGain, 1.15f);
@@ -1946,6 +1965,14 @@ namespace PlayableAd
         {
             if (bossRuntimeAnimator != null && bossSupportsAttackAnimation)
                 bossRuntimeAnimator.SetBool(BossAttackingHash, attacking);
+        }
+
+        private void TriggerBossAttackPenaltyFeedback()
+        {
+            if (currentBossPhase != BossClashPhase.Contact
+                && currentBossPhase != BossClashPhase.Struggle)
+                return;
+            penaltyEdgeIntensity = Mathf.Max(penaltyEdgeIntensity, 1f);
         }
 
         private void ResetBossTapInteraction(bool immediatePromptHide)
@@ -2652,7 +2679,7 @@ namespace PlayableAd
             speedBarView.Initialize(speedController, speedVisualProfile,
                 speedBarHintFrame, speedBarSoldierHintIcon, speedBarStoneWallHintIcon,
                 speedBarStoneWallLockedHintIcon,
-                speedBarEliteHintIcon, speedBarEliteLockedHintIcon,
+                speedBarEliteHintIcon, speedBarEliteHintIcon,
                 speedBarBossHintIcon, speedBarBossLockedHintIcon,
                 Mathf.Clamp(tuning.stoneWallSafeSpeedLevel, 1, speedController.MaxLevel),
                 runner, gameCamera);
@@ -2764,7 +2791,8 @@ namespace PlayableAd
             comboManager.Initialize(gameplayCombo);
 
             comboUIController = canvasRoot.AddComponent<ComboUIController>();
-            comboUIController.Initialize(comboManager, gameplayCombo.presentation);
+            comboUIController.Initialize(comboManager, gameplayCombo.presentation,
+                speedBarView != null ? speedBarView.SoldierHintRoot : null);
         }
 
         private void BuildSpeedLevelFeedback()
@@ -2791,7 +2819,6 @@ namespace PlayableAd
             flashAlpha = Mathf.Max(flashAlpha, 0.045f);
             speedFeedback?.PulseNormalBoost();
             speedBarView?.PulseNormalBoost();
-            audioFeedback?.PlayEnergyReturn();
         }
 
         private void BuildCameraAndLight()
@@ -3233,7 +3260,7 @@ namespace PlayableAd
                 BossAnimationEvents animationEvents = bossRuntimeAnimator.GetComponent<BossAnimationEvents>();
                 if (animationEvents == null)
                     animationEvents = bossRuntimeAnimator.gameObject.AddComponent<BossAnimationEvents>();
-                animationEvents.Initialize(audioFeedback);
+                animationEvents.Initialize(audioFeedback, TriggerBossAttackPenaltyFeedback);
             }
             bossSupportsAttackAnimation = HasAnimatorParameter(bossRuntimeAnimator, BossAttackingHash);
             int bossLabelLevel = Mathf.Clamp(playerSpeed.bossVictoryLevel, 1, 10);
@@ -3505,6 +3532,25 @@ namespace PlayableAd
             if (dividerWallRoot.activeSelf != visible) dividerWallRoot.SetActive(visible);
         }
 
+        private void UpdateLargePotionVisibility()
+        {
+            if (runner == null || dividerWallStartZ <= 0f) return;
+            if (dividerWallStartZ - runner.position.z > LargePotionDividerWallPreviewDistance)
+                return;
+
+            for (int i = 0; i < encounters.Count; i++)
+            {
+                Encounter encounter = encounters[i];
+                if (encounter == null || encounter.consumed
+                    || encounter.type != EncounterType.Elixir || encounter.root == null)
+                    continue;
+
+                bool isLargePotion = IsLargePotionName(encounter.root.name);
+                if (isLargePotion && !encounter.root.activeSelf)
+                    encounter.root.SetActive(true);
+            }
+        }
+
         private void UpdateDividerWallBulletTime()
         {
             if (dividerWallRoot == null || runner == null || tuning == null
@@ -3634,7 +3680,10 @@ namespace PlayableAd
                 case MainRunContentType.Elite:
                     CreateTarget(laneX, startZ,
                         Mathf.Clamp(tuning.documentEliteLevel, 1, speedController.MaxLevel),
-                        null, zoneName + "_Elite", true);
+                        null, zoneName + "_Elite", true, null,
+                        IsLargePotionApproachEliteZone(zoneIndex)
+                            ? LargePotionApproachEliteLabelDistance
+                            : -1f);
                     break;
                 case MainRunContentType.SmallPotion:
                     CreateTemporaryBoostPickup(laneX, startZ, 0f,
@@ -3657,6 +3706,13 @@ namespace PlayableAd
                 GetDocumentLaneLength(zone.left, zoneIndex),
                 Mathf.Max(GetDocumentLaneLength(zone.center, zoneIndex),
                     GetDocumentLaneLength(zone.right, zoneIndex)));
+        }
+
+        private static bool IsLargePotionApproachEliteZone(int zeroBasedZoneIndex)
+        {
+            int zoneNumber = zeroBasedZoneIndex + 1;
+            return zoneNumber == FirstLargePotionApproachEliteZone
+                || zoneNumber == SecondLargePotionApproachEliteZone;
         }
 
         private float GetDocumentLaneLength(MainRunLaneContent content, int zoneIndex)
@@ -3727,13 +3783,16 @@ namespace PlayableAd
             int soldiersPerSection = Mathf.Clamp(
                 rewardRun != null ? rewardRun.soldiersPerSection : 40, 1, 50);
             float rewardLength = Mathf.Max(20f, rewardRun != null ? rewardRun.length : 200f);
-            float soldierInterval = rewardLength / sectionCount;
-            float wallInterval = rewardLength / wallCount;
+            float soldierInterval = rewardLength / Mathf.Max(1, sectionCount);
+            // Keep the walls in a compact field, leaving the final part of the reward
+            // run clear for the single retained soldier section.
+            float wallFieldLength = rewardLength * 0.68f;
+            float wallInterval = wallFieldLength / (wallCount + 1f);
 
             int totalSteps = Mathf.Max(sectionCount, wallCount);
             for (int i = 0; i < totalSteps; i++)
             {
-                if (i < sectionCount)
+                if (i < sectionCount && sectionCount > 1)
                 {
                     float sectionStart = RewardRunStartZ + soldierInterval * (i + 0.04f);
                     yield return StartCoroutine(CreateRewardSoldierSection(i, sectionStart,
@@ -3743,10 +3802,17 @@ namespace PlayableAd
 
                 if (i < wallCount)
                 {
-                    float wallZ = RewardRunStartZ + wallInterval * (i + 0.72f);
+                    float wallZ = RewardRunStartZ + wallInterval * (i + 1f);
                     CreateRewardStoneWall(wallZ, i + 1);
                     yield return null;
                 }
+            }
+
+            if (sectionCount == 1)
+            {
+                float sectionStart = RewardRunStartZ + rewardLength * 0.78f;
+                yield return StartCoroutine(CreateRewardSoldierSection(
+                    0, sectionStart, soldiersPerSection, rewardLength * 0.2f));
             }
 
             SortEncountersByDistance();
@@ -3803,7 +3869,8 @@ namespace PlayableAd
                 float z = startZ + Mathf.Clamp(soldierIndex * spacing + jitter, 0f, sectionLength);
                 CreateTarget(x, z, 1, sectionObject.transform,
                     "RewardSoldier_" + (sectionIndex + 1) + "_" + (soldierIndex + 1),
-                    soldierIndex == 0);
+                    soldierIndex == 0,
+                    rewardRun != null ? rewardRun.soldierVisualPrefab : null);
                 if ((soldierIndex + 1) % 8 == 0)
                     yield return null;
             }
@@ -3906,13 +3973,17 @@ namespace PlayableAd
         }
 
         private void CreateTarget(float x, float z, int tier, Transform parent = null,
-            string objectName = "Target", bool showLevelLabel = true)
+            string objectName = "Target", bool showLevelLabel = true,
+            GameObject visualPrefabOverride = null, float levelLabelPreviewDistance = -1f)
         {
             Vector3 dimensions = targetShapes.Get(tier);
             Color color = speedVisualProfile.Get(tier).primaryColor;
-            GameObject visualPrefab = tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
-            bool usePooledVisual = visualPrefab != null && (tier == 1
-                ? tier1SoldierVisualAvailable
+            GameObject visualPrefab = visualPrefabOverride != null
+                ? visualPrefabOverride
+                : tier == 1 ? tier1SoldierPrefab : tier >= 4 ? tier4SoldierPrefab : null;
+            bool usePooledVisual = visualPrefab != null && (visualPrefabOverride != null
+                ? visualPrefab.GetComponentInChildren<Renderer>(true) != null
+                : tier == 1 ? tier1SoldierVisualAvailable
                 : tier >= 4 && tier4SoldierVisualAvailable);
             Transform targetParent = parent != null ? parent : worldRoot;
             GameObject root;
@@ -3977,7 +4048,8 @@ namespace PlayableAd
             int displayLevel = tier >= 4 ? tier : SoldierDisplayLevel;
             NumberCombatTarget numberTarget = showLevelLabel
                 ? numberCombatSystem?.RegisterTarget(root.transform, visibilityRenderers,
-                    displayLevel, numberCombat.soldierHeadClearance, visibility, targetHeight)
+                    displayLevel, numberCombat.soldierHeadClearance, visibility, targetHeight,
+                    levelLabelPreviewDistance)
                 : null;
             visibility.Initialize(visibilityRenderers, colliders);
             encounters.Add(new Encounter
@@ -4041,10 +4113,13 @@ namespace PlayableAd
         {
             if (collider == null) return;
             Bounds bounds = CalculateRendererBounds(renderers);
+            float visualDepth = bounds.size.z * 0.8f;
+            if (visualDepth <= 0.001f)
+                visualDepth = rootDimensions.z * 0.8f;
             Vector3 worldSize = new Vector3(
                 bounds.size.x * 0.8f,
                 targetHeight * 0.9f,
-                bounds.size.z * 0.8f);
+                visualDepth);
             collider.size = new Vector3(
                 worldSize.x / Mathf.Max(0.001f, rootDimensions.x),
                 worldSize.y / Mathf.Max(0.001f, rootDimensions.y),
@@ -4097,7 +4172,8 @@ namespace PlayableAd
             root.transform.position = new Vector3(x, 0.9f, z);
 
             Renderer[] renderers = CreateElixirVisual(root, visualPrefab, resolvedTargetLevel);
-            root.AddComponent<ElixirVisual>().Initialize(elixirPresentation, renderers, speedVisualProfile, resolvedTargetLevel);
+            root.AddComponent<ElixirVisual>().Initialize(elixirPresentation, renderers,
+                speedVisualProfile, resolvedTargetLevel, IsLargePotionName(objectName));
             SphereCollider pickupCollider = root.AddComponent<SphereCollider>();
             pickupCollider.isTrigger = true;
             pickupCollider.radius = 1.1f;
@@ -4138,6 +4214,7 @@ namespace PlayableAd
 
         private Renderer[] CreateElixirVisual(GameObject root, GameObject visualPrefab, int targetLevel)
         {
+            float scaleMultiplier = GetElixirVisualScaleMultiplier(root != null ? root.name : string.Empty);
             if (visualPrefab != null)
             {
                 GameObject visual = Instantiate(visualPrefab, root.transform, false);
@@ -4155,20 +4232,36 @@ namespace PlayableAd
                 Renderer[] importedRenderers = visual.GetComponentsInChildren<Renderer>(true);
                 if (importedRenderers.Length > 0)
                 {
-                    FitElixirVisual(root.transform, visual.transform, importedRenderers);
+                    FitElixirVisual(root.transform, visual.transform, importedRenderers, scaleMultiplier);
                     return importedRenderers;
                 }
 
                 Destroy(visual);
             }
 
-            return CreateProceduralElixirVisual(root, targetLevel);
+            return CreateProceduralElixirVisual(root, targetLevel, scaleMultiplier);
         }
 
-        private static void FitElixirVisual(Transform root, Transform visual, Renderer[] renderers)
+        private static float GetElixirVisualScaleMultiplier(string objectName)
+        {
+            if (objectName.IndexOf("OpeningElixir", StringComparison.OrdinalIgnoreCase) >= 0)
+                return 1f;
+            return IsLargePotionName(objectName) ? 3f : 2f;
+        }
+
+        private static bool IsLargePotionName(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName)) return false;
+            return objectName.IndexOf("LargePotion", StringComparison.OrdinalIgnoreCase) >= 0
+                || objectName.IndexOf("BossMaxSpeedElixir", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void FitElixirVisual(Transform root, Transform visual, Renderer[] renderers,
+            float scaleMultiplier)
         {
             Bounds bounds = CalculateRendererBounds(renderers);
-            float scaleFactor = ElixirVisualTargetHeight / Mathf.Max(0.001f, bounds.size.y);
+            float scaleFactor = ElixirVisualTargetHeight * scaleMultiplier
+                / Mathf.Max(0.001f, bounds.size.y);
             visual.localScale *= scaleFactor;
 
             bounds = CalculateRendererBounds(renderers);
@@ -4179,19 +4272,23 @@ namespace PlayableAd
                 rootPosition.z - bounds.center.z);
         }
 
-        private Renderer[] CreateProceduralElixirVisual(GameObject root, int targetLevel)
+        private Renderer[] CreateProceduralElixirVisual(GameObject root, int targetLevel,
+            float scaleMultiplier)
         {
             GameObject bottle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             bottle.transform.SetParent(root.transform, false);
-            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f);
+            float groundCompensation = 0.72f * (scaleMultiplier - 1f);
+            bottle.transform.localPosition = new Vector3(0f, groundCompensation, 0f);
+            bottle.transform.localScale = new Vector3(0.42f, 0.72f, 0.42f) * scaleMultiplier;
             SpeedTierVisualData elixirTier = speedVisualProfile.Get(targetLevel);
             bottle.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.primaryColor, 0.15f, 0.9f);
             Destroy(bottle.GetComponent<Collider>());
 
             GameObject cap = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cap.transform.SetParent(root.transform, false);
-            cap.transform.localPosition = new Vector3(0f, 0.85f, 0f);
-            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f);
+            cap.transform.localPosition = new Vector3(0f,
+                groundCompensation + 0.85f * scaleMultiplier, 0f);
+            cap.transform.localScale = new Vector3(0.32f, 0.2f, 0.32f) * scaleMultiplier;
             cap.GetComponent<Renderer>().sharedMaterial = RuntimeStyle.CreateMaterial(elixirTier.secondaryColor, 0.4f, 0.8f);
             Destroy(cap.GetComponent<Collider>());
 
@@ -4347,15 +4444,15 @@ namespace PlayableAd
             {
                 DrawTutorialBulletTimeWarning(width, height);
             }
+            else if (!ending && (rewardStageActive || rewardStageFinishing))
+            {
+                DrawRewardWingCallout(width, height);
+            }
             else if (!ending && elapsed < calloutUntil)
             {
-                if (callout == "SMASH\nSPEED UP")
+                if (callout == SmashSpeedCallout)
                 {
                     DrawSmashCallout(width, height);
-                }
-                else if (callout == RewardWingCallout)
-                {
-                    DrawRewardWingCallout(width, height);
                 }
                 else
                 {
@@ -4551,8 +4648,8 @@ namespace PlayableAd
             GUI.color = new Color(color.r, color.g, color.b, alpha);
             float labelWidth = width * 0.84f;
             float labelX = (width - labelWidth) * 0.5f + offset.x;
-            GUI.Label(new Rect(labelX, height * 0.23f + offset.y, labelWidth, 68f), "SMASH", smashTitleStyle);
-            GUI.Label(new Rect(labelX, height * 0.305f + offset.y, labelWidth, 48f), "↑  SPEED UP  ↑", smashSubtitleStyle);
+            GUI.Label(new Rect(labelX, height * 0.23f + offset.y, labelWidth, 54f), "SMASH", smashTitleStyle);
+            GUI.Label(new Rect(labelX, height * 0.272f + offset.y, labelWidth, 36f), "↑  SPEED UP  ↑", smashSubtitleStyle);
             GUI.color = previousColor;
         }
 
@@ -4700,14 +4797,14 @@ namespace PlayableAd
             smashTitleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 56,
+                fontSize = 44,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.white }
             };
             smashSubtitleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 30,
+                fontSize = 23,
                 fontStyle = FontStyle.Normal,
                 normal = { textColor = Color.white }
             };

@@ -6,6 +6,9 @@ namespace PlayableAd
     [Serializable]
     public sealed class ImpactPresentationSettings
     {
+        [InspectorName("Enable Impact Burst Particles")]
+        public bool enableImpactBurstParticles = false;
+
         [Header("Pools（对象池）")]
         [Range(3, 10), InspectorName("Impact Pool Size（冲击对象池大小）")] public int impactPoolSize = 6;
         [Range(12, 40), InspectorName("Max Energy Shards（最大能量碎片数）")] public int maxEnergyShards = 24;
@@ -64,6 +67,8 @@ namespace PlayableAd
         private int shardCursor;
         private Material impactParticleMaterial;
         private Material highlightParticleMaterial;
+        private Texture2D impactParticleTexture;
+        private bool usesImpactAtlas;
         private Material lineMaterial;
         private SpeedVisualProfile visualProfile;
         private VisualPerformanceSettings performance;
@@ -98,6 +103,18 @@ namespace PlayableAd
         {
             if (impactPool == null || impactPool.Length == 0 || settings == null)
             {
+                return;
+            }
+
+            if (!settings.enableImpactBurstParticles)
+            {
+                for (int i = 0; i < impactPool.Length; i++)
+                    if (impactPool[i] != null)
+                        impactPool[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                if (highlightPool != null)
+                    for (int i = 0; i < highlightPool.Length; i++)
+                        if (highlightPool[i] != null)
+                            highlightPool[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 return;
             }
 
@@ -281,7 +298,7 @@ namespace PlayableAd
             highlightPool = new ParticleSystem[count];
             Material particleMaterial = BuildImpactParticleMaterial();
             Material highlightMaterial = BuildHighlightParticleMaterial();
-            bool hasImpactAtlas = impactParticleMaterial != null;
+            bool hasImpactAtlas = usesImpactAtlas;
             for (int i = 0; i < count; i++)
             {
                 impactPool[i] = BuildPooledImpactParticles(
@@ -351,12 +368,13 @@ namespace PlayableAd
                 ? visualProfile.particleMaterial
                 : RuntimeStyle.CreateMaterial(Color.white, 0f, 0f);
             Texture2D atlas = Resources.Load<Texture2D>("ImpactTextures/ImpactBurstAtlas");
-            if (atlas == null) return source;
+            usesImpactAtlas = atlas != null;
+            impactParticleTexture = usesImpactAtlas ? atlas : BuildSafeImpactTexture();
 
             impactParticleMaterial = new Material(source)
             {
                 name = "RuntimeImpactTextureMaterial",
-                mainTexture = atlas,
+                mainTexture = impactParticleTexture,
                 renderQueue = 3000
             };
             impactParticleMaterial.SetOverrideTag("RenderType", "Transparent");
@@ -370,6 +388,38 @@ namespace PlayableAd
             impactParticleMaterial.EnableKeyword("_ALPHABLEND_ON");
             impactParticleMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             return impactParticleMaterial;
+        }
+
+        // A small uncompressed radial burst keeps transparent edges reliable on every
+        // mobile GPU while retaining the existing color, scale and particle motion.
+        private static Texture2D BuildSafeImpactTexture()
+        {
+            const int size = 48;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, true)
+            {
+                name = "RuntimeSafeImpactBurst",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float nx = (x + 0.5f) / size * 2f - 1f;
+                    float ny = (y + 0.5f) / size * 2f - 1f;
+                    float radius = Mathf.Sqrt(nx * nx + ny * ny);
+                    float edge = 1f - Mathf.SmoothStep(0.42f, 1f, radius);
+                    float angle = Mathf.Atan2(ny, nx);
+                    float rays = Mathf.Pow(Mathf.Abs(Mathf.Cos(angle * 6f)), 18f)
+                        * Mathf.Clamp01(1f - radius) * 0.78f;
+                    float alpha = Mathf.Clamp01(Mathf.Max(edge * 0.72f, rays));
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            return texture;
         }
 
         private Material BuildHighlightParticleMaterial()
@@ -467,6 +517,11 @@ namespace PlayableAd
             {
                 if (Application.isPlaying) Destroy(highlightParticleMaterial);
                 else DestroyImmediate(highlightParticleMaterial);
+            }
+            if (impactParticleTexture != null && !usesImpactAtlas)
+            {
+                if (Application.isPlaying) Destroy(impactParticleTexture);
+                else DestroyImmediate(impactParticleTexture);
             }
         }
 

@@ -248,3 +248,4 @@ MonoBehaviour:
   speedScaleMultiplier: 0.08
   chargeScaleMultiplier: 1.12
   fallShadowMode: 1
+  enablePersistentOrbitParticles: 0

@@ -71,6 +71,7 @@ namespace PlayableAd
         internal Text Label;
         internal EnemyVisibilityController Visibility;
         internal float HeadOffset;
+        internal float PreviewDistance;
         internal bool Resolved;
 
         public int FixedLevel { get; internal set; }
@@ -92,6 +93,7 @@ namespace PlayableAd
         private int playerLevel;
         private Font labelFont;
         private bool initialized;
+        private bool targetsWhiteForInvulnerability;
 
         public event Action<int> PlayerLevelChanged;
 
@@ -105,6 +107,7 @@ namespace PlayableAd
             playerOwner = playerTransform;
             speedController = playerSpeedController;
             targets.Clear();
+            targetsWhiteForInvulnerability = false;
 
             BuildCanvas();
             playerLabel = CreateLabel("PlayerNumber", GetLevelFontSize(settings.playerFontSize, 1), settings.playerColor);
@@ -116,7 +119,8 @@ namespace PlayableAd
         }
 
         public NumberCombatTarget RegisterTarget(Transform owner, Renderer[] renderers, int fixedLevel,
-            float headClearance, EnemyVisibilityController visibility = null, float fallbackHeight = 1.8f)
+            float headClearance, EnemyVisibilityController visibility = null, float fallbackHeight = 1.8f,
+            float previewDistance = -1f)
         {
             if (!initialized || owner == null) return null;
 
@@ -128,6 +132,9 @@ namespace PlayableAd
                     GetLevelFontSize(settings.targetFontSize, clampedLevel), settings.strongerColor),
                 Visibility = visibility,
                 FixedLevel = clampedLevel,
+                PreviewDistance = previewDistance > 0f
+                    ? previewDistance
+                    : settings.targetLabelPreviewDistance,
                 HeadOffset = CalculateHeadOffset(owner, renderers, headClearance,
                     Mathf.Max(0.1f, fallbackHeight))
             };
@@ -167,6 +174,13 @@ namespace PlayableAd
         {
             if (canvasRect != null)
                 canvasRect.gameObject.SetActive(visible);
+        }
+
+        public void SetInvulnerabilityActive(bool active)
+        {
+            if (targetsWhiteForInvulnerability == active) return;
+            targetsWhiteForInvulnerability = active;
+            RefreshTargetColors();
         }
 
         private void LateUpdate()
@@ -260,7 +274,7 @@ namespace PlayableAd
             float distanceAhead = playerOwner != null
                 ? target.Owner.position.z - playerOwner.position.z
                 : float.MaxValue;
-            bool visible = distanceAhead <= settings.targetLabelPreviewDistance
+            bool visible = distanceAhead <= target.PreviewDistance
                 && target.Owner.gameObject.activeInHierarchy
                 && IsVisibilityStateRenderable(target.Visibility);
             if (visible)
@@ -305,6 +319,11 @@ namespace PlayableAd
         {
             if (target == null || target.Label == null) return;
             target.Label.fontSize = GetLevelFontSize(settings.targetFontSize, target.FixedLevel);
+            if (targetsWhiteForInvulnerability)
+            {
+                target.Label.color = Color.white;
+                return;
+            }
             target.Label.color = target.FixedLevel <= playerLevel
                 ? settings.beatableTargetColor
                 : settings.strongerColor;

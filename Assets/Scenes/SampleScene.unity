@@ -640,8 +640,9 @@ MonoBehaviour:
         exitDuration: 0.15
   rewardRun:
     enabled: 1
-    length: 200
-    soldierSectionCount: 10
+    soldierVisualPrefab: {fileID: 100000000000000001, guid: a1b2c3d4e5f6478899aabbccddeeff05, type: 3}
+    length: 100
+    soldierSectionCount: 1
     soldiersPerSection: 40
     stoneWallCount: 10
     startOffsetAfterBoss: 14
@@ -657,8 +658,8 @@ MonoBehaviour:
     thirdMilestone: 50
     fourthMilestone: 100
     presentation:
-      screenAnchor: {x: 0.78, y: 0.62}
-      screenOffset: {x: -48, y: 0}
+      screenAnchor: {x: 0.78, y: 0.56}
+      screenOffset: {x: 0, y: -240}
       textAngle: 9
       fontSize: 72
       finalFontSize: 92
@@ -828,8 +829,9 @@ MonoBehaviour:
   speedVisualProfile: {fileID: 11400000, guid: b4bcfcf38b69eef47a7a2f740ef1f34d, type: 2}
   visualPerformance:
     lowQualityMode: 0
-    autoLowQualityOnMobileWeb: 1
+    autoLowQualityOnMobileWeb: 0
     enableSecondarySpeedLines: 1
+    enableLevelUpVfx: 0
     lowQualityParticleMultiplier: 0.45
     lowQualitySpeedLineCount: 6
     lowQualityEnergyShardLimit: 12
@@ -838,8 +840,8 @@ MonoBehaviour:
   speedBarSoldierHintIcon: {fileID: 21300000, guid: cb8c0e6a15d20424fb0e3d193035eb7f, type: 3}
   speedBarStoneWallHintIcon: {fileID: 21300000, guid: 11caa1edbf255de4e82d558e411f65b6, type: 3}
   speedBarStoneWallLockedHintIcon: {fileID: 21300000, guid: 89322afc324999c49bcfd9c96ce7debb, type: 3}
-  speedBarEliteHintIcon: {fileID: 21300000, guid: def6d2f032f27bc498b7794a8a994eaa, type: 3}
-  speedBarEliteLockedHintIcon: {fileID: 21300000, guid: 06b09ab72cbc550478423963f1d77f7b, type: 3}
+  speedBarEliteHintIcon: {fileID: 21300000, guid: e4c1d9fa7a8b4d58a80e5302a9c1bf42, type: 3}
+  speedBarEliteLockedHintIcon: {fileID: 21300000, guid: e4c1d9fa7a8b4d58a80e5302a9c1bf42, type: 3}
   speedBarBossHintIcon: {fileID: 21300000, guid: d64debfd2f6608d4bbc2626fdaca1cea, type: 3}
   speedBarBossLockedHintIcon: {fileID: 21300000, guid: cc309ad3b9b7d394bb1e527a9d75be90, type: 3}
   runningWindTrailPrefab: {fileID: 3696007233179127096, guid: c248f95ffea8b8543bc7ad0fffe0216d, type: 3}
@@ -850,6 +852,11 @@ MonoBehaviour:
     breathSpeed: 2.2
     emissionIntensity: 0.8
     ringRadius: 1.1
+    largePotionEmissionMultiplier: 2.2
+    largePotionRingRadiusMultiplier: 2.1
+    largePotionRingWidth: 0.1
+    largePotionPulseSpeed: 3
+    largePotionHighlightColor: {r: 1, g: 0.76, b: 0.18, a: 1}
     totalDuration: 0.8
     collapseDuration: 0.11
     upgradeMoment: 0.18
@@ -861,6 +868,7 @@ MonoBehaviour:
     pickupFlash: 0.32
     energyRingMaxRadius: 1.25
   impactPresentation:
+    enableImpactBurstParticles: 0
     impactPoolSize: 6
     maxEnergyShards: 24
     normalImpactParticles: 9
@@ -967,7 +975,8 @@ MonoBehaviour:
     collisionMinDistance: 2
     collisionMaxDistance: 24
     backgroundMusicLoop: {fileID: 8300000, guid: b8591b312d1c30923a1c656ef4aeaf96, type: 3}
-    backgroundMusicVolume: 0.18
+    backgroundMusicVolume: 0.09411765
+    mobileBackgroundMusicVolume: 0.4117647
     footstepsLoop: {fileID: 0}
     runningWindLoop: {fileID: 0}
     speedEnergyLoop: {fileID: 0}
@@ -992,7 +1001,6 @@ MonoBehaviour:
     armorBreak: {fileID: 8300000, guid: 94e9a7d6f187e06c7dc4c9e5ac6a54e7, type: 3}
     highSpeedWhoosh: {fileID: 8300000, guid: 9cfda63ba750b1b419ea15746d976b72, type: 3}
     soldierFlyAway: {fileID: 8300000, guid: 67d65c333da692e302e5b56601f7e48f, type: 3}
-    energyReturn: {fileID: 8300000, guid: 5084ac04c156002daa58cee3c6bc067e, type: 3}
     wallLowImpact: {fileID: 8300000, guid: 0ea9d48d7ae6e4244b97baab1a57c6d5, type: 3}
     wallStoneDebris: {fileID: 8300000, guid: debb6da286521a142b65002eb87e1a84, type: 3}
     wallDust: {fileID: 8300000, guid: 75fa625d8ada9a710df5f176b1df0b86, type: 3}
@@ -1003,14 +1011,13 @@ MonoBehaviour:
     bossFinishImpact: {fileID: 8300000, guid: 2660899f7b5f0de0e1b2cb8b4da05b8b, type: 3}
     cageBreak: {fileID: 8300000, guid: 5736984dbe2c11bfd4f7bb3668f903b9, type: 3}
     movementVolume: 0.22
-    normalImpactVolume: 0.62
+    normalImpactVolume: 1.7825
     upgradeVolume: 0.68
-    wallVolume: 0.82
+    wallVolume: 0.369
     bossVolume: 1
     priorityDuckAmount: 0.32
     actionVoiceCount: 5
-    normalImpactMinInterval: 0.07
-    energyReturnMinInterval: 0.08
+    normalImpactMinInterval: 0.04
     movementSmoothing: 12
   playerVisualPrefab: {fileID: 8725690435934047917, guid: 1d58f706c1a9cae41a4cc87807e6067d, type: 3}
   playerAnimator: {fileID: 9100000, guid: 29c6e402430dee7459a1e92c833f3f01, type: 2}
