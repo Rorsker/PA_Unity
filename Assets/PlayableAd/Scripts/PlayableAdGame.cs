@@ -2718,8 +2718,7 @@ namespace PlayableAd
             buttonRect.sizeDelta = new Vector2(216f, 76f);
 
             Image background = buttonObject.AddComponent<Image>();
-            background.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
-            background.type = background.sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            background.type = Image.Type.Simple;
             background.color = new Color(0.035f, 0.045f, 0.055f, 0.9f);
 
             Outline outline = buttonObject.AddComponent<Outline>();
